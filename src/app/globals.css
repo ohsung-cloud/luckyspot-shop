@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@import "@wanteddev/wds/global.css" layer(base);
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --LUCKYBLACK: #171717;
+  --LUCKYGREY: #777777;
+  --LUCKYWHITE: #ffffff;
+  --semantic-inverse-background: #0090ff;
+  --semantic-inverse-background-rgb: 0, 144, 255;
+  --semantic-inverse-label: #ffffff;
+  --semantic-inverse-label-rgb: 255, 255, 255;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-100: #e7f7ff;
+  --color-brand-300: #00a0ff;
+  --color-brand-400: #0090ff;
+  --color-brand-600: #0049ab;
+  --color-brand-900: #09264c;
+  --color-ui-gray-100: #f7f7f7;
+  --color-ui-gray-200: #e7e7e7;
+  --color-ui-gray-300: #d7d7d7;
+  --color-ui-gray-600: #777777;
+  --color-ui-gray-900: #171717;
+  --color-base-transparent: rgb(255 255 255 / 0%);
+  --color-base-white: #ffffff;
+  --color-base-black: #000000;
+  --color-base-ivory: #fff8e6;
+  --color-accent-yellow: #ffeb00;
+  --color-overlay-brand-600-50: rgb(0 73 171 / 50%);
+  --color-overlay-brand-900-50: rgb(9 38 76 / 50%);
+  --color-overlay-gray-900-50: rgb(23 23 23 / 50%);
+  --color-overlay-gray-900-70: rgb(23 23 23 / 70%);
+  --font-sans: "Paperozi", sans-serif;
+  --font-paper: "Paperozi", sans-serif;
+  --font-tilt: var(--font-tilt-warp), sans-serif;
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: url("/assets/images/bg.png") no-repeat center center fixed;
+  background-size: cover;
+  color: var(--foreground);
+}
+
+.content-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  max-width: 480px;
+  margin-inline: auto;
+  background: var(--color-base-white);
+}
+
+@media (min-width: 768px) {
+  .content-container {
+    box-shadow: -24px 0 80px -24px rgb(0 0 0 / 0.12);
+  }
+}
+
+.app-layout-content:has(.intro-page) .app-layout-header,
+.app-layout-content:has(.intro-page) .app-layout-footer,
+.app-layout-content:has(.intro-page) .app-layout-fixed-call-button {
+  display: none;
+}
+
+.desktop-side-panel {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .desktop-side-panel {
+    display: flex;
+  }
+
+  .desktop-side-panel .panel-inner {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+button {
+  cursor: pointer;
+}
+
+.type-heading-lg {
+  font-family: "Paperozi", sans-serif;
+  font-size: 48px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 120%;
+  letter-spacing: -1.6px;
+}
+
+.type-heading-md {
+  font-family: "Paperozi", sans-serif;
+  font-size: 36px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 125%;
+  letter-spacing: -1px;
+}
+
+.type-heading-sm {
+  font-family: "Paperozi", sans-serif;
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 130%;
+  letter-spacing: -0.6px;
+}
+
+.type-heading-xs {
+  font-family: "Paperozi", sans-serif;
+  font-size: 22px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 130%;
+  letter-spacing: 0;
+}
+
+.type-display-lg {
+  font-family: var(--font-tilt-warp), sans-serif;
+  font-size: 96px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%;
+  letter-spacing: -1.6px;
+}
+
+.type-display-md {
+  font-family: var(--font-tilt-warp), sans-serif;
+  font-size: 48px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 110%;
+  letter-spacing: -1.6px;
+}
+
+.type-body-sm {
+  font-family: "Paperozi", sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 170%;
+  letter-spacing: 1px;
+}
+
+.type-body-md {
+  font-family: "Paperozi", sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 170%;
+  letter-spacing: 0.16px;
+}
+
+.type-body-lg {
+  font-family: "Paperozi", sans-serif;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 150%;
+  letter-spacing: 0;
+}
+
+.type-caption {
+  font-family: "Paperozi", sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 170%;
+  letter-spacing: 1px;
+}
+
+.type-eyebrow {
+  font-family: "Paperozi", sans-serif;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 150%;
+  letter-spacing: 0.16px;
+}
