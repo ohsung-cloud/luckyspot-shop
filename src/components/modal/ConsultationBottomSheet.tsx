@@ -31,13 +31,15 @@ export default function ConsultationBottomSheet() {
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isAddressSelected = selectedAddress.length > 0;
+  const hasCustomerName = customerName.trim().length > 0;
+  const hasValidPhoneNumber = phoneNumber.length === 11;
 
   const isFormComplete =
-    customerName.trim().length > 0 &&
-    phoneNumber.length === 11 &&
+    hasCustomerName &&
+    hasValidPhoneNumber &&
     isAddressSelected &&
     agreedToPrivacy;
-  const isSubmitDisabled = !cartItems.length || !isFormComplete || isSubmitting;
+  const isSubmitDisabled = !cartItems.length || !isAddressSelected || isSubmitting;
 
   useEffect(() => {
     if (isOpen) {
@@ -66,7 +68,52 @@ export default function ConsultationBottomSheet() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!cartItems.length || !isFormComplete || isSubmitting) {
+    if (!cartItems.length) {
+      toast({
+        content: "장바구니에 담긴 상품이 없습니다.",
+        duration: "short",
+        variant: "normal",
+      });
+      return;
+    }
+
+    if (!isAddressSelected) {
+      toast({
+        content: "주소를 선택해주세요.",
+        duration: "short",
+        variant: "normal",
+      });
+      return;
+    }
+
+    if (!hasCustomerName) {
+      toast({
+        content: "주문자 성함을 입력해주세요.",
+        duration: "short",
+        variant: "normal",
+      });
+      return;
+    }
+
+    if (!hasValidPhoneNumber) {
+      toast({
+        content: "휴대폰 번호 11자리를 입력해주세요.",
+        duration: "short",
+        variant: "normal",
+      });
+      return;
+    }
+
+    if (!agreedToPrivacy) {
+      toast({
+        content: "개인정보수집 동의가 필요합니다.",
+        duration: "short",
+        variant: "normal",
+      });
+      return;
+    }
+
+    if (isSubmitting) {
       return;
     }
 
@@ -153,7 +200,7 @@ export default function ConsultationBottomSheet() {
 
           <div className="bg-white px-6 pb-2">
             {cartItems.length ? (
-              <div className="border-y border-ui-gray-200">
+              <div className="max-h-[352px] overflow-y-auto overscroll-contain border-y border-ui-gray-200">
                 {cartItems.map((item) => (
                   <article
                     key={item.id}
@@ -293,6 +340,7 @@ export default function ConsultationBottomSheet() {
 
           <div className="space-y-3 px-6 pb-4 pt-0">
             <LuckyButton
+              appearance={isAddressSelected ? "fill" : "weak"}
               disabled={isSubmitDisabled}
               fullWidth
               type="submit"

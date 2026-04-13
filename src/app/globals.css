@@ -107,6 +107,11 @@ button {
   display: none;
 }
 
+[data-role="toast"] p {
+  font-size: 24px;
+  line-height: 1.4;
+}
+
 .type-heading-lg {
   font-family: "Paperozi", sans-serif;
   font-size: 48px;
