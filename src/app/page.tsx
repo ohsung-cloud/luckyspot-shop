@@ -6,7 +6,6 @@ import { useToast } from "@wanteddev/wds";
 import { LuckyButton } from "@/components/LuckyButton";
 import { LuckyChipTabs } from "@/components/LuckyChipTabs";
 import ShopProductImage from "@/components/ShopProductImage";
-import { shopAddresses } from "@/data/address";
 import { formatPrice, shopCategories } from "@/data/products";
 import { useCartStore } from "@/stores/cartStore";
 
@@ -102,34 +101,6 @@ export default function HomePage() {
             </article>
           ))}
         </div>
-
-        <section
-          aria-labelledby="shop-address-book-heading"
-          className="rounded-[20px] bg-ui-gray-50 px-5 py-6"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <h2
-              id="shop-address-book-heading"
-              className="type-heading-xs text-ui-gray-900"
-            >
-              주소록
-            </h2>
-            <p className="type-body-sm text-ui-gray-600">
-              주문서에서도 같은 목록을 사용해요
-            </p>
-          </div>
-
-          <ul className="mt-4 space-y-3">
-            {shopAddresses.map((address) => (
-              <li
-                key={address.id}
-                className="type-body-md rounded-[12px] border border-ui-gray-200 bg-white px-4 py-3 text-ui-gray-900"
-              >
-                {address.label}
-              </li>
-            ))}
-          </ul>
-        </section>
       </section>
     </main>
   );
