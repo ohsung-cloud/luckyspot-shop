@@ -76,10 +76,6 @@ export async function POST(request: Request) {
     return createBadRequest("Cart is empty.");
   }
 
-  if (body.phone.replace(/\D/g, "").length !== 11) {
-    return createBadRequest("Phone number must have 11 digits.");
-  }
-
   const orderId = generateOrderId();
   const createdAt = createOrderCreatedAt();
   const payload = createOrderSheetPayload(body, {

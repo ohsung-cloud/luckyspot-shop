@@ -31,14 +31,6 @@ export default function ConsultationBottomSheet() {
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isAddressSelected = selectedAddress.length > 0;
-  const hasCustomerName = customerName.trim().length > 0;
-  const hasValidPhoneNumber = phoneNumber.length === 11;
-
-  const isFormComplete =
-    hasCustomerName &&
-    hasValidPhoneNumber &&
-    isAddressSelected &&
-    agreedToPrivacy;
   const isSubmitDisabled = !cartItems.length || !isAddressSelected || isSubmitting;
 
   useEffect(() => {
@@ -80,33 +72,6 @@ export default function ConsultationBottomSheet() {
     if (!isAddressSelected) {
       toast({
         content: "주소를 선택해주세요.",
-        duration: "short",
-        variant: "normal",
-      });
-      return;
-    }
-
-    if (!hasCustomerName) {
-      toast({
-        content: "주문자 성함을 입력해주세요.",
-        duration: "short",
-        variant: "normal",
-      });
-      return;
-    }
-
-    if (!hasValidPhoneNumber) {
-      toast({
-        content: "휴대폰 번호 11자리를 입력해주세요.",
-        duration: "short",
-        variant: "normal",
-      });
-      return;
-    }
-
-    if (!agreedToPrivacy) {
-      toast({
-        content: "개인정보수집 동의가 필요합니다.",
         duration: "short",
         variant: "normal",
       });

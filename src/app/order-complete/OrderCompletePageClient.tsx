@@ -183,22 +183,31 @@ export function OrderCompletePageClient({
           </LuckyButton>
         </div>
 
-        <LuckyButton
-          appearance="link"
-          onClick={() => {
-            void handleShareOrder();
-          }}
-          sx={{
-            minHeight: "auto",
-            paddingInline: "0px",
-            fontSize: "16px",
-            fontWeight: 400,
-            lineHeight: "24px",
-            textUnderlineOffset: "3px",
-          }}
-        >
-          주문정보 공유하기
-        </LuckyButton>
+        <div className="flex flex-col items-center gap-2">
+          <LuckyButton
+            appearance="link"
+            onClick={() => {
+              void handleShareOrder();
+            }}
+            sx={{
+              minHeight: "auto",
+              paddingInline: "0px",
+              fontSize: "16px",
+              fontWeight: 400,
+              lineHeight: "24px",
+              textUnderlineOffset: "3px",
+            }}
+          >
+            주문정보 공유하기
+          </LuckyButton>
+
+          <a
+            className="type-body-md text-brand-400 underline decoration-solid underline-offset-[3px]"
+            href={`tel:${ORDER_SUPPORT_PHONE.replaceAll("-", "")}`}
+          >
+            주문취소 및 기타문의 {ORDER_SUPPORT_PHONE}
+          </a>
+        </div>
       </section>
     </main>
   );

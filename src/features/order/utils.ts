@@ -1,8 +1,8 @@
 import { formatPrice, type ShopProduct } from "@/data/products";
 
 const ORDER_ID_RANDOM_DIGITS = 3;
-const ORDER_ID_SUFFIX_LENGTH = 10;
-const ORDER_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const ORDER_ID_SUFFIX_LENGTH = 1;
+const ORDER_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export const ORDER_BANK_NAME = "카카오뱅크";
 export const ORDER_ACCOUNT_NUMBER = "3333-10-7086641";
@@ -81,7 +81,7 @@ export function generateOrderId(date = new Date()) {
   const randomDigits = createRandomDigits(ORDER_ID_RANDOM_DIGITS);
   const uniqueSuffix = createUniqueSuffix(ORDER_ID_SUFFIX_LENGTH);
 
-  return `${dateSegment}-${randomDigits}-${uniqueSuffix}`;
+  return `${dateSegment}-${randomDigits}${uniqueSuffix}`;
 }
 
 export function createOrderCreatedAt(date = new Date()) {
