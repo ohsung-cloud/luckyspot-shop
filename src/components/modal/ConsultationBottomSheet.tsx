@@ -5,20 +5,15 @@ import { useToast } from "@wanteddev/wds";
 import { useRouter } from "next/navigation";
 import { IconCheckThick, IconChevronDown } from "@wanteddev/wds-icon";
 
-import { LuckyFillButton, LuckyWeakButton } from "@/components/LuckyButton";
-import { formatPrice } from "@/features/shop/data";
+import { LuckyButton } from "@/components/LuckyButton";
+import ShopProductImage from "@/components/ShopProductImage";
+import { shopAddresses } from "@/data/address";
+import { formatPrice } from "@/data/products";
 import {
   selectCartTotalPrice,
   useCartStore,
 } from "@/stores/cartStore";
 import { useConsultationModal } from "./ConsultationModalProvider";
-
-const shippingOptions = [
-  "서울 직배송",
-  "경기/인천 직배송",
-  "택배 배송",
-  "기타 배송지 직접 입력",
-] as const;
 
 export default function ConsultationBottomSheet() {
   const router = useRouter();
@@ -31,16 +26,18 @@ export default function ConsultationBottomSheet() {
   const [visible, setVisible] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [shippingOption, setShippingOption] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isAddressSelected = selectedAddress.length > 0;
 
   const isFormComplete =
     customerName.trim().length > 0 &&
     phoneNumber.length === 11 &&
-    shippingOption.length > 0 &&
+    isAddressSelected &&
     agreedToPrivacy;
+  const isSubmitDisabled = !cartItems.length || !isFormComplete || isSubmitting;
 
   useEffect(() => {
     if (isOpen) {
@@ -61,7 +58,7 @@ export default function ConsultationBottomSheet() {
   const resetForm = () => {
     setCustomerName("");
     setPhoneNumber("");
-    setShippingOption("");
+    setSelectedAddress("");
     setDetailAddress("");
     setAgreedToPrivacy(true);
   };
@@ -78,11 +75,11 @@ export default function ConsultationBottomSheet() {
     try {
       const response = await fetch("/api/orders", {
         body: JSON.stringify({
-          address: detailAddress,
+          address: [selectedAddress, detailAddress.trim()].filter(Boolean).join(" / "),
           items: cartItems,
           name: customerName,
           phone: phoneNumber,
-          shippingOption,
+          shippingOption: selectedAddress,
         }),
         headers: {
           "Content-Type": "application/json",
@@ -169,30 +166,25 @@ export default function ConsultationBottomSheet() {
                       <p className="type-body-lg mt-2 text-ui-gray-600">
                         {formatPrice(item.price)}
                       </p>
-                      <button
-                        className="type-body-md mt-2 w-fit border-0 bg-transparent p-0 text-brand-400 underline decoration-solid underline-offset-[3px]"
+                      <LuckyButton
+                        appearance="link"
+                        className="mt-2 w-fit"
                         onClick={() => removeItem(item.id)}
-                        type="button"
+                        sx={{
+                          minHeight: "auto",
+                          paddingInline: "0px",
+                          fontSize: "16px",
+                          fontWeight: 400,
+                          lineHeight: "24px",
+                          justifyContent: "flex-start",
+                          textUnderlineOffset: "3px",
+                        }}
                       >
                         삭제하기
-                      </button>
+                      </LuckyButton>
                     </div>
 
-                    {item.imageVariant === "bag" ? (
-                      <div className="flex size-[125.5px] shrink-0 items-center justify-center rounded-[8px] bg-ui-gray-100 px-[10px] py-2">
-                        <img
-                          alt={item.imageAlt}
-                          className="h-[90px] w-[66px] object-contain"
-                          src={item.imageSrc}
-                        />
-                      </div>
-                    ) : (
-                      <img
-                        alt={item.imageAlt}
-                        className="size-[125.5px] shrink-0 rounded-[8px] object-cover"
-                        src={item.imageSrc}
-                      />
-                    )}
+                    <ShopProductImage product={item} />
                   </article>
                 ))}
               </div>
@@ -230,15 +222,15 @@ export default function ConsultationBottomSheet() {
               <div className="relative">
                 <select
                   className="type-body-md h-12 w-full appearance-none rounded-[8px] border border-ui-gray-200 bg-white px-5 pr-12 text-ui-gray-900 outline-none"
-                  onChange={(event) => setShippingOption(event.target.value)}
-                  value={shippingOption}
+                  onChange={(event) => setSelectedAddress(event.target.value)}
+                  value={selectedAddress}
                 >
                   <option value="" disabled>
-                    배송지 선택
+                    주소 선택
                   </option>
-                  {shippingOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                  {shopAddresses.map((address) => (
+                    <option key={address.id} value={address.label}>
+                      {address.label}
                     </option>
                   ))}
                 </select>
@@ -247,9 +239,14 @@ export default function ConsultationBottomSheet() {
                 </span>
               </div>
               <input
-                className="type-body-md h-12 w-full rounded-[8px] border border-ui-gray-200 px-5 text-ui-gray-900 outline-none placeholder:text-ui-gray-600"
+                className="type-body-md h-12 w-full rounded-[8px] border border-ui-gray-200 px-5 text-ui-gray-900 outline-none placeholder:text-ui-gray-600 disabled:cursor-not-allowed disabled:border-ui-gray-100 disabled:bg-ui-gray-100 disabled:text-ui-gray-400 disabled:placeholder:text-ui-gray-400"
+                disabled={!isAddressSelected}
                 onChange={(event) => setDetailAddress(event.target.value)}
-                placeholder="기타 배송지 주소 작성 (첫 주문 시)"
+                placeholder={
+                  isAddressSelected
+                    ? "상세 주소 작성 (필요 시)"
+                    : "먼저 주소를 선택해주세요"
+                }
                 type="text"
                 value={detailAddress}
               />
@@ -278,39 +275,42 @@ export default function ConsultationBottomSheet() {
               <span className="type-body-sm text-ui-gray-600">
                 제출 시 개인정보수집에 자동 동의합니다
               </span>
-              <button
-                className="type-body-sm border-0 bg-transparent p-0 text-brand-400 underline decoration-solid underline-offset-[2px]"
-                type="button"
+              <LuckyButton
+                appearance="link"
+                sx={{
+                  minHeight: "auto",
+                  paddingInline: "0px",
+                  fontSize: "14px",
+                  fontWeight: 400,
+                  lineHeight: "20px",
+                  textUnderlineOffset: "2px",
+                }}
               >
                 약관보기
-              </button>
+              </LuckyButton>
             </label>
           </div>
 
           <div className="space-y-3 px-6 pb-4 pt-0">
-            <LuckyFillButton
-              disabled={!cartItems.length || !isFormComplete || isSubmitting}
+            <LuckyButton
+              disabled={isSubmitDisabled}
               fullWidth
               type="submit"
               sx={{
                 minHeight: "56px",
                 borderRadius: "16px",
-                backgroundColor: "#777777",
-                color: "#FFFFFF",
                 fontSize: "20px",
                 fontWeight: 600,
                 lineHeight: 1.5,
-                "&:hover:not(:disabled), &:active:not(:disabled)": {
-                  backgroundColor: "#777777",
-                },
               }}
             >
               {isSubmitting
                 ? "주문 접수 중..."
                 : `${formatPrice(totalPrice)} 주문하기`}
-            </LuckyFillButton>
+            </LuckyButton>
 
-            <LuckyWeakButton
+            <LuckyButton
+              appearance="weak"
               fullWidth
               onClick={handleClose}
               sx={{
@@ -328,7 +328,7 @@ export default function ConsultationBottomSheet() {
               }}
             >
               닫기
-            </LuckyWeakButton>
+            </LuckyButton>
           </div>
         </form>
       </div>

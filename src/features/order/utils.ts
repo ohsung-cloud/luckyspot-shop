@@ -1,4 +1,4 @@
-import { formatPrice, type ShopProduct } from "@/features/shop/data";
+import { formatPrice, type ShopProduct } from "@/data/products";
 
 const ORDER_ID_RANDOM_DIGITS = 3;
 const ORDER_ID_SUFFIX_LENGTH = 10;

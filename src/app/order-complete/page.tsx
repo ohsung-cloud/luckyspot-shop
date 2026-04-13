@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import { useToast } from "@wanteddev/wds";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { LuckyButton } from "@/components/LuckyButton";
-import { formatPrice } from "@/features/shop/data";
+import { formatPrice } from "@/data/products";
 import {
   generateOrderId,
   ORDER_ACCOUNT_NUMBER,
@@ -23,7 +24,7 @@ function extractAmount(searchParamValue: string | null) {
   return parsedValue;
 }
 
-export default function OrderCompletePage() {
+function OrderCompletePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -101,15 +102,22 @@ export default function OrderCompletePage() {
             <div className="mt-2 border-t border-ui-gray-200 pt-2">
               <div className="flex min-h-10 items-start justify-between gap-4">
                 <p className="type-body-md text-ui-gray-600">계산서 발행</p>
-                <button
-                  className="type-body-md border-0 bg-transparent p-0 text-brand-400 underline decoration-solid underline-offset-[3px]"
+                <LuckyButton
+                  appearance="link"
                   onClick={() => {
                     window.open(`tel:${ORDER_SUPPORT_PHONE.replaceAll("-", "")}`);
                   }}
-                  type="button"
+                  sx={{
+                    minHeight: "auto",
+                    paddingInline: "0px",
+                    fontSize: "16px",
+                    fontWeight: 400,
+                    lineHeight: "24px",
+                    textUnderlineOffset: "3px",
+                  }}
                 >
                   고객센터 문의
-                </button>
+                </LuckyButton>
               </div>
               <div className="flex min-h-10 items-start justify-between gap-4">
                 <p className="type-body-md text-ui-gray-600">
@@ -167,16 +175,31 @@ export default function OrderCompletePage() {
           </LuckyButton>
         </div>
 
-        <button
-          className="type-body-md border-0 bg-transparent p-0 text-brand-400 underline decoration-solid underline-offset-[3px]"
+        <LuckyButton
+          appearance="link"
           onClick={() => {
             void handleShareOrder();
           }}
-          type="button"
+          sx={{
+            minHeight: "auto",
+            paddingInline: "0px",
+            fontSize: "16px",
+            fontWeight: 400,
+            lineHeight: "24px",
+            textUnderlineOffset: "3px",
+          }}
         >
           주문정보 공유하기
-        </button>
+        </LuckyButton>
       </section>
     </main>
+  );
+}
+
+export default function OrderCompletePage() {
+  return (
+    <Suspense fallback={null}>
+      <OrderCompletePageContent />
+    </Suspense>
   );
 }

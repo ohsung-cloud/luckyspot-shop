@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { type ShopProduct } from "@/features/shop/data";
+import { type ShopProduct } from "@/data/products";
 import {
   createOrderCreatedAt,
   createOrderSheetPayload,
@@ -21,7 +21,10 @@ function isShopProduct(value: unknown): value is ShopProduct {
     typeof candidate.price === "number" &&
     typeof candidate.imageAlt === "string" &&
     typeof candidate.imageSrc === "string" &&
-    (candidate.imageVariant === "bag" || candidate.imageVariant === "photo")
+    (candidate.imageVariant === "bag" ||
+      candidate.imageVariant === "cover" ||
+      candidate.imageVariant === "icon" ||
+      candidate.imageVariant === "tile")
   );
 }
 

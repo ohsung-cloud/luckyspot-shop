@@ -3,8 +3,11 @@
 import * as React from "react";
 import { useToast } from "@wanteddev/wds";
 
+import { LuckyButton } from "@/components/LuckyButton";
 import { LuckyChipTabs } from "@/components/LuckyChipTabs";
-import { formatPrice, shopCategories } from "@/features/shop/data";
+import ShopProductImage from "@/components/ShopProductImage";
+import { shopAddresses } from "@/data/address";
+import { formatPrice, shopCategories } from "@/data/products";
 import { useCartStore } from "@/stores/cartStore";
 
 export default function HomePage() {
@@ -70,8 +73,9 @@ export default function HomePage() {
                 <p className="type-body-lg mt-2 text-ui-gray-600">
                   {formatPrice(product.price)}
                 </p>
-                <button
-                  className="type-body-md mt-2 w-fit border-0 bg-transparent p-0 text-brand-400 underline decoration-solid underline-offset-[3px]"
+                <LuckyButton
+                  appearance="link"
+                  className="mt-2 w-fit"
                   onClick={() => {
                     addItem(product);
                     toast({
@@ -80,30 +84,52 @@ export default function HomePage() {
                       variant: "normal",
                     });
                   }}
-                  type="button"
+                  sx={{
+                    minHeight: "auto",
+                    paddingInline: "0px",
+                    fontSize: "16px",
+                    fontWeight: 400,
+                    lineHeight: "24px",
+                    justifyContent: "flex-start",
+                    textUnderlineOffset: "3px",
+                  }}
                 >
                   장바구니 담기
-                </button>
+                </LuckyButton>
               </div>
 
-              {product.imageVariant === "bag" ? (
-                <div className="flex size-[125.5px] shrink-0 items-center justify-center rounded-[8px] bg-ui-gray-100 px-[10px] py-2">
-                  <img
-                    alt={product.imageAlt}
-                    className="h-[90px] w-[66px] object-contain"
-                    src={product.imageSrc}
-                  />
-                </div>
-              ) : (
-                <img
-                  alt={product.imageAlt}
-                  className="size-[125.5px] shrink-0 rounded-[8px] object-cover"
-                  src={product.imageSrc}
-                />
-              )}
+              <ShopProductImage product={product} />
             </article>
           ))}
         </div>
+
+        <section
+          aria-labelledby="shop-address-book-heading"
+          className="rounded-[20px] bg-ui-gray-50 px-5 py-6"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <h2
+              id="shop-address-book-heading"
+              className="type-heading-xs text-ui-gray-900"
+            >
+              주소록
+            </h2>
+            <p className="type-body-sm text-ui-gray-600">
+              주문서에서도 같은 목록을 사용해요
+            </p>
+          </div>
+
+          <ul className="mt-4 space-y-3">
+            {shopAddresses.map((address) => (
+              <li
+                key={address.id}
+                className="type-body-md rounded-[12px] border border-ui-gray-200 bg-white px-4 py-3 text-ui-gray-900"
+              >
+                {address.label}
+              </li>
+            ))}
+          </ul>
+        </section>
       </section>
     </main>
   );

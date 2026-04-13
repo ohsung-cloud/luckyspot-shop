@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-import type { ShopProduct } from "@/features/shop/data";
+import type { ShopProduct } from "@/data/products";
 
 type CartState = {
   addItem: (product: ShopProduct) => void;

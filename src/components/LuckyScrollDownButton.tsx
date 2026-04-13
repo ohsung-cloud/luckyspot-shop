@@ -2,12 +2,13 @@
 
 import React from "react";
 import { IconChevronDown } from "@wanteddev/wds-icon";
+import { LuckyButton } from "./LuckyButton";
 
 type LuckyScrollDownButtonProps = {
   ariaLabel?: string;
   className?: string;
   label?: string;
-  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  onClick?: React.MouseEventHandler<HTMLElement>;
   scrollToNextSection?: boolean;
 };
 
@@ -45,7 +46,7 @@ export function LuckyScrollDownButton({
   onClick,
   scrollToNextSection = false,
 }: LuckyScrollDownButtonProps) {
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     onClick?.(event);
 
     if (event.defaultPrevented || !scrollToNextSection) {
@@ -63,17 +64,70 @@ export function LuckyScrollDownButton({
   };
 
   return (
-    <button
-      type="button"
+    <LuckyButton
+      appearance="link"
       aria-label={ariaLabel}
-      className={`group flex w-[100px] flex-col items-center gap-2 px-3 py-6 text-ui-gray-100 transition-colors duration-200 ease-[ease] hover:text-brand-100 active:text-brand-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-100 ${className ?? ""}`}
+      className={`group ${className ?? ""}`}
       onClick={handleClick}
+      sx={{
+        minHeight: "auto",
+        width: "100px",
+        paddingInline: "12px",
+        paddingBlock: "24px",
+        borderRadius: "0px",
+        justifyContent: "center",
+        color: "#F5F5F5",
+        gap: "0px",
+        "& > span": {
+          display: "flex",
+          width: "100%",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "8px",
+          textDecoration: "none",
+        },
+        "& [data-scroll-label='true']": {
+          fontFamily: '"Paperozi", sans-serif',
+          fontSize: "14px",
+          lineHeight: "20px",
+          color: "currentColor",
+        },
+        "& [data-scroll-icon='true']": {
+          display: "flex",
+          height: "32px",
+          width: "32px",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "9999px",
+          backgroundColor: "#F5F5F5",
+          color: "#0049AB",
+          transition: "background-color 200ms ease, color 200ms ease",
+        },
+        "&:hover:not(:disabled), &:active:not(:disabled)": {
+          backgroundColor: "transparent",
+          color: "#E7F7FF",
+          boxShadow: "none",
+        },
+        "&:hover:not(:disabled) [data-scroll-icon='true'], &:active:not(:disabled) [data-scroll-icon='true']": {
+          backgroundColor: "#E7F7FF",
+          color: "#0090FF",
+        },
+        "&:focus-visible": {
+          outline: "2px solid #E7F7FF",
+          outlineOffset: "4px",
+        },
+      }}
     >
-      <span className="type-body-sm text-[inherit] group-hover:text-[#e7f7ff] group-active:text-brand-400">{label}</span>
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ui-gray-100 text-brand-600 transition-colors duration-200 ease-[ease] group-hover:bg-brand-100 group-hover:text-brand-400 group-active:bg-brand-100 group-active:text-brand-400">
-        <IconChevronDown aria-hidden style={{ fontSize: "16px", color: "currentColor" }} />
-      </span>
-    </button>
+      <>
+        <span data-scroll-label="true">{label}</span>
+        <span data-scroll-icon="true">
+          <IconChevronDown
+            aria-hidden
+            style={{ fontSize: "16px", color: "currentColor" }}
+          />
+        </span>
+      </>
+    </LuckyButton>
   );
 }
 

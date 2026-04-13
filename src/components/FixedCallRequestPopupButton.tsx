@@ -4,7 +4,7 @@ import { useToast } from "@wanteddev/wds";
 import { usePathname } from "next/navigation";
 
 import { useCartStore } from "@/stores/cartStore";
-import { LuckyFillButton, LuckyWeakButton } from "./LuckyButton";
+import { LuckyButton } from "./LuckyButton";
 import { useConsultationModal } from "./modal/ConsultationModalProvider";
 
 export default function FixedCallRequestPopupButton() {
@@ -37,7 +37,8 @@ export default function FixedCallRequestPopupButton() {
       <div className="relative w-full max-w-[480px]">
         <div className="flex w-full">
           <div className="pointer-events-auto flex-1">
-            <LuckyWeakButton
+            <LuckyButton
+              appearance="weak"
               ariaLabel={cartItemCount ? `장바구니 (${cartItemCount})` : "장바구니"}
               fullWidth
               onClick={handleOpen}
@@ -56,11 +57,11 @@ export default function FixedCallRequestPopupButton() {
               }}
             >
               {cartItemCount ? `장바구니 (${cartItemCount})` : "장바구니"}
-            </LuckyWeakButton>
+            </LuckyButton>
           </div>
 
           <div className="pointer-events-auto flex-1">
-            <LuckyFillButton
+            <LuckyButton
               ariaLabel="구매하기"
               fullWidth
               onClick={handleOpen}
@@ -78,7 +79,7 @@ export default function FixedCallRequestPopupButton() {
               }}
             >
               구매하기
-            </LuckyFillButton>
+            </LuckyButton>
           </div>
         </div>
       </div>
