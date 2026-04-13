@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import "swiper/css";
 import "./globals.css";
 import AppLayout from "@/components/AppLayout";
-import { PCLeftADSection } from "@/components/PCLeftADSection";
 import GlobalFonts, { fontVariables } from "@/components/font/GlobalFonts";
 import AppProviders from "@/components/providers/AppProviders";
 
@@ -26,7 +25,7 @@ export default function RootLayout({
         <GlobalFonts />
         <div id="app-root">
           <AppProviders>
-            <AppLayout left={<PCLeftADSection />} center={children} />
+            <AppLayout  center={children} />
           </AppProviders>
         </div>
       </body>

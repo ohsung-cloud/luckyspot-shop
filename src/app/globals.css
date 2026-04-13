@@ -99,6 +99,14 @@ button {
   cursor: pointer;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .type-heading-lg {
   font-family: "Paperozi", sans-serif;
   font-size: 48px;

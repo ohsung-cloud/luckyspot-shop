@@ -1,8 +1,6 @@
 import React from "react";
 import FixedCallRequestPopupButton from "./FixedCallRequestPopupButton";
 import ConsultationBottomSheet from "./modal/ConsultationBottomSheet";
-import SiteHeader from "./SiteHeader";
-import { Footer } from "./Footer";
 
 type Props = {
   left?: React.ReactNode;
@@ -33,13 +31,7 @@ export default function AppLayout({
 
           <div className="w-full md:min-w-[480px] md:max-w-[480px] ">
             <div className="content-container app-layout-content">
-              <div className="app-layout-header">
-                <SiteHeader />
-              </div>
               {center}
-              <div className="app-layout-footer">
-                <Footer />
-              </div>
               <div className="app-layout-fixed-call-button">
                 <FixedCallRequestPopupButton />
               </div>

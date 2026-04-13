@@ -7,10 +7,11 @@ import {
   useMemo,
   useState,
 } from "react";
+
 type Ctx = {
   isOpen: boolean;
-  open: () => void;
   close: () => void;
+  open: () => void;
 };
 
 const ConsultationModalContext = createContext<Ctx | null>(null);
@@ -22,11 +23,13 @@ export function ConsultationModalProvider({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const open = useCallback(() => setIsOpen(true), []);
-  const close = useCallback(() => setIsOpen(false), []);
+  const close = useCallback(() => {
+    setIsOpen(false);
+  }, []);
 
   const value = useMemo<Ctx>(
     () => ({ isOpen, open, close }),
-    [isOpen, open, close]
+    [close, isOpen, open]
   );
 
   return (

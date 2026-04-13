@@ -1,13 +1,8 @@
 export { default as AppLayout } from "./AppLayout";
 export * from "./BrandWordmark";
-export { Footer } from "./Footer";
-export { Header } from "./Header";
 export * from "./LuckyArrowButton";
 export * from "./LuckyButton";
 export * from "./LuckyChip";
 export * from "./LuckyChipTabs";
 export * from "./LuckyScrollDownButton";
-export { PCLeftADPromoSlider } from "./PCLeftADPromoSlider";
-export { PCLeftADSection } from "./PCLeftADSection";
-export { default as SiteHeader } from "./SiteHeader";
 export { default as GlobalFonts, fontVariables } from "./font/GlobalFonts";
