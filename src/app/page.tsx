@@ -27,7 +27,7 @@ export default function HomePage() {
 
         <LuckyChipTabs
           aria-label="럭키스팟 상품 카테고리"
-          className="no-scrollbar flex gap-2 overflow-x-auto pb-1"
+          className="relative left-[-24px] no-scrollbar flex w-[calc(100%+48px)] gap-2 overflow-x-auto px-6 pb-1"
           getChipProps={(_item, _index, selected) => ({
             selectedTone: "primary",
             sx: {
