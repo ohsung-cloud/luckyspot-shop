@@ -78,7 +78,7 @@ export default function HomePage() {
                   onClick={() => {
                     addItem(product);
                     toast({
-                      content: "장바구니에 담겼습니다.",
+                      content: "장바구니에 담겼습니다",
                       duration: "short",
                       variant: "normal",
                     });

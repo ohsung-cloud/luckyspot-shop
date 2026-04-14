@@ -52,7 +52,7 @@ export function OrderCompletePageClient({
   const handleCopyAccount = async () => {
     await navigator.clipboard?.writeText(copyPayload);
     toast({
-      content: "송금계좌와 금액을 복사했어요.",
+      content: "송금계좌와 금액을 복사했어요",
       duration: "short",
       variant: "normal",
     });

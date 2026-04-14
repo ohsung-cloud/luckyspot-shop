@@ -107,9 +107,34 @@ button {
   display: none;
 }
 
+#wds-region-manager-bottom > [role="status"],
+#wds-region-manager-bottom > [role="alert"] {
+  border-radius: 999px;
+}
+
+[data-role="toast"] {
+  justify-content: center;
+  border-radius: 999px;
+  padding-inline: 20px;
+}
+
+[data-role="toast"] > :last-child {
+  width: 100%;
+  justify-content: center;
+  gap: 0;
+}
+
+[data-role="toast"] > :last-child > :first-child:not(p) {
+  display: none;
+}
+
 [data-role="toast"] p {
+  width: 100%;
+  margin: 0;
+  color: #171717 !important;
   font-size: 24px;
   line-height: 1.4;
+  text-align: center;
 }
 
 .type-heading-lg {

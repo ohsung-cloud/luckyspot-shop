@@ -7,7 +7,11 @@ import { IconCheckThick, IconChevronDown } from "@wanteddev/wds-icon";
 
 import { LuckyButton } from "@/components/LuckyButton";
 import ShopProductImage from "@/components/ShopProductImage";
-import { shopAddresses } from "@/data/address";
+import {
+  DIRECT_SHIPPING_VALUE,
+  getShopAddressByValue,
+  shopAddresses,
+} from "@/data/address";
 import { formatPrice } from "@/data/products";
 import {
   selectCartTotalPrice,
@@ -24,14 +28,24 @@ export default function ConsultationBottomSheet() {
   const removeItem = useCartStore((state) => state.removeItem);
   const totalPrice = useCartStore(selectCartTotalPrice);
   const [visible, setVisible] = useState(false);
+  const [selectedAddressValue, setSelectedAddressValue] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [selectedAddress, setSelectedAddress] = useState("");
-  const [detailAddress, setDetailAddress] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isAddressSelected = selectedAddress.length > 0;
-  const isSubmitDisabled = !cartItems.length || !isAddressSelected || isSubmitting;
+  const selectedAddress = getShopAddressByValue(selectedAddressValue);
+  const isAddressSelected = Boolean(selectedAddress);
+  const isDirectShipping = selectedAddress?.value === DIRECT_SHIPPING_VALUE;
+  const isDirectShippingComplete =
+    customerName.trim().length > 0 &&
+    phoneNumber.length === 11 &&
+    deliveryAddress.trim().length > 0;
+  const isSubmitDisabled =
+    !cartItems.length ||
+    !isAddressSelected ||
+    isSubmitting ||
+    (isDirectShipping && !isDirectShippingComplete);
 
   useEffect(() => {
     if (isOpen) {
@@ -42,19 +56,35 @@ export default function ConsultationBottomSheet() {
     setVisible(false);
   }, [isOpen]);
 
+  const resetForm = () => {
+    setSelectedAddressValue("");
+    setCustomerName("");
+    setPhoneNumber("");
+    setDeliveryAddress("");
+    setAgreedToPrivacy(true);
+  };
+
   const handleClose = () => {
     setVisible(false);
     window.setTimeout(() => {
+      resetForm();
       close();
     }, 300);
   };
 
-  const resetForm = () => {
-    setCustomerName("");
-    setPhoneNumber("");
-    setSelectedAddress("");
-    setDetailAddress("");
-    setAgreedToPrivacy(true);
+  const handleRemoveCartItem = (itemId: string) => {
+    const willBeEmpty = cartItems.length === 1;
+
+    removeItem(itemId);
+
+    if (willBeEmpty) {
+      handleClose();
+      toast({
+        content: "장바구니에 담긴 상품이 없습니다",
+        duration: "short",
+        variant: "normal",
+      });
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -62,16 +92,25 @@ export default function ConsultationBottomSheet() {
 
     if (!cartItems.length) {
       toast({
-        content: "장바구니에 담긴 상품이 없습니다.",
+        content: "장바구니에 담긴 상품이 없습니다",
         duration: "short",
         variant: "normal",
       });
       return;
     }
 
-    if (!isAddressSelected) {
+    if (!selectedAddress) {
       toast({
-        content: "주소를 선택해주세요.",
+        content: "주소를 선택해주세요",
+        duration: "short",
+        variant: "normal",
+      });
+      return;
+    }
+
+    if (isDirectShipping && !isDirectShippingComplete) {
+      toast({
+        content: "필수 정보를 입력해주세요",
         duration: "short",
         variant: "normal",
       });
@@ -85,14 +124,18 @@ export default function ConsultationBottomSheet() {
     setIsSubmitting(true);
 
     try {
+      const orderPayload = {
+        address: isDirectShipping
+          ? deliveryAddress.trim()
+          : selectedAddress.address,
+        items: cartItems,
+        name: isDirectShipping ? customerName.trim() : selectedAddress.name,
+        phone: isDirectShipping ? phoneNumber.trim() : selectedAddress.phone,
+        shippingOption: selectedAddress.label,
+      };
+
       const response = await fetch("/api/orders", {
-        body: JSON.stringify({
-          address: [selectedAddress, detailAddress.trim()].filter(Boolean).join(" / "),
-          items: cartItems,
-          name: customerName,
-          phone: phoneNumber,
-          shippingOption: selectedAddress,
-        }),
+        body: JSON.stringify(orderPayload),
         headers: {
           "Content-Type": "application/json",
         },
@@ -106,7 +149,7 @@ export default function ConsultationBottomSheet() {
       };
 
       if (!response.ok || !result.orderId) {
-        throw new Error(result.error ?? "Order request failed.");
+        throw new Error(result.error ?? "Order request failed");
       }
 
       const nextUrl = `/order-complete?orderId=${encodeURIComponent(
@@ -124,7 +167,7 @@ export default function ConsultationBottomSheet() {
         content:
           error instanceof Error
             ? error.message
-            : "주문 접수에 실패했습니다. 잠시 후 다시 시도해주세요.",
+            : "주문 접수에 실패했습니다 잠시 후 다시 시도해주세요",
         duration: "short",
         variant: "negative",
       });
@@ -181,7 +224,7 @@ export default function ConsultationBottomSheet() {
                       <LuckyButton
                         appearance="link"
                         className="mt-2 w-fit"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => handleRemoveCartItem(item.id)}
                         sx={{
                           minHeight: "auto",
                           paddingInline: "0px",
@@ -213,35 +256,17 @@ export default function ConsultationBottomSheet() {
 
           <div className="px-6 pb-2 pt-2">
             <div className="space-y-3">
-              <input
-                className="type-body-md h-12 w-full rounded-[8px] border border-ui-gray-200 px-5 text-ui-gray-900 outline-none placeholder:text-ui-gray-600"
-                onChange={(event) => setCustomerName(event.target.value)}
-                placeholder="주문자 성함"
-                type="text"
-                value={customerName}
-              />
-              <input
-                className="type-body-md h-12 w-full rounded-[8px] border border-ui-gray-200 px-5 text-ui-gray-900 outline-none placeholder:text-ui-gray-600"
-                inputMode="numeric"
-                maxLength={11}
-                onChange={(event) => {
-                  setPhoneNumber(event.target.value.replace(/\D/g, "").slice(0, 11));
-                }}
-                placeholder="휴대폰 번호 11자리"
-                type="tel"
-                value={phoneNumber}
-              />
               <div className="relative">
                 <select
                   className="type-body-md h-12 w-full appearance-none rounded-[8px] border border-ui-gray-200 bg-white px-5 pr-12 text-ui-gray-900 outline-none"
-                  onChange={(event) => setSelectedAddress(event.target.value)}
-                  value={selectedAddress}
+                  onChange={(event) => setSelectedAddressValue(event.target.value)}
+                  value={selectedAddressValue}
                 >
                   <option value="" disabled>
                     주소 선택
                   </option>
                   {shopAddresses.map((address) => (
-                    <option key={address.id} value={address.label}>
+                    <option key={address.value} value={address.value}>
                       {address.label}
                     </option>
                   ))}
@@ -250,18 +275,35 @@ export default function ConsultationBottomSheet() {
                   <IconChevronDown style={{ fontSize: "24px" }} />
                 </span>
               </div>
-              <input
-                className="type-body-md h-12 w-full rounded-[8px] border border-ui-gray-200 px-5 text-ui-gray-900 outline-none placeholder:text-ui-gray-600 disabled:cursor-not-allowed disabled:border-ui-gray-100 disabled:bg-ui-gray-100 disabled:text-ui-gray-400 disabled:placeholder:text-ui-gray-400"
-                disabled={!isAddressSelected}
-                onChange={(event) => setDetailAddress(event.target.value)}
-                placeholder={
-                  isAddressSelected
-                    ? "상세 주소 작성 (필요 시)"
-                    : "먼저 주소를 선택해주세요"
-                }
-                type="text"
-                value={detailAddress}
-              />
+              {isDirectShipping ? (
+                <>
+                  <input
+                    className="type-body-md h-12 w-full rounded-[8px] border border-ui-gray-200 px-5 text-ui-gray-900 outline-none placeholder:text-ui-gray-600"
+                    onChange={(event) => setCustomerName(event.target.value)}
+                    placeholder="주문자 성함"
+                    type="text"
+                    value={customerName}
+                  />
+                  <input
+                    className="type-body-md h-12 w-full rounded-[8px] border border-ui-gray-200 px-5 text-ui-gray-900 outline-none placeholder:text-ui-gray-600"
+                    inputMode="numeric"
+                    maxLength={11}
+                    onChange={(event) => {
+                      setPhoneNumber(event.target.value.replace(/\D/g, "").slice(0, 11));
+                    }}
+                    placeholder="휴대폰 번호 11자리"
+                    type="tel"
+                    value={phoneNumber}
+                  />
+                  <input
+                    className="type-body-md h-12 w-full rounded-[8px] border border-ui-gray-200 px-5 text-ui-gray-900 outline-none placeholder:text-ui-gray-600"
+                    onChange={(event) => setDeliveryAddress(event.target.value)}
+                    placeholder="배송지 주소 입력"
+                    type="text"
+                    value={deliveryAddress}
+                  />
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -305,7 +347,7 @@ export default function ConsultationBottomSheet() {
 
           <div className="space-y-3 px-6 pb-4 pt-0">
             <LuckyButton
-              appearance={isAddressSelected ? "fill" : "weak"}
+              appearance={isSubmitDisabled ? "weak" : "fill"}
               disabled={isSubmitDisabled}
               fullWidth
               type="submit"

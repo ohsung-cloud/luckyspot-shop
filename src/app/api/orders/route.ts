@@ -28,6 +28,10 @@ function isShopProduct(value: unknown): value is ShopProduct {
   );
 }
 
+function hasText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function isOrderRequestInput(value: unknown): value is OrderRequestInput {
   if (!value || typeof value !== "object") {
     return false;
@@ -36,10 +40,10 @@ function isOrderRequestInput(value: unknown): value is OrderRequestInput {
   const candidate = value as Record<string, unknown>;
 
   return (
-    typeof candidate.name === "string" &&
-    typeof candidate.phone === "string" &&
-    typeof candidate.shippingOption === "string" &&
-    typeof candidate.address === "string" &&
+    hasText(candidate.name) &&
+    hasText(candidate.phone) &&
+    hasText(candidate.shippingOption) &&
+    hasText(candidate.address) &&
     Array.isArray(candidate.items) &&
     candidate.items.every(isShopProduct)
   );
@@ -55,7 +59,7 @@ export async function POST(request: Request) {
 
   if (!gasWebhookUrl || !gasSecret) {
     return NextResponse.json(
-      { error: "Google Sheets webhook is not configured." },
+      { error: "Google Sheets webhook is not configured" },
       { status: 500 },
     );
   }
@@ -65,15 +69,15 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return createBadRequest("Invalid JSON payload.");
+    return createBadRequest("Invalid JSON payload");
   }
 
   if (!isOrderRequestInput(body)) {
-    return createBadRequest("Invalid order payload.");
+    return createBadRequest("Invalid order payload");
   }
 
   if (!body.items.length) {
-    return createBadRequest("Cart is empty.");
+    return createBadRequest("Cart is empty");
   }
 
   const orderId = generateOrderId();
@@ -107,7 +111,7 @@ export async function POST(request: Request) {
   if (!gasResponse.ok || gasResult?.ok === false) {
     return NextResponse.json(
       {
-        error: gasResult?.error ?? "Failed to write order into Google Sheets.",
+        error: gasResult?.error ?? "Failed to write order into Google Sheets",
       },
       { status: 502 },
     );

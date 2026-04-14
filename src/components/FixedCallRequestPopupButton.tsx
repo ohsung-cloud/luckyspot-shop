@@ -17,7 +17,7 @@ export default function FixedCallRequestPopupButton() {
   const handleOpen = () => {
     if (!cartItemCount) {
       toast({
-        content: "장바구니에 담긴 상품이 없습니다.",
+        content: "장바구니에 담긴 상품이 없습니다",
         duration: "short",
         variant: "normal",
       });
