@@ -41,12 +41,10 @@ export function OrderCompletePageClient({
   const formattedTotalPrice = formatPrice(resolvedTotalPrice);
   const copyPayload = `${ORDER_BANK_NAME} ${ORDER_ACCOUNT_NUMBER} / ${formattedTotalPrice}`;
   const sharePayload = [
-    "주문이 접수되었어요. 지금 입금하면 바로 배송해요.",
     `주문번호: ${resolvedOrderId}`,
     `입금은행: ${ORDER_BANK_NAME}`,
-    `계좌번호: ${ORDER_ACCOUNT_NUMBER}`,
-    `결제 필요 금액: ${formattedTotalPrice}`,
-    `고객센터: ${ORDER_SUPPORT_PHONE}`,
+    `주문 금액: ${formattedTotalPrice}`,
+    `주문취소 및 기타문의 ${ORDER_SUPPORT_PHONE}로 연락해주세요`,
   ].join("\n");
 
   const handleCopyAccount = async () => {
@@ -60,10 +58,18 @@ export function OrderCompletePageClient({
 
   const handleShareOrder = async () => {
     if (navigator.share) {
-      await navigator.share({
-        text: sharePayload,
-        title: "주문 정보",
-      });
+      try {
+        await navigator.share({
+          text: sharePayload,
+          title: "주문 정보",
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        throw error;
+      }
       return;
     }
 
@@ -127,17 +133,6 @@ export function OrderCompletePageClient({
                   고객센터 문의
                 </LuckyButton>
               </div>
-              <div className="flex min-h-10 items-start justify-between gap-4">
-                <p className="type-body-md text-ui-gray-600">
-                  주문취소 및 기타문의
-                </p>
-                <a
-                  className="type-body-md text-brand-400 underline decoration-solid underline-offset-[3px]"
-                  href={`tel:${ORDER_SUPPORT_PHONE.replaceAll("-", "")}`}
-                >
-                  {ORDER_SUPPORT_PHONE}
-                </a>
-              </div>
             </div>
           </div>
         </div>
@@ -200,13 +195,6 @@ export function OrderCompletePageClient({
           >
             주문정보 공유하기
           </LuckyButton>
-
-          <a
-            className="type-body-md text-brand-400 underline decoration-solid underline-offset-[3px]"
-            href={`tel:${ORDER_SUPPORT_PHONE.replaceAll("-", "")}`}
-          >
-            주문취소 및 기타문의 {ORDER_SUPPORT_PHONE}
-          </a>
         </div>
       </section>
     </main>
