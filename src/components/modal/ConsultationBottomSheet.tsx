@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { useToast } from "@wanteddev/wds";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { IconCheckThick, IconChevronDown } from "@wanteddev/wds-icon";
 
 import { LuckyButton } from "@/components/LuckyButton";
@@ -21,6 +21,7 @@ import { useConsultationModal } from "./ConsultationModalProvider";
 
 export default function ConsultationBottomSheet() {
   const router = useRouter();
+  const pathname = usePathname();
   const toast = useToast();
   const { isOpen, close } = useConsultationModal();
   const cartItems = useCartStore((state) => state.items);
@@ -34,6 +35,7 @@ export default function ConsultationBottomSheet() {
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirectingToComplete, setIsRedirectingToComplete] = useState(false);
   const selectedAddress = getShopAddressByValue(selectedAddressValue);
   const isAddressSelected = Boolean(selectedAddress);
   const isDirectShipping = selectedAddress?.value === DIRECT_SHIPPING_VALUE;
@@ -45,7 +47,10 @@ export default function ConsultationBottomSheet() {
     !cartItems.length ||
     !isAddressSelected ||
     isSubmitting ||
+    isRedirectingToComplete ||
     (isDirectShipping && !isDirectShippingComplete);
+  const shouldShowOrderRedirectIndicator =
+    isRedirectingToComplete && !pathname.startsWith("/order-complete");
 
   useEffect(() => {
     if (isOpen) {
@@ -55,6 +60,13 @@ export default function ConsultationBottomSheet() {
 
     setVisible(false);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (pathname.startsWith("/order-complete")) {
+      setIsRedirectingToComplete(false);
+      setIsSubmitting(false);
+    }
+  }, [pathname]);
 
   const resetForm = () => {
     setSelectedAddressValue("");
@@ -122,6 +134,7 @@ export default function ConsultationBottomSheet() {
     }
 
     setIsSubmitting(true);
+    let didStartRedirect = false;
 
     try {
       const orderPayload = {
@@ -158,11 +171,14 @@ export default function ConsultationBottomSheet() {
         (result.totalPrice ?? totalPrice).toString(),
       )}`;
 
+      setIsRedirectingToComplete(true);
       clearItems();
       resetForm();
       close();
       router.push(nextUrl);
+      didStartRedirect = true;
     } catch (error) {
+      setIsRedirectingToComplete(false);
       toast({
         content:
           error instanceof Error
@@ -172,26 +188,49 @@ export default function ConsultationBottomSheet() {
         variant: "negative",
       });
     } finally {
-      setIsSubmitting(false);
+      if (!didStartRedirect) {
+        setIsSubmitting(false);
+      }
     }
   };
 
-  if (!isOpen) {
+  if (!isOpen && !shouldShowOrderRedirectIndicator) {
     return null;
   }
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-30"
-        style={{
-          backgroundColor: visible ? "rgba(0,0,0,0.4)" : "transparent",
-          transition: "background-color 0.3s ease",
-        }}
-        onClick={handleClose}
-      />
+      {shouldShowOrderRedirectIndicator ? (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-white px-6 text-center"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex flex-col items-center gap-4">
+            <div
+              className="h-12 w-12 animate-spin rounded-full border-4 border-brand-100 border-t-brand-400"
+              aria-hidden="true"
+            />
+            <p className="type-body-lg break-keep text-ui-gray-900">
+              주문 완료 페이지로 이동 중...
+            </p>
+          </div>
+        </div>
+      ) : null}
 
-      <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none min-[1200px]:left-1/2 min-[1200px]:w-[480px] min-[1200px]:right-auto">
+      {isOpen ? (
+        <div
+          className="fixed inset-0 z-30"
+          style={{
+            backgroundColor: visible ? "rgba(0,0,0,0.4)" : "transparent",
+            transition: "background-color 0.3s ease",
+          }}
+          onClick={handleClose}
+        />
+      ) : null}
+
+      {isOpen ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center pointer-events-none min-[1200px]:left-1/2 min-[1200px]:w-[480px] min-[1200px]:right-auto">
         <form
           className="pointer-events-auto flex max-h-[calc(100vh-24px)] w-full max-w-[480px] flex-col overflow-y-auto bg-white"
           onSubmit={handleSubmit}
@@ -386,7 +425,8 @@ export default function ConsultationBottomSheet() {
             </LuckyButton>
           </div>
         </form>
-      </div>
+        </div>
+      ) : null}
     </>
   );
 }
