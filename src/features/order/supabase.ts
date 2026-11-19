@@ -1,5 +1,9 @@
-import { DIRECT_SHIPPING_VALUE, shopAddresses } from "@/data/address";
 import type { OrderLine } from "@/features/order/utils";
+import {
+  readSupabaseConfig,
+  SUPABASE_TIMEOUT_MS,
+  supabaseHeaders,
+} from "@/features/supabase/config";
 
 /**
  * 발주 주문을 Supabase `shop_orders` 테이블에 적재한다.
@@ -12,8 +16,6 @@ import type { OrderLine } from "@/features/order/utils";
  *   SUPABASE_URL           예) https://koqkvlmnltbpuxoifxpp.supabase.co
  *   SUPABASE_SECRET_KEY    sb_secret_... (서버 전용)
  */
-
-const SUPABASE_TIMEOUT_MS = 4_000;
 
 export type ShopOrderRecord = {
   address: string;
@@ -37,32 +39,6 @@ export type ShopOrderSaveResult =
       saved: false;
       reason: "not_configured" | "table_missing" | "duplicate" | "request_failed" | "timeout";
     };
-
-function readSupabaseConfig() {
-  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "")
-    .trim()
-    .replace(/\/+$/, "");
-  const secret = (
-    process.env.SUPABASE_SECRET_KEY ??
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    ""
-  ).trim();
-
-  if (!url || !secret) return null;
-
-  return { secret, url };
-}
-
-/** 배송지 라벨로 지점명·지점코드를 찾는다. 개인 주문(직접 입력)이면 null. */
-export function resolveOrderStore(shippingOption: string) {
-  const matched = shopAddresses.find((address) => address.label === shippingOption);
-
-  if (!matched || matched.value === DIRECT_SHIPPING_VALUE) {
-    return { storeCode: null, storeName: null };
-  }
-
-  return { storeCode: matched.value, storeName: matched.label };
-}
 
 export async function saveShopOrder(record: ShopOrderRecord): Promise<ShopOrderSaveResult> {
   const config = readSupabaseConfig();
@@ -94,10 +70,8 @@ export async function saveShopOrder(record: ShopOrderRecord): Promise<ShopOrderS
       }),
       cache: "no-store",
       headers: {
-        Authorization: `Bearer ${config.secret}`,
-        "Content-Type": "application/json",
+        ...supabaseHeaders(config.secret),
         Prefer: "return=representation",
-        apikey: config.secret,
       },
       method: "POST",
       signal: AbortSignal.timeout(SUPABASE_TIMEOUT_MS),

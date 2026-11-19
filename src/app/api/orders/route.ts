@@ -7,7 +7,10 @@ import {
   generateOrderId,
 } from "@/features/order/utils";
 import { queueOrderNotification } from "@/features/order/solapi";
-import { resolveOrderStore, saveShopOrder } from "@/features/order/supabase";
+import { saveShopOrder } from "@/features/order/supabase";
+import { resolveStoreByCode, resolveStoreByLabel } from "@/features/stores/directory";
+import type { StoreRecord } from "@/features/stores/types";
+import { DIRECT_SHIPPING_LABEL, DIRECT_SHIPPING_VALUE } from "@/data/address";
 
 export const runtime = "nodejs";
 
@@ -87,6 +90,87 @@ function readItems(value: unknown) {
   return items;
 }
 
+type OrderRecipient = {
+  address: string;
+  name: string;
+  phone: string;
+  shippingOption: string;
+  storeCode: string | null;
+  storeName: string | null;
+};
+
+type RecipientResult =
+  | { ok: true; recipient: OrderRecipient }
+  | { message: string; ok: false; status: 400 };
+
+/** 지점 정보(Supabase)로 받는 곳을 채운다. 점주 이름·휴대폰은 여기(서버)에서만 쓴다. */
+function recipientFromStore(store: StoreRecord): OrderRecipient {
+  return {
+    address: store.address,
+    name: store.ownerName ?? store.label,
+    phone: store.phone ? store.phone.replace(/\D/g, "") : "",
+    shippingOption: store.label,
+    storeCode: store.code,
+    storeName: store.label,
+  };
+}
+
+/**
+ * 받는 곳 확정.
+ *  - 지점 코드만 온 경우(새 브라우저): 이름·연락처·주소는 서버가 Supabase에서 채운다.
+ *  - 지점명만 온 경우(수정 전에 열어 둔 화면): 지점명으로 찾아 서버 값으로 채운다.
+ *  - 직접 입력(개인 주문): 주문자가 입력한 값만 검증해서 쓴다.
+ */
+async function resolveOrderRecipient(candidate: Record<string, unknown>): Promise<RecipientResult> {
+  const storeCode = readText(candidate.storeCode, 1, 40);
+  const shippingOption = readText(candidate.shippingOption, 1, 60);
+
+  if (storeCode && storeCode !== DIRECT_SHIPPING_VALUE) {
+    const store = await resolveStoreByCode(storeCode);
+
+    if (!store) {
+      return {
+        message: "지점 정보를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.",
+        ok: false,
+        status: 400,
+      };
+    }
+
+    return { ok: true, recipient: recipientFromStore(store) };
+  }
+
+  if (
+    storeCode !== DIRECT_SHIPPING_VALUE &&
+    shippingOption &&
+    shippingOption !== DIRECT_SHIPPING_LABEL
+  ) {
+    const store = await resolveStoreByLabel(shippingOption);
+
+    if (store) return { ok: true, recipient: recipientFromStore(store) };
+  }
+
+  const name = readText(candidate.name, 1, 30);
+  const phoneInput = readText(candidate.phone, 9, 20);
+  const phone = phoneInput?.replace(/\D/g, "") ?? "";
+  const address = readText(candidate.address, 1, 200);
+
+  if (!name || !address || !/^01\d{8,9}$/.test(phone)) {
+    return { message: "Invalid order payload", ok: false, status: 400 };
+  }
+
+  return {
+    ok: true,
+    recipient: {
+      address,
+      name,
+      phone,
+      shippingOption: shippingOption ?? DIRECT_SHIPPING_LABEL,
+      storeCode: null,
+      storeName: null,
+    },
+  };
+}
+
 export async function POST(request: Request) {
   const gasWebhookUrl = process.env.GAS_WEBHOOK_URL;
   const gasSecret = process.env.GAS_SECRET;
@@ -123,20 +207,20 @@ export async function POST(request: Request) {
   }
 
   const candidate = body as Record<string, unknown>;
-  const name = readText(candidate.name, 1, 30);
-  const phoneInput = readText(candidate.phone, 9, 20);
-  const phone = phoneInput?.replace(/\D/g, "") ?? "";
-  const address = readText(candidate.address, 1, 200);
-  const shippingOption = readText(candidate.shippingOption, 1, 40);
   const items = readItems(candidate.items);
 
-  if (!name || !shippingOption || !address || !items) {
+  if (!items) {
     return createBadRequest("Invalid order payload");
   }
 
-  if (!/^01\d{8,9}$/.test(phone)) {
-    return createBadRequest("Invalid phone number");
+  // 클라이언트가 보낸 지점 코드(또는 지점명)로 받는 곳을 서버에서 확정한다.
+  const resolved = await resolveOrderRecipient(candidate);
+
+  if (!resolved.ok) {
+    return createBadRequest(resolved.message);
   }
+
+  const recipient = resolved.recipient;
 
   // 금액은 클라이언트가 보낸 값이 아니라 서버 카탈로그 단가로 다시 계산한다.
   const orderLines = buildOrderLines(items);
@@ -152,7 +236,13 @@ export async function POST(request: Request) {
   const orderId = generateOrderId();
   const createdAt = createOrderCreatedAt();
   const payload = createOrderSheetPayload(
-    { address, items: orderLines, name, phone, shippingOption },
+    {
+      address: recipient.address,
+      items: orderLines,
+      name: recipient.name,
+      phone: recipient.phone,
+      shippingOption: recipient.shippingOption,
+    },
     { createdAt, orderId },
   );
 
@@ -191,7 +281,6 @@ export async function POST(request: Request) {
 
   // 구글시트 전달이 끝난 주문을 Supabase에도 남긴다.
   // 실패해도 주문 접수(시트·웹훅·응답)는 그대로 유지하고 로그만 남긴다.
-  const store = resolveOrderStore(shippingOption);
   const persistence = await saveShopOrder({
     address: payload.address,
     createdAt: payload.created_at,
@@ -202,9 +291,9 @@ export async function POST(request: Request) {
     pickupLocation: payload.pickup_location,
     requesterName: payload.name,
     requesterPhone: payload.phone,
-    shippingOption,
-    storeCode: store.storeCode,
-    storeName: store.storeName,
+    shippingOption: recipient.shippingOption,
+    storeCode: recipient.storeCode,
+    storeName: recipient.storeName,
     totalAmount: payload.total_price,
   });
 
@@ -214,12 +303,15 @@ export async function POST(request: Request) {
 
   // 주문자에게 완료 문자를 보낸다. 발송 실패·지연이 주문 접수 응답을 막지 않도록
   // 응답 후(after)에 실행하고, 결과는 로그로만 남긴다.
-  queueOrderNotification({
-    orderNumber: payload.order_id,
-    storeName: store.storeName,
-    to: payload.phone,
-    totalAmount: payload.total_price,
-  });
+  // 지점 연락처를 못 채운 경우(대체 목록)에는 보낼 번호가 없으니 건너뛴다.
+  if (payload.phone) {
+    queueOrderNotification({
+      orderNumber: payload.order_id,
+      storeName: recipient.storeName,
+      to: payload.phone,
+      totalAmount: payload.total_price,
+    });
+  }
 
   return NextResponse.json({
     createdAt: payload.created_at,

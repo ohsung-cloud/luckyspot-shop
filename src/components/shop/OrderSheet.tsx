@@ -3,12 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import {
-  DIRECT_SHIPPING_VALUE,
-  getShopAddressByValue,
-  shopAddresses,
-} from "@/data/address";
+import { DIRECT_SHIPPING_LABEL, DIRECT_SHIPPING_VALUE } from "@/data/address";
 import { formatPrice, splitVat } from "@/data/products";
+import type { StoreOption } from "@/features/stores/types";
 import { cartCount, cartTotal, resolveCart, useCartStore } from "@/stores/cartStore";
 import QuantityStepper from "./QuantityStepper";
 
@@ -46,6 +43,8 @@ export default function OrderSheet({
   const vat = splitVat(total);
 
   const [addressValue, setAddressValue] = useState("");
+  const [stores, setStores] = useState<StoreOption[]>([]);
+  const [storesLoaded, setStoresLoaded] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
@@ -53,16 +52,15 @@ export default function OrderSheet({
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const selectedAddress = getShopAddressByValue(addressValue);
-  const isDirect = selectedAddress?.value === DIRECT_SHIPPING_VALUE;
+  const selectedStore = stores.find((store) => store.code === addressValue) ?? null;
+  const isDirect = addressValue === DIRECT_SHIPPING_VALUE;
   const directComplete =
     customerName.trim().length > 0 && phone.length >= 10 && deliveryAddress.trim().length > 0;
   const canSubmit =
     entries.length > 0 &&
-    Boolean(selectedAddress) &&
+    (isDirect ? directComplete : Boolean(selectedStore)) &&
     agreed &&
-    !submitting &&
-    (!isDirect || directComplete);
+    !submitting;
 
   useEffect(() => {
     if (!open) return;
@@ -86,13 +84,36 @@ export default function OrderSheet({
     if (!open) {
       setErrorMessage(null);
       setSubmitting(false);
+      return;
     }
-  }, [open]);
+
+    // 지점 목록은 개인정보 없는 값(코드·이름·주소)만 서버 API에서 받아온다.
+    if (storesLoaded) return;
+
+    let cancelled = false;
+
+    fetch("/api/stores", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+      .then((data: { stores?: StoreOption[] }) => {
+        if (cancelled) return;
+        setStores(Array.isArray(data.stores) ? data.stores : []);
+        setStoresLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setStoresLoaded(true);
+        setErrorMessage("받는 곳 목록을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, storesLoaded]);
 
   if (!open) return null;
 
   const handleSubmit = async () => {
-    if (!canSubmit || !selectedAddress) return;
+    if (!canSubmit) return;
 
     setSubmitting(true);
     setErrorMessage(null);
@@ -102,11 +123,16 @@ export default function OrderSheet({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          address: isDirect ? deliveryAddress.trim() : selectedAddress.address,
           items: lines.map((line) => ({ id: line.id, quantity: line.quantity })),
-          name: isDirect ? customerName.trim() : selectedAddress.name,
-          phone: isDirect ? phone : selectedAddress.phone.replace(/\D/g, ""),
-          shippingOption: selectedAddress.label,
+          // 지점 주문은 코드만 보낸다. 점주 이름·연락처·주소는 서버가 Supabase에서 채운다.
+          ...(isDirect
+            ? {
+                address: deliveryAddress.trim(),
+                name: customerName.trim(),
+                phone,
+                shippingOption: DIRECT_SHIPPING_LABEL,
+              }
+            : { storeCode: selectedStore?.code }),
         }),
       });
 
@@ -245,11 +271,12 @@ export default function OrderSheet({
                 <option disabled value="">
                   지점 또는 배송지를 선택해 주세요
                 </option>
-                {shopAddresses.map((address) => (
-                  <option key={address.value} value={address.value}>
-                    {address.label}
+                {stores.map((store) => (
+                  <option key={store.code} value={store.code}>
+                    {store.label}
                   </option>
                 ))}
+                <option value={DIRECT_SHIPPING_VALUE}>{DIRECT_SHIPPING_LABEL}</option>
               </select>
               <span
                 aria-hidden
@@ -297,17 +324,17 @@ export default function OrderSheet({
                   value={deliveryAddress}
                 />
               </div>
-            ) : selectedAddress ? (
+            ) : selectedStore ? (
               <p className="mt-2 rounded-[10px] bg-[#F4F5F6] px-3.5 py-2.5 text-[11.5px] leading-[1.55] text-[var(--ls-muted)]">
-                {selectedAddress.name ? `${selectedAddress.name} 님` : "지점 수령"}
-                {selectedAddress.address ? (
+                {selectedStore.label} 배송지
+                {selectedStore.address ? (
                   <>
                     <br />
-                    {selectedAddress.address}
+                    {selectedStore.address}
                   </>
                 ) : null}
                 <br />
-                연락처는 발주 담당자에게만 전달됩니다.
+                받는 분 연락처는 발주 담당자에게만 전달됩니다.
               </p>
             ) : null}
           </section>
@@ -363,7 +390,7 @@ export default function OrderSheet({
             {submitting ? "주문 접수 중..." : "주문하기"}
           </button>
           <p className="mt-1.5 text-center text-[10.5px] leading-[1.5] text-[var(--ls-muted)]">
-            {!selectedAddress
+            {!isDirect && !selectedStore
               ? "받는 곳을 선택하면 주문할 수 있어요."
               : isDirect && !directComplete
                 ? "주문자 성함·연락처·주소를 모두 입력해 주세요."
