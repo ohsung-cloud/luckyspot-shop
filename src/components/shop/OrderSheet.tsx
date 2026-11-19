@@ -332,28 +332,39 @@ export default function OrderSheet({
               </span>
             </label>
 
-            {errorMessage ? (
-              <p
-                className="mt-3 rounded-[10px] border border-[#E4B4B4] bg-[#FDF2F2] px-3 py-2 text-[12px] leading-[1.5] text-[#8A2323]"
-                role="alert"
-              >
-                {errorMessage}
-              </p>
-            ) : null}
-
-            <button
-              className="ls-focus mt-3 flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[15.5px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#8A948D]"
-              disabled={!canSubmit}
-              onClick={handleSubmit}
-              type="button"
-            >
-              {submitting ? "주문 접수 중..." : `${formatPrice(total)} 주문하기`}
-            </button>
-            <p className="mt-2 text-center text-[10.5px] leading-[1.5] text-[var(--ls-muted)]">
-              주문 후 입금 계좌를 안내해 드려요. 입금이 확인되면 출고됩니다.
-            </p>
           </section>
         </div>
+
+        {/* 스크롤과 상관없이 합계·주문 버튼은 항상 보이게 둔다. */}
+        <footer className="border-t border-[var(--ls-line)] bg-white px-5 pb-[max(14px,env(safe-area-inset-bottom))] pt-3">
+          {errorMessage ? (
+            <p
+              className="mb-2 rounded-[10px] border border-[#E4B4B4] bg-[#FDF2F2] px-3 py-2 text-[12px] leading-[1.5] text-[#8A2323]"
+              role="alert"
+            >
+              {errorMessage}
+            </p>
+          ) : null}
+          <div className="flex items-center justify-between">
+            <p className="text-[11.5px] text-[var(--ls-muted)]">
+              합계 <span className="text-[10px]">VAT 포함</span>
+            </p>
+            <p className="text-[18px] font-semibold tabular-nums tracking-[-0.03em] text-[#0F1412]">
+              {formatPrice(total)}
+            </p>
+          </div>
+          <button
+            className="ls-focus mt-2 flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[15.5px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#8A948D]"
+            disabled={!canSubmit}
+            onClick={handleSubmit}
+            type="button"
+          >
+            {submitting ? "주문 접수 중..." : "주문하기"}
+          </button>
+          <p className="mt-1.5 text-center text-[10.5px] leading-[1.5] text-[var(--ls-muted)]">
+            주문 후 입금 계좌를 안내해 드려요. 입금이 확인되면 출고됩니다.
+          </p>
+        </footer>
       </div>
     </div>
   );
