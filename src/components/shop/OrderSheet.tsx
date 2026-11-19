@@ -299,14 +299,15 @@ export default function OrderSheet({
               </div>
             ) : selectedAddress ? (
               <p className="mt-2 rounded-[10px] bg-[#F4F5F6] px-3.5 py-2.5 text-[11.5px] leading-[1.55] text-[var(--ls-muted)]">
-                {selectedAddress.name ? `${selectedAddress.name} · ` : ""}
-                {selectedAddress.phone}
+                {selectedAddress.name ? `${selectedAddress.name} 님` : "지점 수령"}
                 {selectedAddress.address ? (
                   <>
                     <br />
                     {selectedAddress.address}
                   </>
                 ) : null}
+                <br />
+                연락처는 발주 담당자에게만 전달됩니다.
               </p>
             ) : null}
           </section>

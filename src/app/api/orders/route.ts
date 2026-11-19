@@ -140,7 +140,7 @@ export async function POST(request: Request) {
   const orderLines = buildOrderLines(items);
 
   if (!orderLines.length) {
-    return createBadRequest("Cart is empty");
+    return createBadRequest("장바구니에 담긴 품목을 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.");
   }
 
   if (orderLines.reduce((sum, line) => sum + line.amount, 0) > MAX_ORDER_TOTAL) {
