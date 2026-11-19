@@ -108,7 +108,7 @@ export function LuckyChipTabs({
             tabIndex={selected ? 0 : -1}
             type="button"
             onClick={() => moveSelection(index)}
-            onKeyDown={(event) => {
+            onKeyDown={(event: React.KeyboardEvent<HTMLButtonElement>) => {
               switch (event.key) {
                 case "ArrowDown":
                 case "ArrowRight": {

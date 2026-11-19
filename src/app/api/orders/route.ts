@@ -1,56 +1,88 @@
 import { NextResponse } from "next/server";
 
-import { type ShopProduct } from "@/data/products";
 import {
+  buildOrderLines,
   createOrderCreatedAt,
   createOrderSheetPayload,
   generateOrderId,
-  type OrderRequestInput,
 } from "@/features/order/utils";
 
-function isShopProduct(value: unknown): value is ShopProduct {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
+export const runtime = "nodejs";
 
-  const candidate = value as Record<string, unknown>;
+const MAX_BODY_BYTES = 16 * 1024;
+const MAX_ITEMS = 100;
+const RATE_LIMIT = 5;
+const RATE_WINDOW_MS = 10 * 60 * 1000;
+const MAX_ORDER_TOTAL = 100_000_000;
 
-  return (
-    typeof candidate.id === "string" &&
-    typeof candidate.name === "string" &&
-    typeof candidate.price === "number" &&
-    typeof candidate.imageAlt === "string" &&
-    typeof candidate.imageSrc === "string" &&
-    (candidate.imageVariant === "bag" ||
-      candidate.imageVariant === "cover" ||
-      candidate.imageVariant === "icon" ||
-      candidate.imageVariant === "tile")
-  );
+type Bucket = { count: number; resetAt: number };
+const buckets = new Map<string, Bucket>();
+
+function clientIp(request: Request) {
+  const forwarded = request.headers.get("x-forwarded-for");
+  const first = forwarded?.split(",")[0]?.trim();
+  return first || request.headers.get("x-real-ip")?.trim() || "unknown";
 }
 
-function hasText(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
+function takeRateLimit(request: Request) {
+  const key = clientIp(request);
+  const now = Date.now();
+  const bucket = buckets.get(key) ?? { count: 0, resetAt: now + RATE_WINDOW_MS };
 
-function isOrderRequestInput(value: unknown): value is OrderRequestInput {
-  if (!value || typeof value !== "object") {
-    return false;
+  if (now > bucket.resetAt) {
+    bucket.count = 0;
+    bucket.resetAt = now + RATE_WINDOW_MS;
   }
 
-  const candidate = value as Record<string, unknown>;
+  if (bucket.count >= RATE_LIMIT) {
+    return { ok: false as const, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) };
+  }
 
-  return (
-    hasText(candidate.name) &&
-    hasText(candidate.phone) &&
-    hasText(candidate.shippingOption) &&
-    hasText(candidate.address) &&
-    Array.isArray(candidate.items) &&
-    candidate.items.every(isShopProduct)
-  );
+  bucket.count += 1;
+  buckets.set(key, bucket);
+
+  if (buckets.size > 3000) {
+    for (const [storedKey, stored] of buckets) {
+      if (stored.resetAt < now) buckets.delete(storedKey);
+    }
+  }
+
+  return { ok: true as const };
 }
 
 function createBadRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function readText(value: unknown, min: number, max: number) {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  if (text.length < min || text.length > max) return null;
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(text)) return null;
+  return text;
+}
+
+function readItems(value: unknown) {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_ITEMS) return null;
+
+  const items: { id: string; quantity: number }[] = [];
+
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") return null;
+
+    const candidate = raw as Record<string, unknown>;
+    const id = readText(candidate.id, 1, 40);
+
+    if (!id) return null;
+
+    const quantity = Number(candidate.quantity ?? 1);
+
+    if (!Number.isFinite(quantity) || quantity < 1 || quantity > 999) return null;
+
+    items.push({ id, quantity: Math.round(quantity) });
+  }
+
+  return items;
 }
 
 export async function POST(request: Request) {
@@ -58,9 +90,21 @@ export async function POST(request: Request) {
   const gasSecret = process.env.GAS_SECRET;
 
   if (!gasWebhookUrl || !gasSecret) {
+    return NextResponse.json({ error: "Order relay is not configured" }, { status: 500 });
+  }
+
+  const declaredLength = Number(request.headers.get("content-length") ?? "0");
+
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "payload too large" }, { status: 413 });
+  }
+
+  const verdict = takeRateLimit(request);
+
+  if (!verdict.ok) {
     return NextResponse.json(
-      { error: "Google Sheets webhook is not configured" },
-      { status: 500 },
+      { error: "주문 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+      { status: 429, headers: { "Retry-After": String(verdict.retryAfter) } },
     );
   }
 
@@ -72,47 +116,73 @@ export async function POST(request: Request) {
     return createBadRequest("Invalid JSON payload");
   }
 
-  if (!isOrderRequestInput(body)) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
     return createBadRequest("Invalid order payload");
   }
 
-  if (!body.items.length) {
+  const candidate = body as Record<string, unknown>;
+  const name = readText(candidate.name, 1, 30);
+  const phoneInput = readText(candidate.phone, 9, 20);
+  const phone = phoneInput?.replace(/\D/g, "") ?? "";
+  const address = readText(candidate.address, 1, 200);
+  const shippingOption = readText(candidate.shippingOption, 1, 40);
+  const items = readItems(candidate.items);
+
+  if (!name || !shippingOption || !address || !items) {
+    return createBadRequest("Invalid order payload");
+  }
+
+  if (!/^01\d{8,9}$/.test(phone)) {
+    return createBadRequest("Invalid phone number");
+  }
+
+  // 금액은 클라이언트가 보낸 값이 아니라 서버 카탈로그 단가로 다시 계산한다.
+  const orderLines = buildOrderLines(items);
+
+  if (!orderLines.length) {
     return createBadRequest("Cart is empty");
+  }
+
+  if (orderLines.reduce((sum, line) => sum + line.amount, 0) > MAX_ORDER_TOTAL) {
+    return createBadRequest("Order total is too large");
   }
 
   const orderId = generateOrderId();
   const createdAt = createOrderCreatedAt();
-  const payload = createOrderSheetPayload(body, {
-    createdAt,
-    orderId,
-  });
-
-  const gasResponse = await fetch(gasWebhookUrl, {
-    body: JSON.stringify({
-      ...payload,
-      secret: gasSecret,
-    }),
-    headers: {
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  });
-
-  const gasResponseText = await gasResponse.text();
-
-  let gasResult: { error?: string; ok?: boolean } | null = null;
+  const payload = createOrderSheetPayload(
+    { address, items: orderLines, name, phone, shippingOption },
+    { createdAt, orderId },
+  );
 
   try {
-    gasResult = JSON.parse(gasResponseText) as { error?: string; ok?: boolean };
-  } catch {
-    gasResult = null;
-  }
+    const gasResponse = await fetch(gasWebhookUrl, {
+      body: JSON.stringify({ ...payload, secret: gasSecret }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      cache: "no-store",
+    });
 
-  if (!gasResponse.ok || gasResult?.ok === false) {
+    const gasResponseText = await gasResponse.text();
+
+    let gasResult: { error?: string; ok?: boolean } | null = null;
+
+    try {
+      gasResult = JSON.parse(gasResponseText) as { error?: string; ok?: boolean };
+    } catch {
+      gasResult = null;
+    }
+
+    if (!gasResponse.ok || gasResult?.ok === false) {
+      console.error("[orders] gas relay failed:", gasResponse.status, gasResponseText.slice(0, 200));
+      return NextResponse.json(
+        { error: "주문 접수 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요." },
+        { status: 502 },
+      );
+    }
+  } catch (error) {
+    console.error("[orders] gas relay error:", error instanceof Error ? error.message : error);
     return NextResponse.json(
-      {
-        error: gasResult?.error ?? "Failed to write order into Google Sheets",
-      },
+      { error: "주문 접수 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요." },
       { status: 502 },
     );
   }

@@ -65,7 +65,7 @@ const LuckyChip = React.forwardRef<HTMLButtonElement, LuckyChipProps>(
             letterSpacing: "0.16px",
             transition: "all 0.2s ease",
           },
-          chipStyles[resolvedTone],
+          chipStyles[resolvedTone as LuckyChipTone],
           sx,
         ]}
       >

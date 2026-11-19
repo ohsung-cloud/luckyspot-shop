@@ -1,4 +1,3 @@
-export { default as AppLayout } from "./AppLayout";
 export * from "./BrandWordmark";
 export * from "./LuckyArrowButton";
 export * from "./LuckyButton";

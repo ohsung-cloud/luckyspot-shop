@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 
 import "swiper/css";
 import "./globals.css";
-import AppLayout from "@/components/AppLayout";
 import GlobalFonts, { fontVariables } from "@/components/font/GlobalFonts";
 import AppProviders from "@/components/providers/AppProviders";
 
 export const metadata: Metadata = {
   title: {
-    default: "Luckyspot Shop",
-    template: "%s | Luckyspot Shop",
+    default: "럭키스팟 점주 발주",
+    template: "%s | 럭키스팟 발주",
   },
-  description: "Luckyspot shop starter built from the shared design system.",
+  description:
+    "럭키스팟 점주 발주 페이지. 원두·파우더·시럽·컵·부자재·가구까지 최신 단가로 한 번에 발주하세요.",
   manifest: "/site.webmanifest",
   icons: {
     icon: [
@@ -26,17 +26,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
       <body className={`${fontVariables} antialiased`}>
         <GlobalFonts />
         <div id="app-root">
-          <AppProviders>
-            <AppLayout  center={children} />
-          </AppProviders>
+          <AppProviders>{children}</AppProviders>
         </div>
       </body>
     </html>

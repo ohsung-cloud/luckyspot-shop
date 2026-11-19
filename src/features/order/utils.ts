@@ -1,4 +1,4 @@
-import { formatPrice, type ShopProduct } from "@/data/products";
+import { formatPrice, getProductById } from "@/data/products";
 
 const ORDER_ID_RANDOM_DIGITS = 3;
 const ORDER_ID_SUFFIX_LENGTH = 1;
@@ -9,9 +9,26 @@ export const ORDER_ACCOUNT_NUMBER = "3333-10-7086641";
 export const ORDER_SUPPORT_PHONE = "1551-7157";
 export const ORDER_REQUEST_SHEET_NAME = "order_requests";
 
+/** 클라이언트가 보내는 최소 정보 — 단가는 서버가 카탈로그에서 다시 계산한다. */
+export type OrderItemInput = {
+  id: string;
+  quantity: number;
+};
+
+export type OrderLine = {
+  id: string;
+  name: string;
+  spec: string;
+  unit: string;
+  vendor: string;
+  price: number;
+  quantity: number;
+  amount: number;
+};
+
 export type OrderRequestInput = {
   address: string;
-  items: ShopProduct[];
+  items: OrderLine[];
   name: string;
   phone: string;
   shippingOption: string;
@@ -91,44 +108,53 @@ export function createOrderCreatedAt(date = new Date()) {
 function resolveFulfillmentFields(shippingOption: string) {
   switch (shippingOption) {
     case "서울 직배송":
-      return {
-        fulfillmentType: "direct_delivery",
-        pickupLocation: "서울",
-      };
+      return { fulfillmentType: "direct_delivery", pickupLocation: "서울" };
     case "경기/인천 직배송":
-      return {
-        fulfillmentType: "direct_delivery",
-        pickupLocation: "경기/인천",
-      };
+      return { fulfillmentType: "direct_delivery", pickupLocation: "경기/인천" };
     case "택배 배송":
-      return {
-        fulfillmentType: "parcel_delivery",
-        pickupLocation: "",
-      };
+      return { fulfillmentType: "parcel_delivery", pickupLocation: "" };
     default:
-      return {
-        fulfillmentType: "custom_address",
-        pickupLocation: shippingOption,
-      };
+      return { fulfillmentType: "custom_address", pickupLocation: shippingOption };
   }
 }
 
-export function createOrderItemText(items: ShopProduct[]) {
+/** 품목 id·수량만 받아 카탈로그 단가로 주문 라인을 만든다. 없는 품목은 라인에서 빠진다. */
+export function buildOrderLines(items: OrderItemInput[]): OrderLine[] {
+  return items.flatMap((item) => {
+    const product = getProductById(item.id);
+
+    if (!product) return [];
+
+    const quantity = Math.min(999, Math.max(1, Math.round(item.quantity)));
+
+    return [
+      {
+        id: product.id,
+        name: product.name,
+        spec: product.spec,
+        unit: product.unit,
+        vendor: product.vendor,
+        price: product.price,
+        quantity,
+        amount: product.price * quantity,
+      },
+    ];
+  });
+}
+
+export function createOrderItemText(items: OrderLine[]) {
   return items
-    .map((item) => `${item.name} x1 (${formatPrice(item.price)})`)
+    .map((item) => `${item.name} x${item.quantity} (${formatPrice(item.price)})`)
     .join(" | ");
 }
 
-export function calculateOrderTotalPrice(items: ShopProduct[]) {
-  return items.reduce((total, item) => total + item.price, 0);
+export function calculateOrderTotalPrice(items: OrderLine[]) {
+  return items.reduce((total, item) => total + item.amount, 0);
 }
 
 export function createOrderSheetPayload(
   input: OrderRequestInput,
-  options?: {
-    createdAt?: string;
-    orderId?: string;
-  },
+  options?: { createdAt?: string; orderId?: string },
 ): OrderSheetPayload {
   const createdAt = options?.createdAt ?? createOrderCreatedAt();
   const orderId = options?.orderId ?? generateOrderId();
