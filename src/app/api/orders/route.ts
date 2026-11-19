@@ -6,6 +6,7 @@ import {
   createOrderSheetPayload,
   generateOrderId,
 } from "@/features/order/utils";
+import { queueAdminAlert } from "@/features/order/admin-alert";
 import { queueOrderNotification } from "@/features/order/solapi";
 import { saveShopOrder } from "@/features/order/supabase";
 import { resolveStoreByCode, resolveStoreByLabel } from "@/features/stores/directory";
@@ -301,7 +302,17 @@ export async function POST(request: Request) {
     console.log(`[orders] shop_orders 적재 완료 order=${payload.order_id} id=${persistence.id}`);
   }
 
-  // 주문자에게 완료 문자를 보낸다. 발송 실패·지연이 주문 접수 응답을 막지 않도록
+  // 본사(대표)에게 새 발주를 알린다 — 알림톡 → 이메일 릴레이 → 문자 순.
+  // 다른 설정과 무관하게 항상 시도하고, 실패해도 주문 접수에는 영향을 주지 않는다.
+  queueAdminAlert({
+    amount: payload.total_price,
+    kind: "order",
+    orderNumber: payload.order_id,
+    requesterName: payload.name,
+    storeName: recipient.storeName,
+  });
+
+  // 주문자에게 완료 안내를 보낸다. 발송 실패·지연이 주문 접수 응답을 막지 않도록
   // 응답 후(after)에 실행하고, 결과는 로그로만 남긴다.
   // 지점 연락처를 못 채운 경우(대체 목록)에는 보낼 번호가 없으니 건너뛴다.
   if (payload.phone) {

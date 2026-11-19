@@ -41,6 +41,8 @@ type SolapiConfig = {
   apiKey: string;
   apiSecret: string;
   sender: string;
+  pfId?: string;
+  orderTemplateId?: string;
 };
 
 function readConfig(): SolapiConfig | null {
@@ -50,7 +52,13 @@ function readConfig(): SolapiConfig | null {
 
   if (!apiKey || !apiSecret || !sender) return null;
 
-  return { apiKey, apiSecret, sender };
+  return {
+    apiKey,
+    apiSecret,
+    sender,
+    pfId: process.env.SOLAPI_PFID?.trim() || undefined,
+    orderTemplateId: process.env.SOLAPI_ORDER_TEMPLATE_ID?.trim() || undefined,
+  };
 }
 
 export function isOrderNotificationConfigured() {
@@ -134,6 +142,23 @@ export async function sendOrderNotification(input: OrderNotifyInput): Promise<Or
   }
 
   const type: "SMS" | "LMS" = fullBytes <= SMS_MAX_BYTES ? "SMS" : "LMS";
+
+  // 템플릿 3(UrQZWfn2wY): "[럭키스팟 발주] #{지점명} 발주(#{주문번호}, #{금액}원)가 정상 접수되었습니다."
+  // 알림톡은 허용 IP 등록이 필요 없어 Vercel에서도 발송되고, 문자는 고정 IP가 없으면 403이다.
+  const kakaoOptions =
+    config.pfId && config.orderTemplateId
+      ? {
+          pfId: config.pfId,
+          templateId: config.orderTemplateId,
+          disableSms: true,
+          variables: {
+            "#{지점명}": resolveStoreLabel(input.storeName),
+            "#{주문번호}": input.orderNumber,
+            "#{금액}": input.totalAmount.toLocaleString("ko-KR"),
+          },
+        }
+      : undefined;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), SOLAPI_REQUEST_TIMEOUT_MS);
 
@@ -144,8 +169,7 @@ export async function sendOrderNotification(input: OrderNotifyInput): Promise<Or
           from: config.sender,
           to,
           text: fullText,
-          type,
-          ...(type === "LMS" ? { subject: "[럭키스팟] 발주 접수" } : {}),
+          ...(kakaoOptions ? { kakaoOptions } : { type, ...(type === "LMS" ? { subject: "[럭키스팟] 발주 접수" } : {}) }),
         },
       }),
       cache: "no-store",
