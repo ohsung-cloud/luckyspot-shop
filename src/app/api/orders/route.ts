@@ -6,6 +6,7 @@ import {
   createOrderSheetPayload,
   generateOrderId,
 } from "@/features/order/utils";
+import { queueOrderNotification } from "@/features/order/solapi";
 import { resolveOrderStore, saveShopOrder } from "@/features/order/supabase";
 
 export const runtime = "nodejs";
@@ -210,6 +211,15 @@ export async function POST(request: Request) {
   if (persistence.saved) {
     console.log(`[orders] shop_orders 적재 완료 order=${payload.order_id} id=${persistence.id}`);
   }
+
+  // 주문자에게 완료 문자를 보낸다. 발송 실패·지연이 주문 접수 응답을 막지 않도록
+  // 응답 후(after)에 실행하고, 결과는 로그로만 남긴다.
+  queueOrderNotification({
+    orderNumber: payload.order_id,
+    storeName: store.storeName,
+    to: payload.phone,
+    totalAmount: payload.total_price,
+  });
 
   return NextResponse.json({
     createdAt: payload.created_at,
