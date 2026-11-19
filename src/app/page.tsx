@@ -35,21 +35,29 @@ export default function HomePage() {
             </div>
           </div>
 
-          <a
-            className="flex items-center gap-1.5 rounded-full border border-[#2C3730] px-3 py-1.5 text-[11px] font-medium text-[#C8D0CA] transition-colors hover:border-[#1DFF26] hover:text-white"
-            href={`tel:${ORDER_SUPPORT_PHONE.replace(/\D/g, "")}`}
-          >
-            <svg aria-hidden height="11" viewBox="0 0 12 12" width="11">
-              <path
-                d="M3 1.5h2l.8 2.2-1.2.9a7 7 0 0 0 2.8 2.8l.9-1.2 2.2.8v2c0 .8-.6 1.5-1.4 1.4C5.6 11 1 6.4.6 2.9.5 2.1 1.1 1.5 2 1.5z"
-                fill="none"
-                stroke="currentColor"
-                strokeLinejoin="round"
-                strokeWidth="1.1"
-              />
-            </svg>
-            주문 문의 {ORDER_SUPPORT_PHONE}
-          </a>
+          <div className="flex items-center gap-1.5">
+            <a
+              className="flex items-center gap-1 rounded-full bg-[#1DFF26] px-3 py-1.5 text-[11px] font-semibold text-[#0F1412] transition-colors hover:bg-[#7CE785]"
+              href="/orders"
+            >
+              내 발주 내역 조회
+            </a>
+            <a
+              className="hidden items-center gap-1.5 rounded-full border border-[#2C3730] px-3 py-1.5 text-[11px] font-medium text-[#C8D0CA] transition-colors hover:border-[#1DFF26] hover:text-white sm:flex"
+              href={`tel:${ORDER_SUPPORT_PHONE.replace(/\D/g, "")}`}
+            >
+              <svg aria-hidden height="11" viewBox="0 0 12 12" width="11">
+                <path
+                  d="M3 1.5h2l.8 2.2-1.2.9a7 7 0 0 0 2.8 2.8l.9-1.2 2.2.8v2c0 .8-.6 1.5-1.4 1.4C5.6 11 1 6.4.6 2.9.5 2.1 1.1 1.5 2 1.5z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinejoin="round"
+                  strokeWidth="1.1"
+                />
+              </svg>
+              주문 문의 {ORDER_SUPPORT_PHONE}
+            </a>
+          </div>
         </div>
       </header>
 

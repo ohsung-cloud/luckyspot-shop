@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { formatPrice, splitVat } from "@/data/products";
@@ -165,6 +166,12 @@ export function OrderCompletePageClient({
                 다시 발주하기
               </button>
             </div>
+            <Link
+              className="ls-focus flex h-[46px] w-full items-center justify-center rounded-[13px] bg-[#EDFBEF] text-[12.5px] font-semibold text-[#0B5C2A] transition-colors hover:bg-[#DDF6E4]"
+              href="/orders"
+            >
+              내 발주 내역 조회
+            </Link>
           </div>
         </div>
 
