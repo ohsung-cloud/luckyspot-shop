@@ -18,6 +18,7 @@ import {
   DEFAULT_STORE_SCALE,
   essentialItems,
   isEssentialProduct,
+  recommendedQuantityLabel,
   storeScaleLabel,
   storeScales,
   type StoreScale,
@@ -185,10 +186,12 @@ export default function ShopApp() {
     if (!item) return;
 
     const quantity = item.quantity[scale];
+    const product = getProductById(item.productId);
+
     addBundle([{ id: item.productId, quantity }]);
 
     toast({
-      content: `${item.label} ${quantity}${getProductById(item.productId)?.unit ?? "개"}를 담았습니다 · ${storeScaleLabel(scale)} 기준`,
+      content: `${item.label} ${recommendedQuantityLabel(product?.unit ?? "개", quantity)}를 담았습니다 · ${storeScaleLabel(scale)} 기준`,
       duration: "short",
       variant: "normal",
     });
@@ -295,8 +298,7 @@ export default function ShopApp() {
                       {cycleBadge(product.id, scale) ?? "정기 발주"}
                     </span>
                     <p className="mt-1 text-[10.5px] leading-[1.45] text-[var(--ls-muted)]">
-                      1회 {quantity}
-                      {product.unit}
+                      1회 {recommendedQuantityLabel(product.unit, quantity)}
                       {inCart > 0 ? ` · 담김 ${inCart}` : ""}
                     </p>
                     <button
@@ -304,7 +306,7 @@ export default function ShopApp() {
                       onClick={() => handleAddEssential(item.key)}
                       type="button"
                     >
-                      {formatPrice(product.price * quantity)}
+                      담기 · {formatPrice(product.price * quantity)}
                     </button>
                   </article>
                 );

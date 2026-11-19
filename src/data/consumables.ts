@@ -207,7 +207,7 @@ export const essentialItems: EssentialItem[] = [
     hint: "10kg 박스 기준",
     productId: "bean-10kg",
     quantity: { small: 1, medium: 1, large: 2 },
-    relatedIds: ["bean-1kg", "bean-10kg", "bean-30kg", "bean-decaf"],
+    relatedIds: ["bean-1kg", "bean-10kg", "bean-30kg"],
   },
   {
     key: "cup",
@@ -239,7 +239,7 @@ export const essentialItems: EssentialItem[] = [
     hint: "2,500매 1박스",
     productId: "a4-paper",
     quantity: { small: 1, medium: 1, large: 2 },
-    relatedIds: ["a4-paper", "a3-paper", "b4-paper"],
+    relatedIds: ["a4-paper"],
   },
   {
     key: "toner",
@@ -251,11 +251,28 @@ export const essentialItems: EssentialItem[] = [
   },
 ];
 
-/** "필수 소모품만 보기" 필터에 쓰는 품목 id 모음 */
-export const essentialProductIds = Array.from(
+/** "필수 소모품만 보기" 필터에 쓰는 품목 id 모음 */export const essentialProductIds = Array.from(
   new Set(essentialItems.flatMap((item) => item.relatedIds)),
 );
 
 export function isEssentialProduct(productId: string) {
   return essentialProductIds.includes(productId);
+}
+
+/**
+ * "1회 1박스" 처럼 판매 단위의 숫자를 두 번 쓰지 않게 만든다.
+ *  · unit "1박스" + 수량 1 → "1박스", 수량 2 → "2박스"
+ *  · unit "1개" + 수량 1 → "1개", 수량 2 → "2개"
+ *  · unit 이 "3박스" 처럼 1이 아닌 숫자로 시작하면 단위를 그대로 두고 "2 × 3박스"
+ */
+export function recommendedQuantityLabel(unit: string, quantity: number) {
+  const match = /^(\d[\d,]*)\s*(.*)$/.exec(unit.trim());
+
+  if (!match) return `${quantity}${unit}`;
+
+  const [, base, noun] = match;
+
+  if (Number(base.replace(/,/g, "")) !== 1) return `${quantity} × ${unit}`;
+
+  return `${quantity}${noun || "개"}`;
 }
