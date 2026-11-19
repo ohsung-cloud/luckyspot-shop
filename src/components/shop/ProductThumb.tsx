@@ -11,7 +11,20 @@ const TONE: Record<string, string> = {
   print: "from-[#EAEAEC] to-[#F6F6F7]",
 };
 
-/** 사진이 없는 품목은 규격을 큰 글자로 보여주는 타일로 대신한다(엉뚱한 사진을 쓰지 않는다). */
+const BOILERPLATE =
+  /(더캐럿|매일쓰는|찐찐|아이스크림맛|크림라떼|제로슈가|허니|파우더|베이스|시럽|원두|용지|화분|세트)/g;
+
+/** 품목 이름에서 타일용 짧은 이름을 만든다. (예: "매일쓰는 초코 파우더" → "초코") */
+function shortName(name: string) {
+  return name
+    .replace(/\([^)]*\)/g, " ")
+    .replace(BOILERPLATE, " ")
+    .replace(/[0-9,.]+(kg|g|ml|매|개|EA|파이|온즈)?/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** 사진이 없는 품목은 규격·이름을 글자로 보여주는 타일로 대신한다(엉뚱한 사진을 쓰지 않는다). */
 export default function ProductThumb({
   product,
   categoryKey,
@@ -21,11 +34,11 @@ export default function ProductThumb({
 }) {
   if (product.imageSrc) {
     return (
-      <div className="flex aspect-[3/2] w-full items-center justify-center overflow-hidden rounded-[10px] bg-[#F4F5F6]">
+      <div className="flex h-[92px] w-full items-center justify-center overflow-hidden rounded-[10px] bg-[#F4F5F6]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           alt={product.imageAlt ?? product.name}
-          className="h-[80%] w-[80%] object-contain"
+          className="h-[82%] w-[82%] object-contain"
           src={product.imageSrc}
         />
       </div>
@@ -33,17 +46,23 @@ export default function ProductThumb({
   }
 
   const head = product.spec.split(/[·(]/)[0]?.trim() || product.unit;
+  const flavor = shortName(product.name).slice(0, 10);
 
   return (
     <div
       aria-hidden
-      className={`flex aspect-[3/2] w-full items-center justify-center overflow-hidden rounded-[10px] bg-gradient-to-br ${
+      className={`flex h-[92px] w-full flex-col items-center justify-center gap-0.5 overflow-hidden rounded-[10px] bg-gradient-to-br px-2 ${
         TONE[categoryKey] ?? TONE.supply
       }`}
     >
-      <span className="text-[21px] font-semibold leading-none tracking-[-0.05em] text-[#0F1412]/80">
+      <span className="text-[17px] font-semibold leading-none tracking-[-0.04em] text-[#0F1412]/85">
         {head}
       </span>
+      {flavor ? (
+        <span className="max-w-full truncate text-[10.5px] font-medium leading-none text-[#3B4740]/70">
+          {flavor}
+        </span>
+      ) : null}
     </div>
   );
 }
