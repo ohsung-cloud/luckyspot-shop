@@ -335,7 +335,7 @@ export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }
 
                     {order.status === "cancelled" ? (
                       <p className="mt-2 rounded-[10px] bg-[#F1F3F2] px-3 py-2 text-[11.5px] text-[#6B746D]">
-                        취소된 발주입니다. 다시 발주해 주세요.
+                        취소된 발주입니다. 아래 버튼으로 그 구성을 그대로 다시 담을 수 있어요.
                       </p>
                     ) : (
                       <ol className="mt-3 flex items-center gap-1">
@@ -378,7 +378,7 @@ export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }
                       </span>
                     </div>
 
-                    {order.status !== "cancelled" && order.items.length > 0 ? (
+                    {order.items.length > 0 ? (
                       <button
                         className="ls-focus mt-2.5 flex h-10 w-full items-center justify-center gap-1.5 rounded-[11px] bg-[#0F1412] text-[12.5px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F]"
                         onClick={() => handleReorder(order, result.store)}
