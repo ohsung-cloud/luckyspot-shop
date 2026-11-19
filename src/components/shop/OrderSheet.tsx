@@ -362,7 +362,13 @@ export default function OrderSheet({
             {submitting ? "주문 접수 중..." : "주문하기"}
           </button>
           <p className="mt-1.5 text-center text-[10.5px] leading-[1.5] text-[var(--ls-muted)]">
-            주문 후 입금 계좌를 안내해 드려요. 입금이 확인되면 출고됩니다.
+            {!selectedAddress
+              ? "받는 곳을 선택하면 주문할 수 있어요."
+              : isDirect && !directComplete
+                ? "주문자 성함·연락처·주소를 모두 입력해 주세요."
+                : !agreed
+                  ? "개인정보 수집에 동의하면 주문할 수 있어요."
+                  : "주문 후 입금 계좌를 안내해 드려요. 입금이 확인되면 출고됩니다."}
           </p>
         </footer>
       </div>
