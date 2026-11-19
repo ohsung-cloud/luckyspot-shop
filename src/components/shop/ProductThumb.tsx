@@ -46,7 +46,9 @@ export default function ProductThumb({
   }
 
   const head = product.spec.split(/[·(]/)[0]?.trim() || product.unit;
-  const flavor = shortName(product.name).slice(0, 10);
+  // 이름이 짧은 파우더·시럽·원두만 이름을 함께 보여준다(긴 이름은 잘려서 오히려 헷갈린다).
+  const showFlavor = categoryKey === "powder" || categoryKey === "syrup" || categoryKey === "bean";
+  const flavor = showFlavor ? shortName(product.name).slice(0, 8) : "";
 
   return (
     <div
