@@ -5,6 +5,11 @@ import { useCartStore } from "@/stores/cartStore";
 import ProductThumb from "./ProductThumb";
 import QuantityStepper from "./QuantityStepper";
 
+/** 규격에 이미 들어 있는 단위는 두 번 쓰지 않는다. (예: "1kg" + "1kg" → "1kg") */
+function formatSpec(spec: string, unit: string) {
+  return spec.includes(unit) ? spec : `${spec} · ${unit}`;
+}
+
 export default function ProductCard({
   product,
   categoryKey,
@@ -37,7 +42,7 @@ export default function ProductCard({
           {product.name}
         </h3>
         <p className="mt-0.5 text-[11px] leading-[1.45] text-[var(--ls-muted)]">
-          {product.spec} · {product.unit}
+          {formatSpec(product.spec, product.unit)}
         </p>
 
         <p className="mt-1.5 text-[14.5px] font-semibold leading-none tracking-[-0.02em] text-[#0F1412]">

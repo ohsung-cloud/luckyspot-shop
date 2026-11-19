@@ -76,7 +76,7 @@ export default function ShopApp() {
   return (
     <>
       <section className="mx-auto w-full max-w-[1200px] px-4 pt-5 sm:px-6" id="catalog">
-        <div className="sticky top-0 z-30 -mx-4 bg-[#F4F5F6]/95 px-4 pb-2 pt-2 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="sticky top-0 z-30 -mx-4 bg-[#F4F5F6] px-4 pb-2 pt-2 shadow-[0_10px_16px_-14px_rgba(15,20,18,0.35)] sm:-mx-6 sm:px-6">
           <div className="relative">
             <span
               aria-hidden
