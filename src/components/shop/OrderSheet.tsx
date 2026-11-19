@@ -5,6 +5,22 @@ import { useRouter } from "next/navigation";
 
 import { DIRECT_SHIPPING_LABEL, DIRECT_SHIPPING_VALUE } from "@/data/address";
 import { formatPrice, splitVat } from "@/data/products";
+import {
+  coverageLabel,
+  cycleLabel,
+  cycleDays,
+  daysCovered,
+  DEFAULT_STORE_SCALE,
+  shortestCoverage,
+  storeScaleLabel,
+  type StoreScale,
+} from "@/data/consumables";
+import {
+  readRecentStore,
+  readStoreScale,
+  writeLastOrder,
+  writeRecentStore,
+} from "@/features/shop/preferences";
 import type { StoreOption } from "@/features/stores/types";
 import { cartCount, cartTotal, resolveCart, useCartStore } from "@/stores/cartStore";
 import QuantityStepper from "./QuantityStepper";
@@ -27,9 +43,15 @@ function CloseIcon() {
 export default function OrderSheet({
   open,
   onClose,
+  initialStoreCode,
+  notice,
 }: {
   open: boolean;
   onClose: () => void;
+  /** /orders·"그대로 담기"에서 넘어온 지점 — "받는 곳"을 미리 채운다 */
+  initialStoreCode?: string | null;
+  /** 시트 상단에 보여줄 안내(예: 지난 발주를 그대로 담았어요) */
+  notice?: string | null;
 }) {
   const router = useRouter();
   const lines = useCartStore((state) => state.lines);
@@ -51,6 +73,7 @@ export default function OrderSheet({
   const [agreed, setAgreed] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [scale, setScale] = useState<StoreScale>(DEFAULT_STORE_SCALE);
 
   const selectedStore = stores.find((store) => store.code === addressValue) ?? null;
   const isDirect = addressValue === DIRECT_SHIPPING_VALUE;
@@ -61,6 +84,13 @@ export default function OrderSheet({
     (isDirect ? directComplete : Boolean(selectedStore)) &&
     agreed &&
     !submitting;
+
+  // 담은 소모품이 가장 빨리 떨어지는 품목 기준 "며칠 버티는지"
+  const coverage = shortestCoverage(
+    entries.map(({ product, quantity }) => ({ id: product.id, quantity })),
+    scale,
+  );
+  const coverageText = coverageLabel(coverage);
 
   useEffect(() => {
     if (!open) return;
@@ -81,6 +111,12 @@ export default function OrderSheet({
   }, [open, onClose]);
 
   useEffect(() => {
+    if (!open) return;
+
+    setScale(readStoreScale());
+  }, [open]);
+
+  useEffect(() => {
     if (!open) {
       setErrorMessage(null);
       setSubmitting(false);
@@ -96,8 +132,17 @@ export default function OrderSheet({
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
       .then((data: { stores?: StoreOption[] }) => {
         if (cancelled) return;
-        setStores(Array.isArray(data.stores) ? data.stores : []);
+
+        const options = Array.isArray(data.stores) ? data.stores : [];
+        setStores(options);
         setStoresLoaded(true);
+
+        // 최근에 쓴 지점이 있으면 "받는 곳"을 미리 채운다 — 한 탭을 더 줄인다.
+        const preferred = initialStoreCode || readRecentStore()?.code || "";
+
+        if (preferred && options.some((store) => store.code === preferred)) {
+          setAddressValue(preferred);
+        }
       })
       .catch(() => {
         if (cancelled) return;
@@ -108,7 +153,7 @@ export default function OrderSheet({
     return () => {
       cancelled = true;
     };
-  }, [open, storesLoaded]);
+  }, [initialStoreCode, open, storesLoaded]);
 
   if (!open) return null;
 
@@ -145,6 +190,21 @@ export default function OrderSheet({
       if (!response.ok || !result.orderId) {
         throw new Error(result.error ?? "주문 접수에 실패했습니다.");
       }
+
+      if (selectedStore) {
+        writeRecentStore({ code: selectedStore.code, label: selectedStore.label });
+      }
+
+      // 다음 발주를 1초로 만드는 재료 — 이 브라우저에 "직전 발주 구성"만 남긴다.
+      writeLastOrder({
+        orderNumber: result.orderId,
+        createdAt: new Date().toISOString(),
+        storeCode: selectedStore?.code ?? null,
+        storeName: selectedStore?.label ?? null,
+        totalAmount: Number(result.totalPrice ?? total),
+        count,
+        items: lines.map((line) => ({ id: line.id, quantity: line.quantity })),
+      });
 
       clearItems();
       onClose();
@@ -193,6 +253,12 @@ export default function OrderSheet({
         </header>
 
         <div className="flex-1 overflow-y-auto overscroll-contain">
+          {notice ? (
+            <p className="mx-5 mt-4 rounded-[12px] border border-[#9BD3B2] bg-[#EAF8EF] px-3.5 py-2.5 text-[11.5px] font-medium leading-[1.55] text-[#0B5C2A]">
+              {notice}
+            </p>
+          ) : null}
+
           <section className="px-5 pt-4">
             <div className="flex items-baseline justify-between">
               <h3 className="text-[13px] font-semibold text-[#0F1412]">담은 품목</h3>
@@ -209,6 +275,19 @@ export default function OrderSheet({
                       </p>
                       <p className="mt-0.5 text-[11px] text-[var(--ls-muted)]">
                         {formatPrice(product.price)} · {product.unit}
+                        {(() => {
+                          const lineDays = daysCovered(product.id, quantity, scale);
+                          const lineCycle = cycleDays(product.id, scale);
+
+                          if (!lineDays) return null;
+
+                          return (
+                            <span className="ml-1.5 font-semibold text-[#0B5C2A]">
+                              {coverageLabel(lineDays)}
+                              {lineCycle ? ` · ${cycleLabel(lineCycle)} 권장` : ""}
+                            </span>
+                          );
+                        })()}
                       </p>
                       <div className="mt-2 flex items-center gap-2">
                         <QuantityStepper
@@ -236,6 +315,14 @@ export default function OrderSheet({
                 담긴 품목이 없어요. 목록에서 필요한 품목을 담아주세요.
               </p>
             )}
+
+            {coverageText ? (
+              <p className="mt-3 break-keep rounded-[10px] bg-[#F4F5F6] px-3 py-2 text-[11px] leading-[1.55] text-[var(--ls-muted)]">
+                {`${storeScaleLabel(scale)} 매장 기준, 이 구성으로 소모품이 가장 빨리 떨어지는 품목까지 `}
+                <strong className="font-semibold text-[#0B5C2A]">{coverageText}</strong>
+                {"입니다. 잔량과 맞춰 수량을 조정하세요."}
+              </p>
+            ) : null}
           </section>
 
           <section className="mx-5 mt-4 rounded-[14px] bg-[#F4F5F6] p-4">

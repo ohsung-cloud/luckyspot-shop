@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { formatPrice } from "@/data/products";
 import {
@@ -10,12 +11,17 @@ import {
   ORDER_STATUS_TONES,
   type OrderStatus,
 } from "@/features/admin/status";
+import { savePendingReorder } from "@/features/shop/preferences";
 
 type StoreOption = { code: string; label: string };
 
 type LookupOrder = {
   createdAt: string;
   itemText: string | null;
+  /** 지금 카탈로그로 다시 담을 수 있는 구성 */
+  items: { id: string; name: string; quantity: number }[];
+  /** 발주 당시 품목 종류 수 */
+  lineCount: number;
   orderNumber: string;
   status: OrderStatus;
   totalAmount: number;
@@ -51,6 +57,7 @@ function stepIndex(status: OrderStatus) {
 }
 
 export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }) {
+  const router = useRouter();
   const [storeCode, setStoreCode] = React.useState("");
   const [mode, setMode] = React.useState<Mode>("phone");
   const [phoneLast4, setPhoneLast4] = React.useState("");
@@ -60,6 +67,31 @@ export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }
   const [result, setResult] = React.useState<{ orders: LookupOrder[]; store: StoreOption } | null>(
     null,
   );
+  const [reorderError, setReorderError] = React.useState<string | null>(null);
+
+  /**
+   * 원클릭 재주문 — 이 발주의 품목·수량을 그대로 넘기고 메인 화면으로 이동한다.
+   * 넘기는 상자는 브라우저 저장소(localStorage)이고, 주소·서버에는 구성만 가지 않는다.
+   */
+  const handleReorder = (order: LookupOrder, store: StoreOption) => {
+    if (!order.items.length) {
+      setReorderError(
+        "이 발주는 다시 담을 수 있는 품목이 없어요. 품목이 단종되었을 수 있으니 목록에서 담아 주세요.",
+      );
+      return;
+    }
+
+    setReorderError(null);
+
+    const saved = savePendingReorder(order.items, store);
+
+    if (!saved) {
+      setReorderError("브라우저 저장 공간이 막혀 다시 담기를 쓸 수 없어요. 시크릿 모드를 끄고 다시 시도해 주세요.");
+      return;
+    }
+
+    router.push("/?reorder=1");
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -152,7 +184,8 @@ export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }
           </h1>
           <p className="mt-2 break-keep text-[12.5px] leading-[1.7] text-[#A9B4AC]">
             지점을 고르고 휴대폰 뒤 4자리(또는 주문번호)를 넣으면 처리 상태를 바로 확인할 수
-            있어요.
+            있어요. 지난 발주는 <span className="font-semibold text-[#7CE785]">다시 담기</span> 한 번으로
+            그 구성 그대로 장바구니에 들어갑니다.
           </p>
         </div>
       </section>
@@ -266,6 +299,12 @@ export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }
               </p>
             </div>
 
+            {reorderError ? (
+              <p className="mt-2 rounded-[10px] bg-[#FDECEC] px-3 py-2 text-[11.5px] leading-[1.6] text-[#9B1C1C]">
+                {reorderError}
+              </p>
+            ) : null}
+
             {result.orders.length === 0 ? (
               <div className="mt-2 rounded-[16px] border border-dashed border-[var(--ls-line-strong)] bg-white px-5 py-10 text-center">
                 <p className="text-[13.5px] font-semibold text-[#0F1412]">조회된 발주가 없어요</p>
@@ -338,6 +377,37 @@ export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }
                         {formatPrice(order.totalAmount)}
                       </span>
                     </div>
+
+                    {order.status !== "cancelled" && order.items.length > 0 ? (
+                      <button
+                        className="ls-focus mt-2.5 flex h-10 w-full items-center justify-center gap-1.5 rounded-[11px] bg-[#0F1412] text-[12.5px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F]"
+                        onClick={() => handleReorder(order, result.store)}
+                        type="button"
+                      >
+                        <svg aria-hidden height="12" viewBox="0 0 14 14" width="12">
+                          <path
+                            d="M2.2 5.4A4.8 4.8 0 0 1 11 4.2M11.8 8.6A4.8 4.8 0 0 1 3 9.8"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeWidth="1.5"
+                          />
+                          <path
+                            d="M9.6 1.6l1.6 2.6-2.9.5M4.4 12.4L2.8 9.8l2.9-.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.5"
+                          />
+                        </svg>
+                        이 구성 그대로 다시 발주
+                        <span className="font-normal text-[#7CE785]">
+                          {order.items.length}종{" "}
+                          {order.items.reduce((sum, item) => sum + item.quantity, 0)}개
+                        </span>
+                      </button>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -347,6 +417,7 @@ export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }
 
         <ul className="mt-6 space-y-1.5 px-1 text-[11px] leading-[1.7] text-[var(--ls-muted)]">
           <li>· 접수대기 → 본사승인 → 출고완료 순서로 진행됩니다.</li>
+          <li>· "다시 담기"는 그때의 품목·수량을 담고, 단가는 오늘 카탈로그 단가로 다시 계산됩니다.</li>
           <li>· 주문번호를 모르면 발주 완료 화면이나 완료 문자를 확인해 주세요.</li>
           <li>· 내역이 보이지 않으면 본사(1551-7157)로 문의해 주세요.</li>
         </ul>

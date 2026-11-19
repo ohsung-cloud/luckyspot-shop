@@ -1,6 +1,13 @@
 "use client";
 
 import { formatPrice, type ShopProduct } from "@/data/products";
+import {
+  coverageLabel,
+  cycleBadge,
+  daysCovered,
+  getConsumptionGuide,
+  type StoreScale,
+} from "@/data/consumables";
 import { useCartStore } from "@/stores/cartStore";
 import ProductThumb from "./ProductThumb";
 import QuantityStepper from "./QuantityStepper";
@@ -14,13 +21,19 @@ export default function ProductCard({
   product,
   categoryKey,
   quantity,
+  scale,
 }: {
   product: ShopProduct;
   categoryKey: string;
   quantity: number;
+  scale: StoreScale;
 }) {
   const addItem = useCartStore((state) => state.addItem);
   const setQuantity = useCartStore((state) => state.setQuantity);
+
+  const guide = getConsumptionGuide(product.id);
+  const badge = cycleBadge(product.id, scale);
+  const coverage = coverageLabel(daysCovered(product.id, quantity, scale));
 
   return (
     <article className="flex flex-col rounded-[16px] border border-[var(--ls-line)] bg-white p-2.5 transition-colors hover:border-[#0F1412]/40">
@@ -31,6 +44,11 @@ export default function ProductCard({
           {product.tag ? (
             <span className="rounded-[4px] bg-[#0F1412] px-1.5 py-[2px] text-[9.5px] font-semibold leading-[1.4] text-[#1DFF26]">
               {product.tag}
+            </span>
+          ) : null}
+          {badge ? (
+            <span className="rounded-[4px] border border-[#9BD3B2] bg-[#EAF8EF] px-1.5 py-[2px] text-[9.5px] font-semibold leading-[1.4] text-[#0B5C2A]">
+              {badge}
             </span>
           ) : null}
           <span className="text-[9.5px] font-medium uppercase tracking-[0.08em] text-[var(--ls-muted)]">
@@ -51,11 +69,18 @@ export default function ProductCard({
 
         <div className="mt-2.5">
           {quantity > 0 ? (
-            <QuantityStepper
-              label={product.name}
-              onChange={(next) => setQuantity(product.id, next)}
-              quantity={quantity}
-            />
+            <div>
+              <QuantityStepper
+                label={product.name}
+                onChange={(next) => setQuantity(product.id, next)}
+                quantity={quantity}
+              />
+              {coverage ? (
+                <p className="mt-1.5 text-[10px] font-semibold text-[#0B5C2A]">
+                  {coverage} <span className="font-normal text-[var(--ls-muted)]">사용</span>
+                </p>
+              ) : null}
+            </div>
           ) : (
             <button
               className="ls-focus flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-[var(--ls-line-strong)] text-[12px] font-semibold text-[#0F1412] transition-colors hover:border-[#0F1412] hover:bg-[#0F1412] hover:text-[#1DFF26]"
@@ -75,7 +100,11 @@ export default function ProductCard({
           )}
         </div>
 
-        {product.note ? (
+        {guide ? (
+          <p className="mt-2 border-t border-dashed border-[var(--ls-line)] pt-1.5 text-[10px] leading-[1.5] text-[var(--ls-muted)]">
+            {guide.reason}
+          </p>
+        ) : product.note ? (
           <p className="mt-2 border-t border-dashed border-[var(--ls-line)] pt-1.5 text-[10px] leading-[1.5] text-[var(--ls-muted)]">
             {product.note}
           </p>

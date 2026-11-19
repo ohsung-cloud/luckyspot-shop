@@ -1,3 +1,4 @@
+import { getProductById } from "@/data/products";
 import { readSupabaseConfig, SUPABASE_TIMEOUT_MS, supabaseHeaders } from "@/features/supabase/config";
 import { isOrderStatus, type OrderStatus } from "@/features/admin/status";
 
@@ -33,6 +34,16 @@ export type AdminOrder = {
   totalAmount: number;
 };
 
+/**
+ * 다시 담기용 품목 한 줄 — 카탈로그에 아직 있는 품목만 내려간다.
+ * 단가는 싣지 않는다(담는 순간의 카탈로그 단가로 다시 계산).
+ */
+export type LookupOrderItem = {
+  id: string;
+  name: string;
+  quantity: number;
+};
+
 /** 점주 조회 화면에 내려도 되는 값만 담는다. 이름·연락처·주소는 없다. */
 export type LookupOrder = {
   createdAt: string;
@@ -40,7 +51,13 @@ export type LookupOrder = {
   orderNumber: string;
   status: OrderStatus;
   totalAmount: number;
+  /** 원클릭 재주문 — 지금 카탈로그로 다시 담을 수 있는 구성 */
+  items: LookupOrderItem[];
+  /** 발주 당시 품목 종류 수(카탈로그에서 빠진 품목 포함) */
+  lineCount: number;
 };
+
+const MAX_REORDER_LINES = 100;
 
 export type OrderQueryFailure = {
   ok: false;
@@ -64,6 +81,7 @@ export type UpdateStatusResult =
 type OrderRow = {
   created_at?: string | null;
   id?: string | null;
+  items?: unknown;
   item_text?: string | null;
   order_number?: string | null;
   requester_name?: string | null;
@@ -107,10 +125,58 @@ function toAdminOrder(row: OrderRow): AdminOrder | null {
   };
 }
 
+type RawOrderItem = {
+  id?: unknown;
+  name?: unknown;
+  quantity?: unknown;
+};
+
+/**
+ * shop_orders.items(jsonb) → 다시 담기용 목록.
+ *  · 지금 카탈로그에 있는 품목만 남긴다(단종·오타 id 로 장바구니가 깨지지 않게)
+ *  · 같은 id 가 두 번 들어 있으면 수량을 합친다
+ *  · 수량은 1~999로 다듬고, 줄 수는 100개까지만
+ */
+function toReorderItems(value: unknown): { items: LookupOrderItem[]; lineCount: number } {
+  if (!Array.isArray(value)) return { items: [], lineCount: 0 };
+
+  const merged = new Map<string, number>();
+  let lineCount = 0;
+
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+
+    const candidate = raw as RawOrderItem;
+    const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
+    const name = typeof candidate.name === "string" ? candidate.name.trim() : "";
+    const quantity = Number(candidate.quantity);
+
+    if (!id) continue;
+
+    lineCount += 1;
+
+    if (!name || !Number.isFinite(quantity) || quantity < 1) continue;
+    if (!getProductById(id)) continue;
+
+    const next = Math.min(999, Math.round(quantity));
+    merged.set(id, Math.min(999, (merged.get(id) ?? 0) + next));
+  }
+
+  const items = Array.from(merged, ([id, quantity]) => ({
+    id,
+    name: getProductById(id)?.name ?? id,
+    quantity,
+  })).slice(0, MAX_REORDER_LINES);
+
+  return { items, lineCount };
+}
+
 function toLookupOrder(row: OrderRow): LookupOrder | null {
   const orderNumber = row.order_number?.trim();
 
   if (!orderNumber) return null;
+
+  const reorder = toReorderItems(row.items);
 
   return {
     createdAt: row.created_at ?? new Date(0).toISOString(),
@@ -118,6 +184,8 @@ function toLookupOrder(row: OrderRow): LookupOrder | null {
     orderNumber,
     status: toStatus(row.status),
     totalAmount: Number.isFinite(row.total_amount) ? Number(row.total_amount) : 0,
+    items: reorder.items,
+    lineCount: reorder.lineCount || reorder.items.length,
   };
 }
 
@@ -247,7 +315,8 @@ export async function lookupStoreOrders(input: {
 }): Promise<LookupOrderListResult> {
   const since = new Date(Date.now() - LOOKUP_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const storeFilter = `store_code=eq.${encodeURIComponent(input.storeCode)}`;
-  const select = "order_number,item_text,total_amount,status,created_at";
+  // items 는 v1 스키마 컬럼이다 — 점주가 "이 구성 그대로" 다시 담는 데 쓴다.
+  const select = "order_number,item_text,items,total_amount,status,created_at";
 
   if (input.orderNumber) {
     const query = `shop_orders?select=${select}&${storeFilter}&order_number=eq.${encodeURIComponent(input.orderNumber)}&limit=1`;

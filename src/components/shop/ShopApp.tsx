@@ -1,27 +1,67 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useToast } from "@wanteddev/wds";
 
 import {
   bundleItemCount,
   bundlePrice,
   formatPrice,
+  getProductById,
   shopBundles,
   shopCategories,
 } from "@/data/products";
+import {
+  cycleBadge,
+  DEFAULT_STORE_SCALE,
+  essentialItems,
+  isEssentialProduct,
+  storeScaleLabel,
+  storeScales,
+  type StoreScale,
+} from "@/data/consumables";
+import {
+  readLastOrder,
+  readRecentStore,
+  readStoreScale,
+  takePendingReorder,
+  writeStoreScale,
+  type LastOrder,
+} from "@/features/shop/preferences";
 import { useCartStore, type CartLine } from "@/stores/cartStore";
 import CartBar from "./CartBar";
 import OrderSheet from "./OrderSheet";
 import ProductCard from "./ProductCard";
 
-type FilterKey = "all" | string;
+type FilterKey = "all" | "essential" | string;
+
+const ESSENTIAL_FILTER = "essential";
+
+const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
+  day: "numeric",
+  month: "numeric",
+  timeZone: "Asia/Seoul",
+});
+
+function formatOrderDay(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return dateFormatter.format(date);
+}
 
 export default function ShopApp() {
   const toast = useToast();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<FilterKey>("all");
+  const [scale, setScale] = useState<StoreScale>(DEFAULT_STORE_SCALE);
+  const [lastOrder, setLastOrder] = useState<LastOrder | null>(null);
+  const [recentStore, setRecentStore] = useState<{ code: string; label: string } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetStoreCode, setSheetStoreCode] = useState<string | null>(null);
+  const [sheetNotice, setSheetNotice] = useState<string | null>(null);
 
   const lines = useCartStore((state) => state.lines);
   const addBundle = useCartStore((state) => state.addBundle);
@@ -32,13 +72,45 @@ export default function ShopApp() {
     return map;
   }, [lines]);
 
+  // 브라우저에 남은 기억(규모·직전 발주·최근 지점)과 /orders 에서 넘어온 구성을 읽는다.
+  useEffect(() => {
+    setScale(readStoreScale());
+    setLastOrder(readLastOrder());
+    setRecentStore(readRecentStore());
+
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("reorder") !== "1") return;
+
+    const pending = takePendingReorder();
+
+    // 주소창에서 reorder 표시를 지워 새로고침해도 같은 구성이 또 담기지 않게 한다.
+    router.replace("/", { scroll: false });
+
+    if (!pending) return;
+
+    addBundle(pending.items);
+    const count = pending.items.reduce((sum, item) => sum + item.quantity, 0);
+
+    setSheetStoreCode(pending.store?.code ?? null);
+    setSheetNotice(`지난 발주 ${pending.items.length}종 ${count}개를 그대로 담았어요. 수량만 확인하세요.`);
+    setSheetOpen(true);
+  }, [addBundle, router]);
+
   const normalizedQuery = query.trim().toLowerCase().replace(/\s+/g, " ");
 
   const visibleCategories = useMemo(() => {
-    const categories =
+    let categories =
       activeCategory === "all"
         ? shopCategories
-        : shopCategories.filter((category) => category.key === activeCategory);
+        : activeCategory === ESSENTIAL_FILTER
+          ? shopCategories.map((category) => ({
+              ...category,
+              products: category.products.filter((product) => isEssentialProduct(product.id)),
+            }))
+          : shopCategories.filter((category) => category.key === activeCategory);
+
+    categories = categories.filter((category) => category.products.length > 0);
 
     if (!normalizedQuery) return categories;
 
@@ -60,6 +132,30 @@ export default function ShopApp() {
   );
 
   const showBundles = !normalizedQuery && activeCategory === "all";
+  const showEssentials = !normalizedQuery && (activeCategory === "all" || activeCategory === ESSENTIAL_FILTER);
+
+  const essentialCount = useMemo(
+    () => shopCategories.reduce(
+      (sum, category) => sum + category.products.filter((product) => isEssentialProduct(product.id)).length,
+      0,
+    ),
+    [],
+  );
+
+  const activeCategoryMeta = useMemo(() => {
+    if (activeCategory === ESSENTIAL_FILTER) {
+      return {
+        label: "필수 소모품",
+        note: "원두·컵·리드·컵홀더·A4·토너 — 발주 주기를 함께 봅니다",
+      };
+    }
+
+    const category = shopCategories.find((item) => item.key === activeCategory);
+
+    return category
+      ? { label: category.label, note: category.note }
+      : { label: "전체 품목", note: "원두·파우더·부자재·가구까지 한 번에" };
+  }, [activeCategory]);
 
   const handleAddBundle = (bundleId: string) => {
     const bundle = shopBundles.find((item) => item.id === bundleId);
@@ -73,10 +169,151 @@ export default function ShopApp() {
     });
   };
 
+  const handleReorderLast = useCallback(() => {
+    if (!lastOrder) return;
+
+    addBundle(lastOrder.items);
+    setSheetStoreCode(lastOrder.storeCode);
+    setSheetNotice(
+      `${formatOrderDay(lastOrder.createdAt)} 발주 ${lastOrder.items.length}종 ${lastOrder.count}개를 그대로 담았어요.`,
+    );
+    setSheetOpen(true);
+  }, [addBundle, lastOrder]);
+
+  const handleAddEssential = (itemKey: string) => {
+    const item = essentialItems.find((candidate) => candidate.key === itemKey);
+    if (!item) return;
+
+    const quantity = item.quantity[scale];
+    addBundle([{ id: item.productId, quantity }]);
+
+    toast({
+      content: `${item.label} ${quantity}${getProductById(item.productId)?.unit ?? "개"}를 담았습니다 · ${storeScaleLabel(scale)} 기준`,
+      duration: "short",
+      variant: "normal",
+    });
+  };
+
+  const handleScaleChange = (next: StoreScale) => {
+    setScale(next);
+    writeStoreScale(next);
+  };
+
+  const handleAddAllEssentials = () => {
+    const items = essentialItems.flatMap((item) => [
+      { id: item.productId, quantity: item.quantity[scale] },
+    ]);
+
+    addBundle(items);
+    toast({
+      content: `필수 소모품 ${items.length}종을 ${storeScaleLabel(scale)} 기준 수량으로 담았습니다`,
+      duration: "short",
+      variant: "normal",
+    });
+  };
+
   return (
     <>
       <section className="mx-auto w-full max-w-[1200px] px-4 pt-5 sm:px-6" id="catalog">
-        <div className="sticky top-0 z-30 -mx-4 bg-[#F4F5F6] px-4 pb-2 pt-2 shadow-[0_10px_16px_-14px_rgba(15,20,18,0.35)] sm:-mx-6 sm:px-6">
+        <ReorderBanner
+          lastOrder={lastOrder}
+          onReorder={handleReorderLast}
+          recentStore={recentStore}
+        />
+
+        {showEssentials ? (
+          <section aria-labelledby="essential-title" className="mt-4">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <p className="type-eyebrow text-[var(--ls-green-ink)]">REORDER CYCLE</p>
+                <h2
+                  className="mt-1 text-[19px] font-semibold tracking-[-0.03em] text-[#0F1412]"
+                  id="essential-title"
+                >
+                  자주 시키는 필수 소모품
+                </h2>
+                <p className="mt-0.5 text-[11.5px] text-[var(--ls-muted)]">
+                  규모를 고르면 1회 권장 수량과 발주 주기가 함께 바뀝니다
+                </p>
+              </div>
+              <button
+                className="ls-focus h-8 rounded-full border border-[var(--ls-line-strong)] bg-white px-3 text-[11.5px] font-semibold text-[#0F1412] transition-colors hover:border-[#0F1412]"
+                onClick={handleAddAllEssentials}
+                type="button"
+              >
+                필수 6종 한 번에 담기
+              </button>
+            </div>
+
+            <div className="no-scrollbar mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1">
+              <span className="shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--ls-muted)]">
+                매장 규모
+              </span>
+              {storeScales.map((option) => {
+                const active = option.key === scale;
+
+                return (
+                  <button
+                    aria-pressed={active}
+                    className={`ls-focus flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[11.5px] font-medium transition-colors ${
+                      active
+                        ? "bg-[#0F1412] text-[#1DFF26]"
+                        : "border border-[var(--ls-line-strong)] bg-white text-[#0F1412] hover:border-[#0F1412]"
+                    }`}
+                    key={option.key}
+                    onClick={() => handleScaleChange(option.key)}
+                    title={option.hint}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+              <span className="shrink-0 pl-1 text-[10.5px] text-[var(--ls-muted)]">
+                {storeScales.find((option) => option.key === scale)?.hint}
+              </span>
+            </div>
+
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {essentialItems.map((item) => {
+                const product = getProductById(item.productId);
+                if (!product) return null;
+
+                const quantity = item.quantity[scale];
+                const inCart = quantityById.get(product.id) ?? 0;
+
+                return (
+                  <article
+                    className="flex flex-col rounded-[14px] border border-[var(--ls-line)] bg-white p-3"
+                    key={item.key}
+                  >
+                    <p className="text-[10px] text-[var(--ls-muted)]">{item.hint}</p>
+                    <h3 className="mt-0.5 break-keep text-[13px] font-semibold leading-[1.3] text-[#0F1412]">
+                      {item.label}
+                    </h3>
+                    <span className="mt-1.5 inline-flex w-fit rounded-[4px] bg-[#EAF8EF] px-1.5 py-[2px] text-[9.5px] font-semibold text-[#0B5C2A]">
+                      {cycleBadge(product.id, scale) ?? "정기 발주"}
+                    </span>
+                    <p className="mt-1 text-[10.5px] leading-[1.45] text-[var(--ls-muted)]">
+                      1회 {quantity}
+                      {product.unit}
+                      {inCart > 0 ? ` · 담김 ${inCart}` : ""}
+                    </p>
+                    <button
+                      className="ls-focus mt-2 h-8 w-full rounded-full border border-[var(--ls-line-strong)] text-[11.5px] font-semibold text-[#0F1412] transition-colors hover:border-[#0F1412] hover:bg-[#0F1412] hover:text-[#1DFF26]"
+                      onClick={() => handleAddEssential(item.key)}
+                      type="button"
+                    >
+                      {formatPrice(product.price * quantity)}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        <div className="sticky top-0 z-30 -mx-4 mt-4 bg-[#F4F5F6] px-4 pb-2 pt-2 shadow-[0_10px_16px_-14px_rgba(15,20,18,0.35)] sm:-mx-6 sm:px-6">
           <div className="relative">
             <span
               aria-hidden
@@ -121,6 +358,12 @@ export default function ShopApp() {
               count={shopCategories.reduce((sum, category) => sum + category.products.length, 0)}
               label="전체"
               onClick={() => setActiveCategory("all")}
+            />
+            <CategoryChip
+              active={activeCategory === ESSENTIAL_FILTER}
+              count={essentialCount}
+              label="필수 소모품"
+              onClick={() => setActiveCategory(ESSENTIAL_FILTER)}
             />
             {shopCategories.map((category) => (
               <CategoryChip
@@ -194,14 +437,10 @@ export default function ShopApp() {
                 className="text-[19px] font-semibold tracking-[-0.03em] text-[#0F1412]"
                 id="product-title"
               >
-                {activeCategory === "all"
-                  ? "전체 품목"
-                  : shopCategories.find((category) => category.key === activeCategory)?.label}
+                {activeCategory === "all" ? "전체 품목" : activeCategoryMeta.label}
               </h2>
               <p className="mt-0.5 text-[11.5px] text-[var(--ls-muted)]">
-                {activeCategory === "all"
-                  ? "원두·파우더·부자재·가구까지 한 번에"
-                  : shopCategories.find((category) => category.key === activeCategory)?.note}
+                {activeCategoryMeta.note}
               </p>
             </div>
             <p className="shrink-0 pb-0.5 text-[11.5px] tabular-nums text-[var(--ls-muted)]">
@@ -241,6 +480,7 @@ export default function ShopApp() {
                         key={product.id}
                         product={product}
                         quantity={quantityById.get(product.id) ?? 0}
+                        scale={scale}
                       />
                     ))}
                   </div>
@@ -256,16 +496,133 @@ export default function ShopApp() {
           </h2>
           <ul className="mt-2 space-y-1 text-[11.5px] leading-[1.7] text-[var(--ls-muted)]">
             <li>· 모든 단가는 부가세 포함 금액입니다. 합계는 공급가액과 부가세로 나눠 확인할 수 있어요.</li>
+            <li>· 권장 주기는 매장 규모별 기본값이고, 3번 발주하면 실제 소모 속도로 보정합니다.</li>
             <li>· 원두 20,000원/kg, 파우더·농축은 더캐럿 2026-11-19 단가표 기준입니다.</li>
-            <li>· 가구·식물·비품은 영등포시장역점 실구매 단가로, 판매처 사정에 따라 달라질 수 있습니다.</li>
             <li>· 주문 후 입금 계좌를 안내해 드리며, 입금 확인 후 출고됩니다.</li>
           </ul>
         </section>
       </section>
 
       <CartBar onOpen={() => setSheetOpen(true)} />
-      <OrderSheet onClose={() => setSheetOpen(false)} open={sheetOpen} />
+      <OrderSheet
+        initialStoreCode={sheetStoreCode}
+        notice={sheetNotice}
+        onClose={() => {
+          setSheetOpen(false);
+          setSheetNotice(null);
+        }}
+        open={sheetOpen}
+      />
     </>
+  );
+}
+
+function ReorderBanner({
+  lastOrder,
+  onReorder,
+  recentStore,
+}: {
+  lastOrder: LastOrder | null;
+  onReorder: () => void;
+  recentStore: { code: string; label: string } | null;
+}) {
+  if (!lastOrder) {
+    return (
+      <article className="mt-1 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-dashed border-[var(--ls-line-strong)] bg-white px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-[10.5px] font-semibold tracking-[0.16em] text-[var(--ls-green-ink)]">
+            QUICK REORDER
+          </p>
+          <p className="mt-1 break-keep text-[13px] font-semibold text-[#0F1412]">
+            한 번 발주한 구성은 그대로 다시 담을 수 있어요
+          </p>
+          <p className="mt-0.5 break-keep text-[11px] leading-[1.6] text-[var(--ls-muted)]">
+            내 발주 내역에서 <strong className="font-semibold text-[#0F1412]">다시 담기</strong>를 누르면
+            품목·수량이 한 번에 장바구니로 들어옵니다.
+          </p>
+        </div>
+        <Link
+          className="ls-focus flex h-9 shrink-0 items-center rounded-full bg-[#0F1412] px-4 text-[11.5px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F]"
+          href="/orders"
+        >
+          지난 발주 불러오기
+        </Link>
+      </article>
+    );
+  }
+
+  const preview = lastOrder.items.slice(0, 3);
+  const restCount = lastOrder.items.length - preview.length;
+
+  return (
+    <article className="relative mt-1 overflow-hidden rounded-[18px] bg-[#0F1412] p-4 text-white">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-16 -top-16 size-[220px] rounded-full bg-[radial-gradient(closest-side,rgba(29,255,38,0.16),rgba(29,255,38,0))]"
+      />
+      <div className="relative flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold tracking-[0.16em] text-[#7CE785]">
+              QUICK REORDER
+            </span>
+            <span className="rounded-full border border-[#2C3730] px-2 py-[2px] text-[9.5px] text-[#A9B4AC]">
+              {formatOrderDay(lastOrder.createdAt)} 발주
+            </span>
+            {lastOrder.storeName ?? recentStore ? (
+              <span className="rounded-full bg-[#16231A] px-2 py-[2px] text-[9.5px] text-[#7CE785]">
+                {lastOrder.storeName ?? recentStore?.label}
+              </span>
+            ) : null}
+          </div>
+
+          <h2 className="mt-1.5 break-keep text-[17px] font-semibold tracking-[-0.03em] text-white">
+            직전 발주 그대로 담기
+          </h2>
+          <p className="mt-0.5 text-[11.5px] tabular-nums text-[#A9B4AC]">
+            {lastOrder.items.length}종 {lastOrder.count}개 · {formatPrice(lastOrder.totalAmount)} ·{" "}
+            <span className="text-[#7C867E]">{lastOrder.orderNumber}</span>
+          </p>
+
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {preview.map((item) => {
+              const product = getProductById(item.id);
+              if (!product) return null;
+
+              return (
+                <span
+                  className="max-w-[190px] truncate rounded-full border border-[#2C3730] px-2 py-[3px] text-[10.5px] text-[#C8D0CA]"
+                  key={item.id}
+                >
+                  {product.name} ×{item.quantity}
+                </span>
+              );
+            })}
+            {restCount > 0 ? (
+              <span className="rounded-full border border-[#2C3730] px-2 py-[3px] text-[10.5px] text-[#7C867E]">
+                +{restCount}종
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-col items-stretch gap-1.5">
+          <button
+            className="ls-focus h-10 rounded-[12px] bg-[#1DFF26] px-4 text-[12.5px] font-semibold text-[#0F1412] transition-colors hover:bg-[#0FE01B]"
+            onClick={onReorder}
+            type="button"
+          >
+            그대로 담기
+          </button>
+          <Link
+            className="ls-focus flex h-8 items-center justify-center rounded-[12px] border border-[#2C3730] px-3 text-[11px] font-medium text-[#C8D0CA] transition-colors hover:border-[#1DFF26] hover:text-white"
+            href="/orders"
+          >
+            발주 내역
+          </Link>
+        </div>
+      </div>
+    </article>
   );
 }
 
