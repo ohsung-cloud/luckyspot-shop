@@ -6,6 +6,7 @@ import {
   createOrderSheetPayload,
   generateOrderId,
 } from "@/features/order/utils";
+import { resolveOrderStore, saveShopOrder } from "@/features/order/supabase";
 
 export const runtime = "nodejs";
 
@@ -185,6 +186,29 @@ export async function POST(request: Request) {
       { error: "주문 접수 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요." },
       { status: 502 },
     );
+  }
+
+  // 구글시트 전달이 끝난 주문을 Supabase에도 남긴다.
+  // 실패해도 주문 접수(시트·웹훅·응답)는 그대로 유지하고 로그만 남긴다.
+  const store = resolveOrderStore(shippingOption);
+  const persistence = await saveShopOrder({
+    address: payload.address,
+    createdAt: payload.created_at,
+    fulfillmentType: payload.fulfillment_type,
+    items: orderLines,
+    itemText: payload.item_text,
+    orderNumber: payload.order_id,
+    pickupLocation: payload.pickup_location,
+    requesterName: payload.name,
+    requesterPhone: payload.phone,
+    shippingOption,
+    storeCode: store.storeCode,
+    storeName: store.storeName,
+    totalAmount: payload.total_price,
+  });
+
+  if (persistence.saved) {
+    console.log(`[orders] shop_orders 적재 완료 order=${payload.order_id} id=${persistence.id}`);
   }
 
   return NextResponse.json({
