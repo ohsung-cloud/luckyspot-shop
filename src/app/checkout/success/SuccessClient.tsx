@@ -6,7 +6,12 @@ import Link from "next/link";
 import { formatPrice, getProductById, splitVat } from "@/data/products";
 import { ORDER_SUPPORT_PHONE } from "@/features/order/utils";
 import { bankName, formatDepositDue } from "@/features/payments/banks";
-import { clearPaymentIntent, readPaymentIntent } from "@/features/payments/intent-storage";
+import {
+  clearPaymentIntent,
+  readPaymentIntent,
+  readPaymentResult,
+  savePaymentResult,
+} from "@/features/payments/intent-storage";
 import { writeLastOrder, writeRecentStore } from "@/features/shop/preferences";
 import { useCartStore } from "@/stores/cartStore";
 
@@ -74,6 +79,14 @@ export default function SuccessClient({
       return;
     }
 
+    // 성공 화면을 새로고침한 경우 — 같은 결과를 그대로 다시 보여준다.
+    const cached = readPaymentResult(orderId);
+
+    if (cached) {
+      setState({ kind: "done", result: cached as unknown as ConfirmResult });
+      return;
+    }
+
     const intent = readPaymentIntent(orderId);
 
     if (!intent) {
@@ -118,6 +131,7 @@ export default function SuccessClient({
 
       clearItems();
       clearPaymentIntent(orderId);
+      savePaymentResult(orderId, payload as unknown as Record<string, unknown> & { orderId: string });
 
       writeLastOrder({
         count: payload.count,

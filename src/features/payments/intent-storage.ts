@@ -100,6 +100,52 @@ export function readPaymentIntent(orderId: string | null | undefined): StoredPay
   return map[orderId] ?? null;
 }
 
+/* 결제 결과 캐시 — 성공 화면을 새로고침해도 같은 결과를 보여준다(승인 API를 다시 부르지 않는다). */
+const RESULT_KEY = "ls_payment_result_v1";
+
+export type StoredPaymentResult = Record<string, unknown> & { orderId: string };
+
+function readResultMap(): Record<string, { at: string; value: StoredPaymentResult }> {
+  if (!hasStorage()) return {};
+
+  try {
+    const raw = window.localStorage.getItem(RESULT_KEY);
+    if (!raw) return {};
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+    return parsed as Record<string, { at: string; value: StoredPaymentResult }>;
+  } catch {
+    return {};
+  }
+}
+
+export function savePaymentResult(orderId: string, value: StoredPaymentResult) {
+  if (!hasStorage()) return;
+
+  const map = readResultMap();
+  const cutoff = Date.now() - 6 * 60 * 60 * 1000;
+
+  for (const [key, entry] of Object.entries(map)) {
+    if (!entry || !(new Date(entry.at).getTime() > cutoff)) delete map[key];
+  }
+
+  map[orderId] = { at: new Date().toISOString(), value };
+
+  try {
+    window.localStorage.setItem(RESULT_KEY, JSON.stringify(Object.fromEntries(Object.entries(map).slice(-5))));
+  } catch {
+    // 저장 공간이 없으면 새로고침 때 승인 API로 다시 확인한다(멱등).
+  }
+}
+
+export function readPaymentResult(orderId: string | null | undefined): StoredPaymentResult | null {
+  if (!orderId) return null;
+
+  return readResultMap()[orderId]?.value ?? null;
+}
+
 export function clearPaymentIntent(orderId: string | null | undefined) {
   if (!orderId) return;
 
