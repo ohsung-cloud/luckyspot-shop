@@ -24,6 +24,7 @@ type LookupOrder = {
   /** 발주 당시 품목 종류 수 */
   lineCount: number;
   orderNumber: string;
+  payment?: { method: string | null; status: string | null; test: boolean } | null;
   status: OrderStatus;
   totalAmount: number;
 };
@@ -329,6 +330,14 @@ export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }
                         {ORDER_STATUS_LABELS[order.status]}
                       </span>
                     </div>
+
+                    {order.payment ? (
+                      <p className="mt-1.5 inline-flex rounded-full border border-[#9BD3B2] bg-[#EAF8EF] px-2 py-[3px] text-[10.5px] font-semibold text-[#0B5C2A]">
+                        {`결제완료${order.payment.method ? ` · ${order.payment.method}` : ""}${
+                          order.payment.test ? " · 테스트" : ""
+                        }`}
+                      </p>
+                    ) : null}
 
                     <p className="mt-1 text-[11px] tabular-nums text-[var(--ls-muted)]">
                       {formatOrderTime(order.createdAt)}

@@ -21,11 +21,22 @@ import { isOrderStatus, type OrderStatus } from "@/features/admin/status";
 
 export { isOrderStatus };
 export type { OrderStatus };
+/**
+ * 결제 기록 — 결제 컬럼(payment_key 등)이 아직 없는 DB 에서는 서버가 memo(JSON)에 남긴다.
+ * 두 경우 모두 화면에 같은 정보를 보여주기 위해 여기로 모은다.
+ */
+export type AdminOrderPayment = {
+  method: string | null;
+  status: string | null;
+  test: boolean;
+};
+
 export type AdminOrder = {
   createdAt: string;
   id: string;
   itemText: string | null;
   orderNumber: string;
+  payment: AdminOrderPayment | null;
   requesterName: string | null;
   requesterPhone: string | null;
   status: OrderStatus;
@@ -49,6 +60,8 @@ export type LookupOrder = {
   createdAt: string;
   itemText: string | null;
   orderNumber: string;
+  /** 결제 기록(있을 때만) — 결제완료 표시에 쓴다 */
+  payment: AdminOrderPayment | null;
   status: OrderStatus;
   totalAmount: number;
   /** 원클릭 재주문 — 지금 카탈로그로 다시 담을 수 있는 구성 */
@@ -83,6 +96,7 @@ type OrderRow = {
   id?: string | null;
   items?: unknown;
   item_text?: string | null;
+  memo?: string | null;
   order_number?: string | null;
   requester_name?: string | null;
   requester_phone?: string | null;
@@ -94,6 +108,7 @@ type OrderRow = {
 
 /** v1 컬럼만: 여기에 없는 컬럼을 추가하면 스키마가 없는 환경에서 400 이 난다. */
 const ADMIN_SELECT_COLUMNS = "id,order_number,store_name,store_code,requester_name,requester_phone,item_text,total_amount,status,created_at";
+const ADMIN_SELECT_COLUMNS_WITH_MEMO = `${ADMIN_SELECT_COLUMNS},memo`;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -103,6 +118,26 @@ export function isOrderId(value: unknown): value is string {
 
 function toStatus(value: string | null | undefined): OrderStatus {
   return isOrderStatus(value) ? value : "pending";
+}
+
+/** memo 에 남긴 결제 기록(JSON)을 읽는다. 결제와 무관한 memo 는 null. */
+function toPayment(memo: string | null | undefined): AdminOrderPayment | null {
+  if (!memo) return null;
+
+  try {
+    const parsed = JSON.parse(memo) as { payment?: Record<string, unknown> } | null;
+    const payment = parsed?.payment;
+
+    if (!payment || typeof payment !== "object") return null;
+
+    return {
+      method: typeof payment.method === "string" ? payment.method : null,
+      status: typeof payment.status === "string" ? payment.status : null,
+      test: payment.test === true,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function toAdminOrder(row: OrderRow): AdminOrder | null {
@@ -116,6 +151,7 @@ function toAdminOrder(row: OrderRow): AdminOrder | null {
     id,
     itemText: row.item_text?.trim() || null,
     orderNumber,
+    payment: toPayment(row.memo),
     requesterName: row.requester_name?.trim() || null,
     requesterPhone: row.requester_phone?.trim() || null,
     status: toStatus(row.status),
@@ -182,6 +218,7 @@ function toLookupOrder(row: OrderRow): LookupOrder | null {
     createdAt: row.created_at ?? new Date(0).toISOString(),
     itemText: row.item_text?.trim() || null,
     orderNumber,
+    payment: toPayment(row.memo),
     status: toStatus(row.status),
     totalAmount: Number.isFinite(row.total_amount) ? Number(row.total_amount) : 0,
     items: reorder.items,
@@ -254,8 +291,16 @@ export async function listAdminOrders(options?: {
 }): Promise<AdminOrderListResult> {
   const limit = Math.min(300, Math.max(1, options?.limit ?? 200));
   const statusFilter = options?.status ? `&status=eq.${options.status}` : "";
-  const query = `shop_orders?select=${ADMIN_SELECT_COLUMNS}&order=created_at.desc&limit=${limit}${statusFilter}`;
-  const result = await requestOrders(query);
+  const query = `shop_orders?select=${ADMIN_SELECT_COLUMNS_WITH_MEMO}&order=created_at.desc&limit=${limit}${statusFilter}`;
+  let result = await requestOrders(query);
+
+  // memo 컬럼이 없는 아주 오래된 스키마면 결제 기록 없이 읽는다.
+  if (!result.ok && result.failure.reason === "request_failed") {
+    console.warn("[admin] memo 컬럼을 읽지 못해 결제 기록 없이 발주 목록을 읽습니다.");
+    result = await requestOrders(
+      `shop_orders?select=${ADMIN_SELECT_COLUMNS}&order=created_at.desc&limit=${limit}${statusFilter}`,
+    );
+  }
 
   if (!result.ok) return result.failure;
 
@@ -316,7 +361,7 @@ export async function lookupStoreOrders(input: {
   const since = new Date(Date.now() - LOOKUP_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const storeFilter = `store_code=eq.${encodeURIComponent(input.storeCode)}`;
   // items 는 v1 스키마 컬럼이다 — 점주가 "이 구성 그대로" 다시 담는 데 쓴다.
-  const select = "order_number,item_text,items,total_amount,status,created_at";
+  const select = "order_number,item_text,items,total_amount,status,created_at,memo";
 
   if (input.orderNumber) {
     const query = `shop_orders?select=${select}&${storeFilter}&order_number=eq.${encodeURIComponent(input.orderNumber)}&limit=1`;
