@@ -331,7 +331,7 @@ export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }
                       </span>
                     </div>
 
-                    {order.payment ? (
+                    {order.payment && order.status === "pending" ? (
                       <p className="mt-1.5 inline-flex rounded-full border border-[#9BD3B2] bg-[#EAF8EF] px-2 py-[3px] text-[10.5px] font-semibold text-[#0B5C2A]">
                         {`결제완료${order.payment.method ? ` · ${order.payment.method}` : ""}${
                           order.payment.test ? " · 테스트" : ""

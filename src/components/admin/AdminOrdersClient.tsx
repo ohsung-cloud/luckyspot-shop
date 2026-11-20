@@ -321,7 +321,7 @@ export default function AdminOrdersClient({
                       <span className="font-mono text-[12.5px] font-semibold text-[#0F1412]">
                         {order.orderNumber}
                       </span>
-                      {order.payment ? (
+                      {order.payment && order.status === "pending" ? (
                         <span className="rounded-full border border-[#9BD3B2] bg-[#EAF8EF] px-2 py-[3px] text-[10.5px] font-semibold text-[#0B5C2A]">
                           {`결제완료${order.payment.method ? ` · ${order.payment.method}` : ""}${
                             order.payment.test ? " · 테스트" : ""
