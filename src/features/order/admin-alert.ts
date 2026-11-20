@@ -208,7 +208,7 @@ async function sendAlimtalk(payload: AdminAlertPayload): Promise<{ ok: boolean; 
       message: {
         to,
         from: config.sender,
-        text: subjectFor(payload),
+        // 알림톡은 템플릿 본문대로만 발송된다. text를 함께 보내면 1043(내용 불일치)이 난다.
         kakaoOptions: {
           pfId: config.pfId,
           templateId,

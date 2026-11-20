@@ -168,8 +168,9 @@ export async function sendOrderNotification(input: OrderNotifyInput): Promise<Or
         message: {
           from: config.sender,
           to,
-          text: fullText,
-          ...(kakaoOptions ? { kakaoOptions } : { type, ...(type === "LMS" ? { subject: "[럭키스팟] 발주 접수" } : {}) }),
+          // 알림톡은 템플릿 본문이 정해져 있어 text를 보내면 1043(내용 불일치)이 난다.
+          ...(kakaoOptions ? {} : { text: fullText, type, ...(type === "LMS" ? { subject: "[럭키스팟] 발주 접수" } : {}) }),
+          ...(kakaoOptions ? { kakaoOptions } : {}),
         },
       }),
       cache: "no-store",
