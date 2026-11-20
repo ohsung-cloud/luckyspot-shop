@@ -22,6 +22,78 @@ type CartState = {
 
 const MAX_QUANTITY = 999;
 
+/**
+ * 장바구니는 브라우저에 남긴다.
+ * 토스 결제창은 successUrl/failUrl 로 페이지를 이동시키므로, 이동해도 담은 품목이
+ * 그대로 있어야 결제 실패 후 다시 시도할 수 있다. 남기는 값은 품목 id·수량뿐이다.
+ */
+const CART_STORAGE_KEY = "ls_cart_v1";
+let persistenceInstalled = false;
+
+function readStoredLines(): CartLine[] {
+  if (typeof window === "undefined" || typeof window.localStorage === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+
+    const merged = new Map<string, number>();
+
+    for (const value of parsed.slice(0, 300)) {
+      if (!value || typeof value !== "object") continue;
+
+      const candidate = value as { id?: unknown; quantity?: unknown };
+      const id = typeof candidate.id === "string" ? candidate.id : "";
+      const quantity = Number(candidate.quantity);
+
+      if (!id || !getProductById(id) || !Number.isFinite(quantity) || quantity < 1) continue;
+
+      merged.set(id, Math.min(MAX_QUANTITY, (merged.get(id) ?? 0) + Math.round(quantity)));
+    }
+
+    return Array.from(merged, ([id, quantity]) => ({ id, quantity }));
+  } catch {
+    return [];
+  }
+}
+
+function writeLines(lines: CartLine[]) {
+  if (typeof window === "undefined" || typeof window.localStorage === "undefined") return;
+
+  try {
+    if (!lines.length) {
+      window.localStorage.removeItem(CART_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(lines));
+  } catch {
+    // 저장 공간이 없으면 이번 방문 동안만 유지한다.
+  }
+}
+
+/**
+ * 저장된 장바구니를 한 번 불러오고, 이후 변화를 계속 저장한다.
+ * (결제창에서 돌아왔을 때 품목이 살아 있게 하는 장치)
+ */
+export function hydrateCart() {
+  if (typeof window === "undefined") return;
+
+  if (!persistenceInstalled) {
+    persistenceInstalled = true;
+    useCartStore.subscribe((state) => writeLines(state.lines));
+  }
+
+  if (useCartStore.getState().lines.length > 0) return;
+
+  const stored = readStoredLines();
+
+  if (stored.length) useCartStore.setState({ lines: stored });
+}
+
 export const useCartStore = create<CartState>((set) => ({
   lines: [],
 

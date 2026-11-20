@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import ShopApp from "@/components/shop/ShopApp";
 import { formatPrice, shopCategories } from "@/data/products";
 import { ORDER_SUPPORT_PHONE } from "@/features/order/utils";
+import { isTossTestMode } from "@/features/payments/keys";
 
 export const metadata: Metadata = {
   title: "점주 발주 | 럭키스팟",
@@ -16,6 +17,9 @@ const productCount = shopCategories.reduce(
 );
 
 export default function HomePage() {
+  // 토스페이먼츠 실키가 설정되기 전에는 테스트 결제 모드다 — 화면 상단에 분명히 알린다.
+  const testMode = isTossTestMode();
+
   return (
     <main className="min-h-screen bg-[#F4F5F6]">
       <header className="bg-[#0F1412]">
@@ -75,6 +79,12 @@ export default function HomePage() {
             <br className="sm:hidden" /> <span className="text-[#1DFF26]">정확한 단가</span>로
             발주하세요
           </h1>
+          {testMode ? (
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#E5C86A]/50 bg-[#FFF7DD]/10 px-2.5 py-1 text-[10.5px] font-semibold text-[#FFE08A]">
+              <span aria-hidden className="size-1.5 rounded-full bg-[#FFE08A]" />
+              테스트 결제 모드 · 실제 금액이 청구되지 않습니다
+            </p>
+          ) : null}
           <p className="mt-3 max-w-[560px] break-keep text-[13px] leading-[1.65] text-[#A9B4AC] sm:text-[14px]">
             원두·파우더·시럽부터 컵·부자재·가구·식물까지 한 화면에 모았습니다. 모든 금액은
             부가세 포함이고, 수량을 담으면 합계가 바로 계산됩니다.
@@ -101,7 +111,7 @@ export default function HomePage() {
       </section>
 
       <div className="shop-content">
-        <ShopApp />
+        <ShopApp testMode={testMode} />
 
         <footer className="mx-auto mt-8 w-full max-w-[1200px] px-4 pb-6 sm:px-6">
           <div className="border-t border-[var(--ls-line)] pt-4 text-[10.5px] leading-[1.7] text-[var(--ls-muted)]">

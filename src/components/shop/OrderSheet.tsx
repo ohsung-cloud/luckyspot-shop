@@ -21,6 +21,8 @@ import {
   writeLastOrder,
   writeRecentStore,
 } from "@/features/shop/preferences";
+import { savePaymentIntent } from "@/features/payments/intent-storage";
+import { openTossPaymentWindow } from "@/features/payments/sdk";
 import type { StoreOption } from "@/features/stores/types";
 import { cartCount, cartTotal, resolveCart, useCartStore } from "@/stores/cartStore";
 import QuantityStepper from "./QuantityStepper";
@@ -45,6 +47,7 @@ export default function OrderSheet({
   onClose,
   initialStoreCode,
   notice,
+  testMode = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -52,6 +55,8 @@ export default function OrderSheet({
   initialStoreCode?: string | null;
   /** 시트 상단에 보여줄 안내(예: 지난 발주를 그대로 담았어요) */
   notice?: string | null;
+  /** 토스페이먼츠 테스트 키로 동작 중인지 — 화면 상단에 배지로 알린다 */
+  testMode?: boolean;
 }) {
   const router = useRouter();
   const lines = useCartStore((state) => state.lines);
@@ -72,6 +77,7 @@ export default function OrderSheet({
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [agreed, setAgreed] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scale, setScale] = useState<StoreScale>(DEFAULT_STORE_SCALE);
 
@@ -83,7 +89,8 @@ export default function OrderSheet({
     entries.length > 0 &&
     (isDirect ? directComplete : Boolean(selectedStore)) &&
     agreed &&
-    !submitting;
+    !submitting &&
+    !preparing;
 
   // 담은 소모품이 가장 빨리 떨어지는 품목 기준 "며칠 버티는지"
   const coverage = shortestCoverage(
@@ -120,6 +127,7 @@ export default function OrderSheet({
     if (!open) {
       setErrorMessage(null);
       setSubmitting(false);
+      setPreparing(false);
       return;
     }
 
@@ -157,7 +165,117 @@ export default function OrderSheet({
 
   if (!open) return null;
 
-  const handleSubmit = async () => {
+  /**
+   * 온라인 결제 — 서버가 금액을 확정한 뒤 토스 결제창으로 이동한다.
+   * 성공하면 /checkout/success 에서 서버 승인(confirm)까지 마쳐야 발주가 완료된다.
+   */
+  const handlePay = async () => {
+    if (!canSubmit) return;
+
+    setPreparing(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/payments/prepare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: lines.map((line) => ({ id: line.id, quantity: line.quantity })),
+          ...(isDirect
+            ? {
+                address: deliveryAddress.trim(),
+                name: customerName.trim(),
+                phone,
+                shippingOption: DIRECT_SHIPPING_LABEL,
+              }
+            : { storeCode: selectedStore?.code }),
+        }),
+      });
+
+      const prepared = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        amount?: number;
+        clientKey?: string;
+        items?: { id: string; quantity: number }[];
+        orderId?: string;
+        orderName?: string;
+        testMode?: boolean;
+        token?: string;
+      };
+
+      if (!response.ok || prepared.ok !== true) {
+        throw new Error(prepared.error ?? "결제를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+
+      if (!prepared.orderId || !prepared.token || !prepared.clientKey || !prepared.amount) {
+        throw new Error("결제 준비 응답이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.");
+      }
+
+      const recipient = isDirect
+        ? {
+            address: deliveryAddress.trim(),
+            name: customerName.trim(),
+            phone,
+            shippingOption: DIRECT_SHIPPING_LABEL,
+            storeCode: null,
+            storeName: null,
+          }
+        : {
+            address: selectedStore?.address ?? "",
+            name: selectedStore?.label ?? "",
+            phone: "",
+            shippingOption: selectedStore?.label ?? "",
+            storeCode: selectedStore?.code ?? null,
+            storeName: selectedStore?.label ?? null,
+          };
+
+      // 결제창에서 돌아온 뒤 서버에 그대로 넘길 값 — 페이지가 이동해도 남도록 브라우저에 둔다.
+      savePaymentIntent({
+        amount: prepared.amount,
+        createdAt: new Date().toISOString(),
+        items: prepared.items ?? lines.map((line) => ({ id: line.id, quantity: line.quantity })),
+        method: "toss_window",
+        orderId: prepared.orderId,
+        orderName: prepared.orderName ?? "럭키스팟 발주",
+        recipient,
+        storeName: selectedStore?.label ?? null,
+        token: prepared.token,
+      });
+
+      // 토스 결제창 — 카드·계좌이체·가상계좌·간편결제를 이 창에서 고른다.
+      await openTossPaymentWindow({
+        amount: prepared.amount,
+        clientKey: prepared.clientKey,
+        ...(recipient.name ? { customerName: recipient.name } : {}),
+        ...(phone ? { customerMobilePhone: phone } : {}),
+        failUrl: `${window.location.origin}/checkout/fail`,
+        onCancel: () => setPreparing(false),
+        orderId: prepared.orderId,
+        orderName: prepared.orderName ?? "럭키스팟 발주",
+        successUrl: `${window.location.origin}/checkout/success`,
+      });
+
+      // 결제창이 열렸다. 결제를 마치면 successUrl/failUrl 로 이동한다.
+      setPreparing(false);
+    } catch (error) {
+      const code = (error as { code?: string } | null)?.code;
+
+      setErrorMessage(
+        code === "USER_CANCEL"
+          ? "결제를 취소하셨습니다. 다시 결제해 주세요."
+          : code === "sdk_load_failed" || code === "sdk_not_ready"
+            ? "결제 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요."
+            : error instanceof Error
+              ? error.message
+              : "결제를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+      setPreparing(false);
+    }
+  };
+
+  /** 온라인 결제 없이 기존처럼 계좌 입금으로 발주한다(본사 입금 확인 후 출고). */
+  const handleBankTransfer = async () => {
     if (!canSubmit) return;
 
     setSubmitting(true);
@@ -426,6 +544,42 @@ export default function OrderSheet({
             ) : null}
           </section>
 
+          <section className="px-5 pt-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[13px] font-semibold text-[#0F1412]">결제 수단</h3>
+              <span className="text-[10.5px] text-[var(--ls-muted)]">토스페이먼츠</span>
+            </div>
+
+            {testMode ? (
+              <p className="mt-2 rounded-[10px] border border-[#E5C86A] bg-[#FFF9E4] px-3 py-2 text-[11px] leading-[1.55] text-[#7A5A00]">
+                <strong className="font-semibold">테스트 결제 모드</strong> — 실제 금액이 청구되지
+                않습니다. 결제 흐름만 확인해 주세요.
+              </p>
+            ) : null}
+
+            <div className="mt-2 rounded-[12px] border border-[var(--ls-line-strong)] bg-white px-3.5 py-3">
+              <div className="flex flex-wrap gap-1.5">
+                {["카드", "계좌이체", "가상계좌(무통장입금)", "간편결제"].map((label) => (
+                  <span
+                    className="rounded-full bg-[#F4F5F6] px-2.5 py-[3px] text-[10.5px] font-medium text-[#3B4740]"
+                    key={label}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] leading-[1.55] text-[var(--ls-muted)]">
+                결제하기를 누르면 토스페이먼츠 결제창이 열립니다. 결제수단은 그 창에서 고르면
+                됩니다.
+              </p>
+            </div>
+
+            <p className="mt-2 text-[10.5px] leading-[1.55] text-[var(--ls-muted)]">
+              카드·계좌이체는 결제 즉시 완료되고, 가상계좌는 발급된 계좌로 입금하면 확인 후
+              출고됩니다.
+            </p>
+          </section>
+
           <section className="px-5 pb-5 pt-4">
             <label className="flex items-start gap-2">
               <input
@@ -469,21 +623,29 @@ export default function OrderSheet({
             </p>
           </div>
           <button
-            className="ls-focus mt-2 flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[15.5px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#8A948D]"
+            className="ls-focus mt-2 flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[15px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#8A948D]"
             disabled={!canSubmit}
-            onClick={handleSubmit}
+            onClick={handlePay}
             type="button"
           >
-            {submitting ? "주문 접수 중..." : "주문하기"}
+            {preparing ? "결제창 여는 중..." : `결제하기 · ${formatPrice(total)}`}
+          </button>
+          <button
+            className="ls-focus mt-1.5 flex h-[42px] w-full items-center justify-center rounded-[12px] text-[11.5px] font-medium text-[var(--ls-muted)] underline decoration-[var(--ls-line-strong)] underline-offset-2 transition-colors hover:text-[#0F1412] disabled:opacity-50"
+            disabled={!canSubmit}
+            onClick={handleBankTransfer}
+            type="button"
+          >
+            {submitting ? "주문 접수 중..." : "계좌 입금으로 발주하기 (입금 안내)"}
           </button>
           <p className="mt-1.5 text-center text-[10.5px] leading-[1.5] text-[var(--ls-muted)]">
             {!isDirect && !selectedStore
-              ? "받는 곳을 선택하면 주문할 수 있어요."
+              ? "받는 곳을 선택하면 결제할 수 있어요."
               : isDirect && !directComplete
                 ? "주문자 성함·연락처·주소를 모두 입력해 주세요."
                 : !agreed
-                  ? "개인정보 수집에 동의하면 주문할 수 있어요."
-                  : "주문 후 입금 계좌를 안내해 드려요. 입금이 확인되면 출고됩니다."}
+                  ? "개인정보 수집에 동의하면 결제할 수 있어요."
+                  : "결제가 완료되면 발주가 접수되고 본사에서 확인합니다."}
           </p>
         </footer>
       </div>

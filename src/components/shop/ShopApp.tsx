@@ -31,7 +31,7 @@ import {
   writeStoreScale,
   type LastOrder,
 } from "@/features/shop/preferences";
-import { useCartStore, type CartLine } from "@/stores/cartStore";
+import { useCartStore, type CartLine, hydrateCart } from "@/stores/cartStore";
 import CartBar from "./CartBar";
 import OrderSheet from "./OrderSheet";
 import ProductCard from "./ProductCard";
@@ -52,7 +52,7 @@ function formatOrderDay(iso: string) {
   return dateFormatter.format(date);
 }
 
-export default function ShopApp() {
+export default function ShopApp({ testMode = false }: { testMode?: boolean }) {
   const toast = useToast();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -75,6 +75,9 @@ export default function ShopApp() {
 
   // 브라우저에 남은 기억(규모·직전 발주·최근 지점)과 /orders 에서 넘어온 구성을 읽는다.
   useEffect(() => {
+    // 결제창에서 돌아왔을 때도 담은 품목이 그대로 있도록 먼저 복원한다.
+    hydrateCart();
+
     setScale(readStoreScale());
     setLastOrder(readLastOrder());
     setRecentStore(readRecentStore());
@@ -514,6 +517,7 @@ export default function ShopApp() {
           setSheetNotice(null);
         }}
         open={sheetOpen}
+        testMode={testMode}
       />
     </>
   );

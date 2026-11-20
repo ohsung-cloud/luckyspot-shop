@@ -32,7 +32,7 @@ function formatOrderTime(iso: string) {
 }
 
 function nextActionLabel(status: OrderStatus) {
-  if (status === "pending") return "승인";
+  if (status === "pending" || status === "paid" || status === "awaiting_deposit") return "승인";
   if (status === "confirmed") return "출고 완료";
   return null;
 }
@@ -60,7 +60,14 @@ export default function AdminOrdersClient({
   const [notice, setNotice] = React.useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   const counts = React.useMemo(() => {
-    const base: Record<OrderStatus, number> = { cancelled: 0, confirmed: 0, pending: 0, shipped: 0 };
+    const base: Record<OrderStatus, number> = {
+      awaiting_deposit: 0,
+      cancelled: 0,
+      confirmed: 0,
+      paid: 0,
+      pending: 0,
+      shipped: 0,
+    };
     orders.forEach((order) => {
       base[order.status] += 1;
     });
@@ -226,8 +233,17 @@ export default function AdminOrdersClient({
           </p>
         ) : null}
 
-        <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {(["pending", "confirmed", "shipped", "cancelled"] as const).map((status) => (
+        <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {(
+            [
+              "pending",
+              "paid",
+              "awaiting_deposit",
+              "confirmed",
+              "shipped",
+              "cancelled",
+            ] as const
+          ).map((status) => (
             <div
               className="rounded-[14px] border border-[var(--ls-line)] bg-white px-4 py-3"
               key={status}

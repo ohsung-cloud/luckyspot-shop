@@ -9,6 +9,7 @@ import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_STEPS,
   ORDER_STATUS_TONES,
+  orderStepIndex,
   type OrderStatus,
 } from "@/features/admin/status";
 import { savePendingReorder } from "@/features/shop/preferences";
@@ -53,7 +54,7 @@ function formatOrderTime(iso: string) {
 
 function stepIndex(status: OrderStatus) {
   if (status === "cancelled") return -1;
-  return ORDER_STATUS_STEPS.findIndex((step) => step.key === status);
+  return orderStepIndex(status);
 }
 
 export default function OrdersLookupClient({ stores }: { stores: StoreOption[] }) {
