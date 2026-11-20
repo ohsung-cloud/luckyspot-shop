@@ -11,6 +11,7 @@ import {
 import { resolveOrderRecipient } from "@/features/order/intake";
 import { relayOrderToGas } from "@/features/order/gas";
 import { queueAdminAlert } from "@/features/order/admin-alert";
+import { formatWon, queueHqBoardAlert } from "@/features/notifications/hq-board";
 import { queueOrderNotification } from "@/features/order/solapi";
 import {
   buildOrderLines,
@@ -303,6 +304,45 @@ export async function POST(request: Request) {
       orderNumber: orderId,
       requesterName: recipient.name,
       storeName: recipient.storeName,
+    });
+
+    // 본사 실시간 알림 보드(Notion · 디스코드/슬랙 웹훅).
+    //  · 카드·계좌이체로 돈이 실제로 빠져나간 건 → `결제완료`
+    //  · 가상계좌는 아직 입금 전 → `점주발주`(입금대기)로 남기고, 입금 확인은 후속 작업
+    //  · 테스트 결제는 이 블록에 오지 않는다(suppress) — 보드에 가짜 매출을 남기지 않는다
+    const virtualAccount = payment.virtualAccount;
+    const depositNote =
+      status === "awaiting_deposit"
+        ? [
+            "가상계좌 입금대기",
+            virtualAccount?.bankCode ? `은행코드 ${virtualAccount.bankCode}` : "",
+            virtualAccount?.accountNumber ? `계좌 ${virtualAccount.accountNumber}` : "",
+            virtualAccount?.dueDate ? `입금기한 ${virtualAccount.dueDate}` : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : null;
+
+    queueHqBoardAlert({
+      amount: serverTotal,
+      contact: recipient.phone || null,
+      detail: [
+        `주문번호 ${orderId}`,
+        orderSheet.item_text,
+        `결제 ${methodLabel}${keys.testMode ? " (테스트)" : ""}`,
+        depositNote,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      eventKey: `${status === "awaiting_deposit" ? "order" : "payment"}:${orderId}`,
+      kind: status === "awaiting_deposit" ? "점주발주" : "결제완료",
+      occurredAt: payment.approvedAt ? new Date(payment.approvedAt) : new Date(),
+      sourceUrl: payment.receipt?.url ?? null,
+      target: recipient.storeName ?? recipient.name,
+      title:
+        status === "awaiting_deposit"
+          ? `점주발주 · ${recipient.storeName ?? "개인 주문"} · ${formatWon(serverTotal)} (입금대기)`
+          : `결제완료 · ${recipient.storeName ?? "개인 주문"} · ${formatWon(serverTotal)}`,
     });
 
     if (orderSheet.phone) {

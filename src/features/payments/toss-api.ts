@@ -8,7 +8,13 @@
  * 시크릿 키는 Basic 인증( `{SECRET_KEY}:` 를 base64 )으로만 쓰고, 로그·응답에 남기지 않는다.
  */
 
-const TOSS_API_BASE = "https://api.tosspayments.com";
+/**
+ * 실제 결제 서버. 점검(로컬 통합 테스트)에서만 `TOSS_API_BASE_URL` 로 바꿔 끼운다.
+ * 값이 없으면 항상 실제 토스 서버로 간다 — 운영 동작은 그대로다.
+ */
+function tossApiBase() {
+  return (process.env.TOSS_API_BASE_URL ?? "").trim().replace(/\/+$/, "") || "https://api.tosspayments.com";
+}
 const REQUEST_TIMEOUT_MS = 10_000;
 
 export type TossPaymentStatus =
@@ -72,7 +78,7 @@ async function callToss(
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${TOSS_API_BASE}${path}`, {
+    const response = await fetch(`${tossApiBase()}${path}`, {
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       cache: "no-store",
       headers: {

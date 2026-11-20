@@ -7,6 +7,7 @@ import {
   generateOrderId,
 } from "@/features/order/utils";
 import { queueAdminAlert } from "@/features/order/admin-alert";
+import { formatWon, queueHqBoardAlert } from "@/features/notifications/hq-board";
 import { queueOrderNotification } from "@/features/order/solapi";
 import { saveShopOrder } from "@/features/order/supabase";
 import { resolveStoreByCode, resolveStoreByLabel } from "@/features/stores/directory";
@@ -310,6 +311,25 @@ export async function POST(request: Request) {
     orderNumber: payload.order_id,
     requesterName: payload.name,
     storeName: recipient.storeName,
+  });
+
+  // 본사 실시간 알림 보드(Notion · 디스코드/슬랙 웹훅)에도 같은 접수를 남긴다.
+  // 계좌 입금으로 접수한 발주라 상태는 `신규`(입금 확인 전)다. 실패해도 접수는 그대로.
+  queueHqBoardAlert({
+    amount: payload.total_price,
+    contact: recipient.phone || null,
+    detail: [
+      `주문번호 ${payload.order_id}`,
+      payload.item_text,
+      "계좌 입금으로 접수(토스 결제 아님)",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    eventKey: `order:${payload.order_id}`,
+    kind: "점주발주",
+    occurredAt: new Date(),
+    target: recipient.storeName ?? recipient.name,
+    title: `점주발주 · ${recipient.storeName ?? "개인 주문"} · ${formatWon(payload.total_price)}`,
   });
 
   // 주문자에게 완료 안내를 보낸다. 발송 실패·지연이 주문 접수 응답을 막지 않도록
