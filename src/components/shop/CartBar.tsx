@@ -12,6 +12,9 @@ export default function CartBar({ onOpen }: { onOpen: () => void }) {
   const total = cartTotal(entries);
   const isEmpty = count === 0;
 
+  // 빈 장바구니에는 띠를 띄우지 않는다 — 빠른 발주 버튼을 가리지 않고, 담을 것이 없다는 것도 이미 안다.
+  if (isEmpty) return null;
+
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 lg:px-5">
       <div className="pointer-events-auto mx-auto flex w-full max-w-[1120px] items-center justify-between gap-3 rounded-[18px] bg-[#0F1412] px-3.5 py-2.5 shadow-[0_18px_40px_-12px_rgba(15,20,18,0.55)]">
@@ -30,7 +33,7 @@ export default function CartBar({ onOpen }: { onOpen: () => void }) {
           onClick={onOpen}
           type="button"
         >
-          {isEmpty ? "품목을 담아주세요" : "주문하기"}
+          주문하기
         </button>
       </div>
     </div>
