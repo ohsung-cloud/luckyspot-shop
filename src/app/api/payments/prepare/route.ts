@@ -15,6 +15,7 @@ import {
   readItems,
   resolveOrderRecipient,
 } from "@/features/order/intake";
+import { readTaxInvoice } from "@/features/order/tax-invoice";
 import {
   buildOrderLines,
   calculateOrderTotalPrice,
@@ -31,8 +32,8 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/payments/prepare — 결제창을 띄우기 전 주문 확정 (서버 전용 계산)
  *
- *   요청: { items:[{id,quantity}], storeCode | (name·phone·address·shippingOption), method }
- *   응답: { orderId, amount, orderName, clientKey, testMode, token, items, count, storeName, vat }
+ *   요청: { items:[{id,quantity}], storeCode | (name·phone·address·shippingOption), method, taxInvoice }
+ *   응답: { orderId, amount, orderName, clientKey, testMode, token, items, count, storeName, vat, taxInvoice }
  *
  * 원칙
  *  - 금액은 클라이언트가 보낸 값이 아니라 카탈로그 단가로 서버가 계산한다.
@@ -108,6 +109,13 @@ export async function POST(request: Request) {
     return jsonError(resolved.message, resolved.status);
   }
 
+  // 세금계산서 발급 요청 — 결제창을 다녀온 뒤에도 같은 정보로 기록하도록 토큰에 함께 서명한다.
+  const tax = readTaxInvoice(parsed.data);
+
+  if (!tax.ok) {
+    return jsonError(tax.message, 400);
+  }
+
   const recipient = resolved.recipient;
   const orderId = generateOrderId();
   const createdAt = createOrderCreatedAt();
@@ -115,10 +123,11 @@ export async function POST(request: Request) {
     amount,
     items: orderLines.map((line) => ({ id: line.id, quantity: line.quantity })),
     orderId,
+    taxInvoice: tax.value,
   });
 
   console.log(
-    `[payments] 결제 준비 order=${orderId} amount=${amount} method=${methodRaw} test=${keys.testMode}`,
+    `[payments] 결제 준비 order=${orderId} amount=${amount} method=${methodRaw} tax=${tax.value.requested} test=${keys.testMode}`,
   );
 
   return NextResponse.json(
@@ -134,6 +143,7 @@ export async function POST(request: Request) {
       orderId,
       orderName: buildOrderName(orderLines),
       storeName: recipient.storeName,
+      taxInvoice: tax.value,
       testMode: keys.testMode,
       token,
       vat: splitVat(amount),

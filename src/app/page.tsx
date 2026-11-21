@@ -8,7 +8,7 @@ import { isTossTestMode } from "@/features/payments/keys";
 export const metadata: Metadata = {
   title: "점주 발주 | 럭키스팟",
   description:
-    "럭키스팟 점주 발주 페이지. 원두·파우더·시럽·컵·부자재·가구까지 2026년 11월 최신 단가로 한 번에 발주하세요.",
+    "럭키스팟 점주 발주 페이지. 원두는 3단계 빠른 발주로, 파우더·시럽·컵·부자재까지 2026년 11월 최신 단가로 한 번에 발주하고 세금계산서도 함께 신청하세요.",
 };
 
 const productCount = shopCategories.reduce(
@@ -86,8 +86,9 @@ export default function HomePage() {
             </p>
           ) : null}
           <p className="mt-3 max-w-[560px] break-keep text-[13px] leading-[1.65] text-[#A9B4AC] sm:text-[14px]">
-            원두·파우더·시럽부터 컵·부자재·가구·식물까지 한 화면에 모았습니다. 모든 금액은
-            부가세 포함이고, 수량을 담으면 합계가 바로 계산됩니다.
+            원두는 지점·수량·발주 확인 3단계로 끝내고, 파우더·시럽부터 컵·부자재·가구·식물까지
+            한 화면에 모았습니다. 모든 금액은 부가세 포함이고, 세금계산서 발급도 주문서에서 함께
+            신청할 수 있습니다.
           </p>
 
           <dl className="mt-5 grid grid-cols-3 gap-2 sm:max-w-[520px]">

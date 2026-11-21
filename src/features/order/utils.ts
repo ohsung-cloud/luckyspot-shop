@@ -1,4 +1,5 @@
 import { formatPrice, getProductById } from "@/data/products";
+import { formatBusinessNo, type TaxInvoiceRequest } from "@/features/tax-invoice";
 
 const ORDER_ID_RANDOM_DIGITS = 3;
 const ORDER_ID_SUFFIX_LENGTH = 1;
@@ -32,8 +33,15 @@ export type OrderRequestInput = {
   name: string;
   phone: string;
   shippingOption: string;
+  /** 세금계산서 발급 요청 — 없으면 발급 신청 안 함으로 본다 */
+  taxInvoice?: TaxInvoiceRequest;
 };
 
+/**
+ * 구글시트(order_requests)·Supabase 적재에 함께 넘기는 주문서.
+ * 세금계산서 필드는 시트 스크립트가 모르는 상태여도 무시되고, 스크립트를 새로 배포하면
+ * 그대로 열로 쌓인다(필수 필드 검증에 넣지 않았다).
+ */
 export type OrderSheetPayload = {
   address: string;
   created_at: string;
@@ -44,6 +52,14 @@ export type OrderSheetPayload = {
   order_id: string;
   phone: string;
   pickup_location: string;
+  tax_business_item: string;
+  tax_business_name: string;
+  tax_business_no: string;
+  tax_business_type: string;
+  tax_ceo_name: string;
+  tax_email: string;
+  tax_invoice_requested: boolean;
+  tax_invoice_text: string;
   total_price: number;
 };
 
@@ -160,6 +176,8 @@ export function createOrderSheetPayload(
   const orderId = options?.orderId ?? generateOrderId();
   const totalPrice = calculateOrderTotalPrice(input.items);
   const fulfillment = resolveFulfillmentFields(input.shippingOption);
+  const tax = input.taxInvoice;
+  const taxRequested = tax?.requested === true;
 
   return {
     address: input.address.trim(),
@@ -171,6 +189,23 @@ export function createOrderSheetPayload(
     order_id: orderId,
     phone: input.phone.trim(),
     pickup_location: fulfillment.pickupLocation,
+    tax_business_item: taxRequested ? tax?.businessItem?.trim() ?? "" : "",
+    tax_business_name: taxRequested ? tax?.businessName?.trim() ?? "" : "",
+    tax_business_no: taxRequested ? tax?.businessNo?.trim() ?? "" : "",
+    tax_business_type: taxRequested ? tax?.businessType?.trim() ?? "" : "",
+    tax_ceo_name: taxRequested ? tax?.ceoName?.trim() ?? "" : "",
+    tax_email: taxRequested ? tax?.email?.trim() ?? "" : "",
+    tax_invoice_requested: taxRequested,
+    tax_invoice_text: taxRequested
+      ? [
+          tax?.businessName?.trim() ?? "",
+          formatBusinessNo(tax?.businessNo ?? ""),
+          tax?.ceoName?.trim() ?? "",
+          tax?.email?.trim() ?? "",
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "",
     total_price: totalPrice,
   };
 }

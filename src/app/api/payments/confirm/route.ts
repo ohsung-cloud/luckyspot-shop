@@ -10,6 +10,7 @@ import {
 } from "@/features/http/guard";
 import { resolveOrderRecipient } from "@/features/order/intake";
 import { relayOrderToGas } from "@/features/order/gas";
+import { NO_TAX_INVOICE, validateTaxInvoice } from "@/features/tax-invoice";
 import { queueAdminAlert } from "@/features/order/admin-alert";
 import { formatWon, queueHqBoardAlert } from "@/features/notifications/hq-board";
 import { queueOrderNotification } from "@/features/order/solapi";
@@ -184,6 +185,19 @@ export async function POST(request: Request) {
 
   const recipient = resolved.recipient;
 
+  // 3-1) 세금계산서 발급 정보 — 결제 준비 때 서명한 값을 그대로 쓴다(브라우저 사본을 믿지 않는다).
+  const taxVerdict = validateTaxInvoice({
+    ...NO_TAX_INVOICE,
+    ...(claims.ti ?? {}),
+    requested: claims.ti?.requested === true,
+  });
+
+  if (!taxVerdict.ok) {
+    console.warn(`[payments] 서명된 세금계산서 정보가 올바르지 않아 미신청으로 처리 order=${orderId}: ${taxVerdict.message}`);
+  }
+
+  const taxInvoice = taxVerdict.ok ? taxVerdict.value : NO_TAX_INVOICE;
+
   // 4) 토스 승인
   let confirmed = await confirmTossPayment(
     { amount: serverTotal, orderId, paymentKey },
@@ -249,6 +263,7 @@ export async function POST(request: Request) {
       name: recipient.name,
       phone: recipient.phone,
       shippingOption: recipient.shippingOption,
+      taxInvoice,
     },
     { createdAt, orderId },
   );
@@ -272,6 +287,7 @@ export async function POST(request: Request) {
     status,
     storeCode: recipient.storeCode,
     storeName: recipient.storeName,
+    taxInvoice,
     testMode: keys.testMode,
     totalAmount: serverTotal,
     virtualAccount: payment.virtualAccount
@@ -304,6 +320,8 @@ export async function POST(request: Request) {
       orderNumber: orderId,
       requesterName: recipient.name,
       storeName: recipient.storeName,
+      taxInvoiceRequested: taxInvoice.requested,
+      taxInvoiceText: orderSheet.tax_invoice_text,
     });
 
     // 본사 실시간 알림 보드(Notion · 디스코드/슬랙 웹훅).
@@ -330,6 +348,7 @@ export async function POST(request: Request) {
         `주문번호 ${orderId}`,
         orderSheet.item_text,
         `결제 ${methodLabel}${keys.testMode ? " (테스트)" : ""}`,
+        taxInvoice.requested ? `세금계산서 발급 요청 — ${orderSheet.tax_invoice_text}` : "세금계산서 미신청",
         depositNote,
       ]
         .filter(Boolean)
@@ -370,6 +389,7 @@ export async function POST(request: Request) {
     saved: saved.saved,
     status,
     storeName: recipient.storeName,
+    taxInvoice,
     testMode: keys.testMode,
     virtualAccount: payment.virtualAccount
       ? {

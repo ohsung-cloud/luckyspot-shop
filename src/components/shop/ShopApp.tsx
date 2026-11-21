@@ -35,6 +35,7 @@ import { useCartStore, type CartLine, hydrateCart } from "@/stores/cartStore";
 import CartBar from "./CartBar";
 import OrderSheet from "./OrderSheet";
 import ProductCard from "./ProductCard";
+import QuickBeanOrder from "./QuickBeanOrder";
 
 type FilterKey = "all" | "essential" | string;
 
@@ -221,6 +222,9 @@ export default function ShopApp({ testMode = false }: { testMode?: boolean }) {
   return (
     <>
       <section className="mx-auto w-full max-w-[1200px] px-4 pt-5 sm:px-6" id="catalog">
+        {/* 원두가 발주의 대부분이라, 99품목을 찾지 않고 3단계로 끝나는 빠른 발주를 맨 위에 둔다. */}
+        <QuickBeanOrder onOpenCart={() => setSheetOpen(true)} testMode={testMode} />
+
         <ReorderBanner
           lastOrder={lastOrder}
           onReorder={handleReorderLast}
@@ -435,7 +439,7 @@ export default function ShopApp({ testMode = false }: { testMode?: boolean }) {
           </section>
         ) : null}
 
-        <section aria-labelledby="product-title" className="mt-6">
+        <section aria-labelledby="product-title" className="mt-6" id="all-products">
           <div className="flex items-end justify-between">
             <div>
               <h2

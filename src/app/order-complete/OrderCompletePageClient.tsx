@@ -11,6 +11,8 @@ import {
   ORDER_SUPPORT_PHONE,
   generateOrderId,
 } from "@/features/order/utils";
+import { readTaxReceipt } from "@/features/shop/tax-profile";
+import { formatBusinessNo, type TaxInvoiceRequest } from "@/features/tax-invoice";
 
 type OrderCompletePageClientProps = {
   orderId: string | null;
@@ -42,11 +44,17 @@ export function OrderCompletePageClient({
   const router = useRouter();
   const [fallbackOrderId] = React.useState(() => generateOrderId());
   const [copied, setCopied] = React.useState(false);
+  const [taxReceipt, setTaxReceipt] = React.useState<TaxInvoiceRequest | null>(null);
 
   const resolvedOrderId = orderId ?? fallbackOrderId;
   const amount = extractAmount(totalPrice);
   const count = extractCount(itemCount);
   const vat = splitVat(amount);
+
+  // 발급 신청 정보는 이 브라우저에만 남아 있다(서버로 다시 묻지 않는다).
+  React.useEffect(() => {
+    setTaxReceipt(readTaxReceipt(resolvedOrderId));
+  }, [resolvedOrderId]);
 
   const copyPayload = `${ORDER_BANK_NAME} ${ORDER_ACCOUNT_NUMBER} / ${formatPrice(amount)}`;
   const sharePayload = [
@@ -125,6 +133,16 @@ export function OrderCompletePageClient({
           <dl className="space-y-2.5">
             <Row label="주문번호" value={resolvedOrderId} />
             <Row label="품목" value={count > 0 ? `${count}개` : "-"} />
+            {taxReceipt ? (
+              <Row
+                label="세금계산서"
+                value={
+                  taxReceipt.requested
+                    ? `발급 신청 · ${taxReceipt.businessName} (${formatBusinessNo(taxReceipt.businessNo)})`
+                    : "발급 신청 안 함"
+                }
+              />
+            ) : null}
             <Row label="입금은행" value={ORDER_BANK_NAME} />
             <Row label="계좌번호" value={ORDER_ACCOUNT_NUMBER} />
           </dl>
@@ -179,6 +197,9 @@ export function OrderCompletePageClient({
           <li>· 입금자명이 주문자와 다르면 고객센터로 알려주세요.</li>
           <li>· 주문취소·변경은 {ORDER_SUPPORT_PHONE}로 연락해 주세요.</li>
           <li>· 배송 일정은 입금 확인 후 순차적으로 안내드려요.</li>
+          {taxReceipt?.requested ? (
+            <li>· 세금계산서는 입금 확인 후 신청한 사업자 정보로 발급되어 이메일로 발송됩니다.</li>
+          ) : null}
         </ul>
 
         <div className="mt-4 rounded-[14px] border border-[var(--ls-line)] bg-white px-4 py-3 text-center">

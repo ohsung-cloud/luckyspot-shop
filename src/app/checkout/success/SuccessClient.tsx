@@ -13,6 +13,8 @@ import {
   savePaymentResult,
 } from "@/features/payments/intent-storage";
 import { writeLastOrder, writeRecentStore } from "@/features/shop/preferences";
+import { saveTaxProfile, saveTaxReceipt } from "@/features/shop/tax-profile";
+import { formatBusinessNo, type TaxInvoiceRequest } from "@/features/tax-invoice";
 import { useCartStore } from "@/stores/cartStore";
 
 type ConfirmResult = {
@@ -28,6 +30,7 @@ type ConfirmResult = {
   receiptUrl: string | null;
   status: "paid" | "awaiting_deposit" | "pending";
   storeName: string | null;
+  taxInvoice: TaxInvoiceRequest | null;
   testMode: boolean;
   virtualAccount: {
     accountNumber: string | null;
@@ -132,6 +135,10 @@ export default function SuccessClient({
       clearItems();
       clearPaymentIntent(orderId);
       savePaymentResult(orderId, payload as unknown as Record<string, unknown> & { orderId: string });
+
+      // 세금계산서 발급 정보 — 다음 주문에 재사용하고, 이 화면이 발급 상태를 보여준다.
+      saveTaxProfile(intent.recipient.storeCode, payload.taxInvoice ?? null);
+      saveTaxReceipt(payload.orderId, payload.taxInvoice ?? null);
 
       writeLastOrder({
         count: payload.count,
@@ -322,6 +329,14 @@ export default function SuccessClient({
                 ) : null}
                 <Row label="결제수단" value={result.methodLabel} />
                 <Row label="주문번호" value={result.orderId} />
+                <Row
+                  label="세금계산서"
+                  value={
+                    result.taxInvoice?.requested
+                      ? `발급 신청 · ${result.taxInvoice.businessName} (${formatBusinessNo(result.taxInvoice.businessNo)})`
+                      : "발급 신청 안 함"
+                  }
+                />
                 {result.storeName ? <Row label="받는 곳" value={result.storeName} /> : null}
                 <Row label="품목" value={result.count > 0 ? `${result.items.length}종 ${result.count}개` : "-"} />
               </dl>

@@ -39,6 +39,10 @@ export type AdminAlertPayload =
       /** 원 단위 결제 금액 */
       amount: number;
       requesterName: string;
+      /** 세금계산서 발급 요청 여부 — 메일·문자 본문에 함께 적는다(알림톡 템플릿 변수는 그대로) */
+      taxInvoiceRequested?: boolean;
+      /** 발급 정보 한 줄 (상호 · 사업자번호 · 대표자 · 이메일) */
+      taxInvoiceText?: string;
     };
 
 type Channel = "alimtalk" | "email" | "sms";
@@ -105,7 +109,8 @@ export function subjectFor(payload: AdminAlertPayload) {
   }
 
   const store = payload.storeName ?? "개인 주문";
-  return `[🚨 럭키스팟 신규 발주] ${store} · ${payload.orderNumber} · ${payload.amount.toLocaleString("ko-KR")}원`;
+  const taxTag = payload.taxInvoiceRequested ? " · 세금계산서" : "";
+  return `[🚨 럭키스팟 신규 발주] ${store} · ${payload.orderNumber} · ${payload.amount.toLocaleString("ko-KR")}원${taxTag}`;
 }
 
 export function plainTextFor(payload: AdminAlertPayload, now = new Date()) {
@@ -125,6 +130,9 @@ export function plainTextFor(payload: AdminAlertPayload, now = new Date()) {
     `주문번호: ${payload.orderNumber}`,
     `금액: ${payload.amount.toLocaleString("ko-KR")}원`,
     `주문자: ${payload.requesterName}`,
+    payload.taxInvoiceRequested
+      ? `세금계산서: 발급 요청${payload.taxInvoiceText ? ` (${payload.taxInvoiceText})` : ""}`
+      : "세금계산서: 미신청",
     `접수: ${kstStamp(now)}`,
   ].join("\n");
 }

@@ -7,6 +7,7 @@ import {
   generateOrderId,
 } from "@/features/order/utils";
 import { queueAdminAlert } from "@/features/order/admin-alert";
+import { readTaxInvoice } from "@/features/order/tax-invoice";
 import { formatWon, queueHqBoardAlert } from "@/features/notifications/hq-board";
 import { queueOrderNotification } from "@/features/order/solapi";
 import { saveShopOrder } from "@/features/order/supabase";
@@ -224,6 +225,13 @@ export async function POST(request: Request) {
 
   const recipient = resolved.recipient;
 
+  // 세금계산서 발급 요청 — 요청했는데 사업자 정보가 비었으면 발급할 수 없으니 400으로 막는다.
+  const tax = readTaxInvoice(candidate);
+
+  if (!tax.ok) {
+    return createBadRequest(tax.message);
+  }
+
   // 금액은 클라이언트가 보낸 값이 아니라 서버 카탈로그 단가로 다시 계산한다.
   const orderLines = buildOrderLines(items);
 
@@ -244,6 +252,7 @@ export async function POST(request: Request) {
       name: recipient.name,
       phone: recipient.phone,
       shippingOption: recipient.shippingOption,
+      taxInvoice: tax.value,
     },
     { createdAt, orderId },
   );
@@ -296,6 +305,7 @@ export async function POST(request: Request) {
     shippingOption: recipient.shippingOption,
     storeCode: recipient.storeCode,
     storeName: recipient.storeName,
+    taxInvoice: tax.value,
     totalAmount: payload.total_price,
   });
 
@@ -311,6 +321,8 @@ export async function POST(request: Request) {
     orderNumber: payload.order_id,
     requesterName: payload.name,
     storeName: recipient.storeName,
+    taxInvoiceRequested: tax.value.requested,
+    taxInvoiceText: payload.tax_invoice_text,
   });
 
   // 본사 실시간 알림 보드(Notion · 디스코드/슬랙 웹훅)에도 같은 접수를 남긴다.
@@ -321,6 +333,7 @@ export async function POST(request: Request) {
     detail: [
       `주문번호 ${payload.order_id}`,
       payload.item_text,
+      tax.value.requested ? `세금계산서 발급 요청 — ${payload.tax_invoice_text}` : "세금계산서 미신청",
       "계좌 입금으로 접수(토스 결제 아님)",
     ]
       .filter(Boolean)
@@ -347,6 +360,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     createdAt: payload.created_at,
     orderId: payload.order_id,
+    taxInvoiceRequested: tax.value.requested,
     totalPrice: payload.total_price,
   });
 }

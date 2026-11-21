@@ -11,6 +11,7 @@ import {
   type OrderStatus,
 } from "@/features/admin/status";
 import { formatPrice } from "@/data/products";
+import { formatBusinessNo } from "@/features/tax-invoice";
 
 type LoadErrorReason = "not_configured" | "table_missing" | "request_failed" | "timeout" | null;
 
@@ -361,6 +362,23 @@ export default function AdminOrdersClient({
                       <p className="mt-2 line-clamp-2 break-words text-[12px] leading-[1.6] text-[#3B4740]">
                         {order.itemText ?? "품목 정보 없음"}
                       </p>
+
+                      {order.taxInvoice?.requested ? (
+                        <p className="mt-1.5 break-words rounded-[8px] bg-[#EDFBEF] px-2.5 py-1.5 text-[11px] leading-[1.55] text-[#0B5C2A]">
+                          <span className="font-semibold">세금계산서 발급 요청</span>
+                          {order.taxInvoice.businessName ? ` · ${order.taxInvoice.businessName}` : ""}
+                          {order.taxInvoice.businessNo
+                            ? ` · ${formatBusinessNo(order.taxInvoice.businessNo)}`
+                            : ""}
+                          {order.taxInvoice.ceoName ? ` · ${order.taxInvoice.ceoName}` : ""}
+                          {order.taxInvoice.email ? ` · ${order.taxInvoice.email}` : ""}
+                          {order.taxInvoice.businessType || order.taxInvoice.businessItem
+                            ? ` (${[order.taxInvoice.businessType, order.taxInvoice.businessItem]
+                                .filter(Boolean)
+                                .join(" / ")})`
+                            : ""}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="flex items-center justify-between gap-3 md:flex-col md:items-end">

@@ -11,6 +11,14 @@ const ORDER_REQUESTS_HEADERS = [
   'items_json',
   'item_text',
   'total_price',
+  // 세금계산서 발급 요청 (2026-11-21) — 이전 버전 앱이 보낸 주문은 빈 값으로 남는다.
+  'tax_invoice_requested',
+  'tax_business_no',
+  'tax_business_name',
+  'tax_ceo_name',
+  'tax_email',
+  'tax_business_type',
+  'tax_business_item',
 ];
 
 function doPost(e) {
@@ -44,6 +52,13 @@ function doPost(e) {
       payload.items_json,
       payload.item_text,
       payload.total_price,
+      payload.tax_invoice_requested === true ? 'Y' : 'N',
+      payload.tax_business_no || '',
+      payload.tax_business_name || '',
+      payload.tax_ceo_name || '',
+      payload.tax_email || '',
+      payload.tax_business_type || '',
+      payload.tax_business_item || '',
     ]);
 
     return jsonResponse_({

@@ -1,4 +1,4 @@
-import type { StoreOption, StoreRecord } from "@/features/stores/types";
+import type { StoreOption, StoreRecord, StoreTaxProfile } from "@/features/stores/types";
 import { readSupabaseConfig, SUPABASE_TIMEOUT_MS, supabaseHeaders } from "@/features/supabase/config";
 
 /**
@@ -185,4 +185,94 @@ export async function resolveStoreByCode(code: string): Promise<StoreRecord | nu
 export async function resolveStoreByLabel(label: string): Promise<StoreRecord | null> {
   const stores = await loadStores();
   return stores.find((store) => store.label === label) ?? null;
+}
+
+/** 세금계산서 기본 정보 컴럼 — 별도 마이그레이션(notes/supabase-shop-tax-invoice-migration.sql) 후에 생긴다. */
+const TAX_SELECT_COLUMNS =
+  "store_code,business_no,business_name,ceo_name,tax_email,business_type,business_item";
+const TAX_COLUMN_RETRY_MS = 60 * 1000;
+
+let taxColumnState: { available: boolean; checkedAt: number } | null = null;
+
+type StoreTaxRow = {
+  business_name?: string | null;
+  business_no?: string | null;
+  business_type?: string | null;
+  business_item?: string | null;
+  ceo_name?: string | null;
+  store_code?: string | null;
+  tax_email?: string | null;
+};
+
+/**
+ * 지점에 등록된 세금계산서 기본 정보를 읽는다.
+ *
+ *  · 마이그레이션 전(컴럼 없음)에는 null 을 돌려주고, 60초 동안은 다시 시도하지 않는다
+ *    (지점 목록 API 의 오류 회피를 위해 stores 조회를 반복하지 않는다).
+ *  · 이 응답은 브라우저(점주 주문서)로 내려가므로 no-store 로만 돌려준다.
+ *    점주 실명·휴대폰과 달리 사업자등록번호·상호·대표자명은 공개 등록 정보이고,
+ *    이메일은 발급 수취용으로 지점이 등록한 값이다.
+ */
+export async function fetchStoreTaxProfile(code: string): Promise<StoreTaxProfile | null> {
+  const config = readSupabaseConfig();
+
+  if (!config) return null;
+
+  if (taxColumnState && !taxColumnState.available) {
+    if (Date.now() - taxColumnState.checkedAt < TAX_COLUMN_RETRY_MS) return null;
+  }
+
+  try {
+    const response = await fetch(
+      `${config.url}/rest/v1/stores?select=${TAX_SELECT_COLUMNS}&store_code=eq.${encodeURIComponent(code)}&limit=1`,
+      {
+        cache: "no-store",
+        headers: supabaseHeaders(config.secret),
+        signal: AbortSignal.timeout(SUPABASE_TIMEOUT_MS),
+      },
+    );
+
+    if (!response.ok) {
+      const body = await response.text();
+      const columnMissing = response.status === 400 && /column|PGRST204|42703/i.test(body);
+
+      taxColumnState = { available: false, checkedAt: Date.now() };
+
+      if (columnMissing) {
+        console.warn(
+          "[stores] 세금계산서 컬럼이 아직 없습니다 — notes/supabase-shop-tax-invoice-migration.sql 을 실행하세요.",
+        );
+      } else {
+        console.error(`[stores] 세금계산서 정보 조회 실패 status=${response.status}: ${body.slice(0, 200)}`);
+      }
+
+      return null;
+    }
+
+    taxColumnState = { available: true, checkedAt: Date.now() };
+
+    const rows = (await response.json()) as StoreTaxRow[];
+    const row = Array.isArray(rows) ? rows[0] : null;
+
+    if (!row) return null;
+
+    const profile: StoreTaxProfile = {
+      businessItem: row.business_item?.trim() ?? "",
+      businessName: row.business_name?.trim() ?? "",
+      businessNo: row.business_no?.replace(/\D/g, "") ?? "",
+      businessType: row.business_type?.trim() ?? "",
+      ceoName: row.ceo_name?.trim() ?? "",
+      email: row.tax_email?.trim() ?? "",
+    };
+
+    const filled = Object.values(profile).some((value) => value.length > 0);
+
+    return filled ? profile : null;
+  } catch (error) {
+    console.error(
+      "[stores] 세금계산서 정보 조회 오류:",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
 }

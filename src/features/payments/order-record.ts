@@ -4,17 +4,19 @@ import {
   SUPABASE_TIMEOUT_MS,
   supabaseHeaders,
 } from "@/features/supabase/config";
+import type { TaxInvoiceRequest } from "@/features/tax-invoice";
 
 /**
  * 결제가 끝난 발주를 Supabase `shop_orders` 에 남긴다 (서버 전용).
  *
- * 기록 순서(스키마가 아직 결제 컬럼을 모르더라도 결제 사실을 잃지 않게)
- *   1) payment_key·payment_method·payment_status·approved_at·test_mode + status(paid/awaiting_deposit)
- *   2) 위 컬럼이 없거나 status CHECK 에 걸리면 → v1 컬럼 + memo(JSON) 에 결제 정보, status='pending'
- *   3) memo 컬럼까지 없으면 → v1 컬럼만
+ * 기록 순서(스키마가 아직 결제·세금계산서 컬럼을 모르더라도 사실을 잃지 않게)
+ *   1) payment_* · tax_* 컬럼 + status(paid/awaiting_deposit) + memo(JSON)
+ *   2) payment_* · status + memo(JSON — 세금계산서 정보 포함)
+ *   3) v1 컬럼 + memo(JSON) + status='pending'
+ *   4) v1 컬럼만
  *
- * 2)·3) 으로 떨어졌다는 것은 `notes/supabase-payments-migration-2026-11-20.sql` 을
- * 아직 실행하지 않았다는 뜻이다. 결제 자체는 정상 완료된 상태다.
+ * 2)·3)·4) 로 떨어졌다는 것은 마이그레이션을 아직 실행하지 않았다는 뜻이다.
+ * 결제 자체는 정상 완료된 상태이며 주문은 500 없이 남는다.
  */
 
 export type PaidOrderInput = {
@@ -36,6 +38,8 @@ export type PaidOrderInput = {
   status: "paid" | "awaiting_deposit" | "pending";
   storeCode: string | null;
   storeName: string | null;
+  /** 세금계산서 발급 요청 — 없으면 발급 신청 안 함 */
+  taxInvoice?: TaxInvoiceRequest;
   testMode: boolean;
   totalAmount: number;
   virtualAccount?: {
@@ -72,6 +76,9 @@ function baseRecord(input: PaidOrderInput) {
 }
 
 function memoText(input: PaidOrderInput) {
+  const tax = input.taxInvoice;
+  const taxRequested = tax?.requested === true;
+
   return JSON.stringify({
     payment: {
       approvedAt: input.approvedAt,
@@ -88,8 +95,32 @@ function memoText(input: PaidOrderInput) {
           }
         : {}),
     },
-    note: "결제 기록은 payments 마이그레이션(2026-11-20) 실행 전이라 memo에 보관",
+    taxInvoice: {
+      businessItem: taxRequested ? tax?.businessItem || null : null,
+      businessName: taxRequested ? tax?.businessName || null : null,
+      businessNo: taxRequested ? tax?.businessNo || null : null,
+      businessType: taxRequested ? tax?.businessType || null : null,
+      ceoName: taxRequested ? tax?.ceoName || null : null,
+      email: taxRequested ? tax?.email || null : null,
+      requested: taxRequested,
+    },
+    note: "결제·세금계산서 기록 컬럼이 없을 때 memo에 보관",
   });
+}
+
+function taxColumns(input: PaidOrderInput) {
+  const tax = input.taxInvoice;
+  const requested = tax?.requested === true;
+
+  return {
+    tax_business_item: requested ? tax?.businessItem ?? null : null,
+    tax_business_name: requested ? tax?.businessName ?? null : null,
+    tax_business_no: requested ? tax?.businessNo ?? null : null,
+    tax_business_type: requested ? tax?.businessType ?? null : null,
+    tax_ceo_name: requested ? tax?.ceoName ?? null : null,
+    tax_email: requested ? tax?.email ?? null : null,
+    tax_invoice_requested: requested,
+  };
 }
 
 async function postOrder(
@@ -133,26 +164,31 @@ export async function savePaidOrder(input: PaidOrderInput): Promise<PaidOrderSav
     return { saved: false, reason: "not_configured" };
   }
 
+  const paymentColumns = {
+    approved_at: input.approvedAt,
+    payment_key: input.paymentKey,
+    payment_method: input.methodKey,
+    payment_status: input.paymentStatus,
+    status: input.status,
+    test_mode: input.testMode,
+  };
+
   const attempts: { body: Record<string, unknown>; degraded: boolean }[] = [
     {
       body: {
         ...baseRecord(input),
-        approved_at: input.approvedAt,
+        ...paymentColumns,
+        ...taxColumns(input),
         memo: memoText(input),
-        payment_key: input.paymentKey,
-        payment_method: input.methodKey,
-        payment_status: input.paymentStatus,
-        status: input.status,
-        test_mode: input.testMode,
       },
       degraded: false,
     },
     {
-      body: {
-        ...baseRecord(input),
-        memo: memoText(input),
-        status: "pending",
-      },
+      body: { ...baseRecord(input), ...paymentColumns, memo: memoText(input) },
+      degraded: true,
+    },
+    {
+      body: { ...baseRecord(input), memo: memoText(input), status: "pending" },
       degraded: true,
     },
     { body: { ...baseRecord(input), status: "pending" }, degraded: true },
@@ -167,8 +203,8 @@ export async function savePaidOrder(input: PaidOrderInput): Promise<PaidOrderSav
       if (result.ok) {
         if (attempt.degraded) {
           console.warn(
-            `[payments] 결제 정보를 memo 로만 저장했습니다 order=${input.orderNumber} ` +
-              "— notes/supabase-payments-migration-2026-11-20.sql 을 Supabase SQL Editor에서 실행하세요.",
+            `[payments] 결제·세금계산서 정보를 memo 로만 저장했습니다 order=${input.orderNumber} ` +
+              "— notes/supabase-payments-migration-2026-11-20.sql, notes/supabase-shop-tax-invoice-migration.sql 을 Supabase SQL Editor에서 실행하세요.",
           );
         }
 

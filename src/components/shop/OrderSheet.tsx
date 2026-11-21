@@ -21,11 +21,24 @@ import {
   writeLastOrder,
   writeRecentStore,
 } from "@/features/shop/preferences";
+import {
+  readRecentTaxProfile,
+  readStoredTaxProfile,
+  saveTaxProfile,
+  saveTaxReceipt,
+} from "@/features/shop/tax-profile";
+import {
+  EMPTY_TAX_INVOICE,
+  isValidBusinessNo,
+  isValidTaxEmail,
+  type TaxInvoiceRequest,
+} from "@/features/tax-invoice";
 import { savePaymentIntent } from "@/features/payments/intent-storage";
 import { openTossPaymentWindow } from "@/features/payments/sdk";
 import type { StoreOption } from "@/features/stores/types";
 import { cartCount, cartTotal, resolveCart, useCartStore } from "@/stores/cartStore";
 import QuantityStepper from "./QuantityStepper";
+import TaxInvoiceFields from "./TaxInvoiceFields";
 
 const PRIVACY_HREF = "https://luckyspot.kr/privacy";
 
@@ -40,6 +53,24 @@ function CloseIcon() {
       />
     </svg>
   );
+}
+
+/** 이미 입력한 값은 그대로 두고 빈 칸만 채운다 — 지점을 바꿔도 점주가 고친 값이 살아 있게. */
+function mergeTaxFill(
+  base: TaxInvoiceRequest,
+  fill: Partial<TaxInvoiceRequest>,
+): TaxInvoiceRequest {
+  const pick = (current: string, next: string | undefined) => current.trim() || next?.trim() || "";
+
+  return {
+    businessItem: pick(base.businessItem, fill.businessItem),
+    businessName: pick(base.businessName, fill.businessName),
+    businessNo: pick(base.businessNo, fill.businessNo),
+    businessType: pick(base.businessType, fill.businessType),
+    ceoName: pick(base.ceoName, fill.ceoName),
+    email: pick(base.email, fill.email),
+    requested: base.requested,
+  };
 }
 
 export default function OrderSheet({
@@ -80,14 +111,23 @@ export default function OrderSheet({
   const [preparing, setPreparing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [scale, setScale] = useState<StoreScale>(DEFAULT_STORE_SCALE);
+  const [tax, setTax] = useState<TaxInvoiceRequest>({ ...EMPTY_TAX_INVOICE });
+  const [taxHint, setTaxHint] = useState<string | null>(null);
 
   const selectedStore = stores.find((store) => store.code === addressValue) ?? null;
   const isDirect = addressValue === DIRECT_SHIPPING_VALUE;
   const directComplete =
     customerName.trim().length > 0 && phone.length >= 10 && deliveryAddress.trim().length > 0;
+  const taxComplete =
+    !tax.requested ||
+    (isValidBusinessNo(tax.businessNo) &&
+      tax.businessName.trim().length > 0 &&
+      tax.ceoName.trim().length > 0 &&
+      isValidTaxEmail(tax.email));
   const canSubmit =
     entries.length > 0 &&
     (isDirect ? directComplete : Boolean(selectedStore)) &&
+    taxComplete &&
     agreed &&
     !submitting &&
     !preparing;
@@ -122,6 +162,39 @@ export default function OrderSheet({
 
     setScale(readStoreScale());
   }, [open]);
+
+  // 지점을 고르면 그 지점에 저장된 발급 정보 → 서버에 등록된 정보 순으로 미리 채운다.
+  useEffect(() => {
+    if (!open) return;
+
+    const key = isDirect || !addressValue ? null : addressValue;
+    const last = readRecentTaxProfile();
+    const stored = readStoredTaxProfile(key);
+
+    setTaxHint(null);
+
+    const fill = stored ?? last;
+
+    if (fill) setTax((current) => mergeTaxFill(current, fill));
+
+    if (!key) return;
+
+    let cancelled = false;
+
+    fetch(`/api/stores/tax-profile?code=${encodeURIComponent(key)}`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { profile?: Partial<TaxInvoiceRequest> | null } | null) => {
+        if (cancelled || !data?.profile) return;
+
+        setTax((current) => mergeTaxFill(current, data.profile ?? {}));
+        setTaxHint("지점에 등록된 사업자 정보를 채웠어요. 필요하면 수정하세요.");
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [addressValue, isDirect, open]);
 
   useEffect(() => {
     if (!open) {
@@ -181,6 +254,7 @@ export default function OrderSheet({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: lines.map((line) => ({ id: line.id, quantity: line.quantity })),
+          taxInvoice: tax,
           ...(isDirect
             ? {
                 address: deliveryAddress.trim(),
@@ -323,6 +397,10 @@ export default function OrderSheet({
         count,
         items: lines.map((line) => ({ id: line.id, quantity: line.quantity })),
       });
+
+      // 세금계산서 발급 정보 — 다음 주문에 재사용하고, 주문 완료 화면이 발급 상태를 보여준다.
+      saveTaxProfile(isDirect ? null : selectedStore?.code ?? null, tax);
+      saveTaxReceipt(result.orderId, tax);
 
       clearItems();
       onClose();
@@ -546,6 +624,16 @@ export default function OrderSheet({
 
           <section className="px-5 pt-5">
             <div className="flex items-center justify-between">
+              <h3 className="text-[13px] font-semibold text-[#0F1412]">세금계산서</h3>
+              <span className="text-[10.5px] text-[var(--ls-muted)]">전자세금계산서</span>
+            </div>
+            <div className="mt-2">
+              <TaxInvoiceFields hint={taxHint} idPrefix="sheet" onChange={setTax} value={tax} />
+            </div>
+          </section>
+
+          <section className="px-5 pt-5">
+            <div className="flex items-center justify-between">
               <h3 className="text-[13px] font-semibold text-[#0F1412]">결제 수단</h3>
               <span className="text-[10.5px] text-[var(--ls-muted)]">토스페이먼츠</span>
             </div>
@@ -643,9 +731,11 @@ export default function OrderSheet({
               ? "받는 곳을 선택하면 결제할 수 있어요."
               : isDirect && !directComplete
                 ? "주문자 성함·연락처·주소를 모두 입력해 주세요."
-                : !agreed
-                  ? "개인정보 수집에 동의하면 결제할 수 있어요."
-                  : "결제가 완료되면 발주가 접수되고 본사에서 확인합니다."}
+                : !taxComplete
+                  ? "세금계산서 정보를 채우거나 발급 요청을 해제해 주세요."
+                  : !agreed
+                    ? "개인정보 수집에 동의하면 결제할 수 있어요."
+                    : "결제가 완료되면 발주가 접수되고 본사에서 확인합니다."}
           </p>
         </footer>
       </div>

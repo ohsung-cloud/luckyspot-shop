@@ -31,6 +31,20 @@ export type AdminOrderPayment = {
   test: boolean;
 };
 
+/**
+ * 세금계산서 발급 요청 — 발급을 신청한 발주에만 값이 있다.
+ * tax_* 컬럼이 아직 없는 DB 에서는 memo(JSON) 에서 읽는다.
+ */
+export type AdminOrderTaxInvoice = {
+  requested: boolean;
+  businessNo: string | null;
+  businessName: string | null;
+  ceoName: string | null;
+  email: string | null;
+  businessType: string | null;
+  businessItem: string | null;
+};
+
 export type AdminOrder = {
   createdAt: string;
   id: string;
@@ -42,6 +56,8 @@ export type AdminOrder = {
   status: OrderStatus;
   storeCode: string | null;
   storeName: string | null;
+  /** 발급 신청한 경우에만 값이 있다 */
+  taxInvoice: AdminOrderTaxInvoice | null;
   totalAmount: number;
 };
 
@@ -103,12 +119,22 @@ type OrderRow = {
   status?: string | null;
   store_code?: string | null;
   store_name?: string | null;
+  tax_business_item?: string | null;
+  tax_business_name?: string | null;
+  tax_business_no?: string | null;
+  tax_business_type?: string | null;
+  tax_ceo_name?: string | null;
+  tax_email?: string | null;
+  tax_invoice_requested?: boolean | null;
   total_amount?: number | null;
 };
 
 /** v1 컬럼만: 여기에 없는 컬럼을 추가하면 스키마가 없는 환경에서 400 이 난다. */
 const ADMIN_SELECT_COLUMNS = "id,order_number,store_name,store_code,requester_name,requester_phone,item_text,total_amount,status,created_at";
 const ADMIN_SELECT_COLUMNS_WITH_MEMO = `${ADMIN_SELECT_COLUMNS},memo`;
+/** 세금계산서 마이그레이션 후에만 있는 컬럼 — 실패하면 memo 로 내려간다. */
+const ADMIN_SELECT_COLUMNS_WITH_TAX =
+  `${ADMIN_SELECT_COLUMNS_WITH_MEMO},tax_invoice_requested,tax_business_no,tax_business_name,tax_ceo_name,tax_email,tax_business_type,tax_business_item`;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -157,6 +183,7 @@ function toAdminOrder(row: OrderRow): AdminOrder | null {
     status: toStatus(row.status),
     storeCode: row.store_code?.trim() || null,
     storeName: row.store_name?.trim() || null,
+    taxInvoice: toTaxInvoice(row),
     totalAmount: Number.isFinite(row.total_amount) ? Number(row.total_amount) : 0,
   };
 }
@@ -205,6 +232,49 @@ function toReorderItems(value: unknown): { items: LookupOrderItem[]; lineCount: 
   })).slice(0, MAX_REORDER_LINES);
 
   return { items, lineCount };
+}
+
+function toTaxInvoice(row: OrderRow): AdminOrderTaxInvoice | null {
+  const columnRequested = row.tax_invoice_requested;
+
+  if (columnRequested === true) {
+    return {
+      businessItem: row.tax_business_item?.trim() || null,
+      businessName: row.tax_business_name?.trim() || null,
+      businessNo: row.tax_business_no?.trim() || null,
+      businessType: row.tax_business_type?.trim() || null,
+      ceoName: row.tax_ceo_name?.trim() || null,
+      email: row.tax_email?.trim() || null,
+      requested: true,
+    };
+  }
+
+  // 컬럼이 있는 DB 에서 requested=false 면 발급 신청이 없던 주문이다.
+  if (columnRequested === false) return null;
+
+  // 마이그레이션 전 — memo(JSON) 에 남긴 발급 정보를 읽는다.
+  if (!row.memo) return null;
+
+  try {
+    const parsed = JSON.parse(row.memo) as { taxInvoice?: Record<string, unknown> } | null;
+    const tax = parsed?.taxInvoice;
+
+    if (!tax || typeof tax !== "object" || tax.requested !== true) return null;
+
+    const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+
+    return {
+      businessItem: text(tax.businessItem),
+      businessName: text(tax.businessName),
+      businessNo: text(tax.businessNo),
+      businessType: text(tax.businessType),
+      ceoName: text(tax.ceoName),
+      email: text(tax.email),
+      requested: true,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function toLookupOrder(row: OrderRow): LookupOrder | null {
@@ -291,14 +361,20 @@ export async function listAdminOrders(options?: {
 }): Promise<AdminOrderListResult> {
   const limit = Math.min(300, Math.max(1, options?.limit ?? 200));
   const statusFilter = options?.status ? `&status=eq.${options.status}` : "";
-  const query = `shop_orders?select=${ADMIN_SELECT_COLUMNS_WITH_MEMO}&order=created_at.desc&limit=${limit}${statusFilter}`;
-  let result = await requestOrders(query);
+  const suffix = `&order=created_at.desc&limit=${limit}${statusFilter}`;
+  let result = await requestOrders(`shop_orders?select=${ADMIN_SELECT_COLUMNS_WITH_TAX}${suffix}`);
 
-  // memo 컬럼이 없는 아주 오래된 스키마면 결제 기록 없이 읽는다.
+  // 세금계산서 마이그레이션 전이면 tax_* 컬럼이 없어 400 이 난다 — memo 로 내려간다.
+  if (!result.ok && result.failure.reason === "request_failed") {
+    console.warn("[admin] tax_* 컬럼을 읽지 못해 memo 기준으로 발급 정보를 읽습니다.");
+    result = await requestOrders(`shop_orders?select=${ADMIN_SELECT_COLUMNS_WITH_MEMO}${suffix}`);
+  }
+
+  // memo 컬럼이 없는 아주 오래된 스키마면 결제·발급 기록 없이 읽는다.
   if (!result.ok && result.failure.reason === "request_failed") {
     console.warn("[admin] memo 컬럼을 읽지 못해 결제 기록 없이 발주 목록을 읽습니다.");
     result = await requestOrders(
-      `shop_orders?select=${ADMIN_SELECT_COLUMNS}&order=created_at.desc&limit=${limit}${statusFilter}`,
+      `shop_orders?select=${ADMIN_SELECT_COLUMNS}${suffix}`,
     );
   }
 
