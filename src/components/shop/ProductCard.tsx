@@ -59,7 +59,7 @@ export default function ProductCard({
         <h3 className="mt-1.5 break-keep text-[15px] font-bold leading-[1.35] tracking-[-0.02em] text-[#0F1412]">
           {product.name}
         </h3>
-        <p className="mt-1 text-[12.5px] leading-[1.45] text-[#3B4740]">
+        <p className="mt-1 text-[13.5px] leading-[1.45] text-[#3B4740]">
           {formatSpec(product.spec, product.unit)}
         </p>
 
@@ -78,13 +78,13 @@ export default function ProductCard({
                 quantity={quantity}
               />
               {isBoxProduct ? (
-                <p className="mt-1.5 text-[12px] font-semibold text-[#0B5C2A]">
+                <p className="mt-1.5 text-[13px] font-semibold text-[#0B5C2A]">
                   {quantity >= limits.max
                     ? `최대 ${limits.max}박스예요`
                     : `${quantity}박스 · ${beanBoxesToBags(quantity)}봉 담김`}
                 </p>
               ) : coverage ? (
-                <p className="mt-1.5 text-[12px] font-semibold text-[#0B5C2A]">
+                <p className="mt-1.5 text-[13px] font-semibold text-[#0B5C2A]">
                   {coverage} <span className="font-normal text-[#3B4740]">사용</span>
                 </p>
               ) : null}
@@ -109,11 +109,11 @@ export default function ProductCard({
         </div>
 
         {guide ? (
-          <p className="mt-2 border-t border-dashed border-[var(--ls-line)] pt-1.5 text-[12px] leading-[1.5] text-[#3B4740]">
+          <p className="mt-2 border-t border-dashed border-[var(--ls-line)] pt-1.5 text-[13px] leading-[1.55] text-[#3B4740]">
             {guide.reason}
           </p>
         ) : product.note ? (
-          <p className="mt-2 border-t border-dashed border-[var(--ls-line)] pt-1.5 text-[12px] leading-[1.5] text-[#3B4740]">
+          <p className="mt-2 border-t border-dashed border-[var(--ls-line)] pt-1.5 text-[13px] leading-[1.55] text-[#3B4740]">
             {product.note}
           </p>
         ) : null}

@@ -331,7 +331,7 @@ export default function QuickBeanOrder({
         </div>
 
         {selectedStore ? (
-          <p className="mt-2 break-keep text-[14px] leading-[1.5] text-[#3B4740]">
+          <p className="mt-2 break-keep text-[15px] leading-[1.5] text-[#3B4740]">
             <strong className="font-semibold text-[#0F1412]">{selectedStore.label}</strong>으로
             배송합니다.
           </p>
@@ -443,7 +443,7 @@ export default function QuickBeanOrder({
           })}
         </div>
 
-        <p className="mt-2 break-keep text-[14px] leading-[1.5] text-[#3B4740]">
+        <p className="mt-2 break-keep text-[15px] leading-[1.5] text-[#3B4740]">
           한 번에 최대 {BEAN_MAX_BOXES}박스까지예요. 더 필요하면{" "}
           <a
             className="whitespace-nowrap font-semibold underline underline-offset-2"
@@ -507,7 +507,7 @@ export default function QuickBeanOrder({
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-[16px] font-semibold text-[#3B4740]">낼 금액</p>
-              <p className="mt-0.5 text-[13.5px] tabular-nums text-[#3B4740]">
+              <p className="mt-0.5 text-[14.5px] tabular-nums text-[#3B4740]">
                 {boxes}박스 · {bags}봉 · 부가세 포함
               </p>
             </div>
@@ -515,7 +515,7 @@ export default function QuickBeanOrder({
               {formatPrice(total)}
             </p>
           </div>
-          <p className="mt-1 text-right text-[13px] tabular-nums text-[#3B4740]">
+          <p className="mt-1 text-right text-[13.5px] tabular-nums text-[#3B4740]">
             공급가액 {formatPrice(vat.supply)} + 부가세 {formatPrice(vat.vat)}
           </p>
         </div>
@@ -538,7 +538,7 @@ export default function QuickBeanOrder({
           {submitting ? "발주 접수 중…" : `${boxes}박스 발주하기`}
         </button>
 
-        <p className="mt-2 break-keep text-center text-[14px] leading-[1.5] text-[#3B4740]">
+        <p className="mt-2 break-keep text-center text-[15px] leading-[1.5] text-[#3B4740]">
           발주하면 접수되고, 입금하시면 출고됩니다.
         </p>
 
