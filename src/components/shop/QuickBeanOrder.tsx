@@ -189,10 +189,8 @@ export default function QuickBeanOrder({
 
     if (!taxComplete) {
       setTaxOpen(true);
-      setErrorMessage(
-        "세금계산서 사업자 정보를 채워 주세요. 발급이 필요 없으면 ‘세금계산서 발급 요청’ 체크를 풀어 주세요.",
-      );
-      document.getElementById("quick-tax")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setErrorMessage(null);
+      document.getElementById("quick-tax")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
 
@@ -494,6 +492,11 @@ export default function QuickBeanOrder({
 
           {taxOpen ? (
             <div className="px-3 pb-3">
+              {!taxComplete ? (
+                <p className="mb-2 rounded-[10px] bg-[#FFF7E6] px-3 py-2 text-[14px] font-semibold leading-[1.5] text-[#7A5A00]">
+                  사업자 정보를 채워 주세요. 발급이 필요 없으면 위 체크를 풀어 주세요.
+                </p>
+              ) : null}
               <TaxInvoiceFields hint={taxHint} idPrefix="quick" onChange={setTax} value={tax} />
             </div>
           ) : null}
