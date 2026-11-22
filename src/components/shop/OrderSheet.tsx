@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { DIRECT_SHIPPING_LABEL, DIRECT_SHIPPING_VALUE } from "@/data/address";
-import { formatPrice, splitVat } from "@/data/products";
+import { beanBoxesToBags, formatPrice, getOrderLimits, splitVat } from "@/data/products";
 import {
   coverageLabel,
   cycleLabel,
@@ -99,6 +99,8 @@ export default function OrderSheet({
   const total = cartTotal(entries);
   const count = cartCount(entries);
   const vat = splitVat(total);
+  // 원두만 담았으면 완료 화면에도 "3개"가 아니라 "3박스"로 보여준다.
+  const countUnit = entries.length > 0 && entries.every((entry) => entry.product.unit === "1박스") ? "박스" : "개";
 
   const [addressValue, setAddressValue] = useState("");
   const [stores, setStores] = useState<StoreOption[]>([]);
@@ -407,7 +409,7 @@ export default function OrderSheet({
       router.push(
         `/order-complete?orderId=${encodeURIComponent(result.orderId)}&totalPrice=${encodeURIComponent(
           String(result.totalPrice ?? total),
-        )}&count=${encodeURIComponent(String(count))}`,
+        )}&count=${encodeURIComponent(String(count))}&unit=${encodeURIComponent(countUnit)}`,
       );
     } catch (error) {
       setErrorMessage(
@@ -433,9 +435,9 @@ export default function OrderSheet({
       >
         <header className="flex items-center justify-between border-b border-[var(--ls-line)] px-5 py-4">
           <div>
-            <p className="type-eyebrow text-[var(--ls-green-ink)]">ORDER</p>
-            <h2 className="mt-0.5 text-[19px] font-semibold tracking-[-0.03em] text-[#0F1412]">
-              주문 확인
+            <p className="type-eyebrow text-[var(--ls-green-ink)]">주문 확인</p>
+            <h2 className="mt-0.5 text-[21px] font-bold tracking-[-0.03em] text-[#0F1412]">
+              이대로 주문할까요?
             </h2>
           </div>
           <button
@@ -457,20 +459,28 @@ export default function OrderSheet({
 
           <section className="px-5 pt-4">
             <div className="flex items-baseline justify-between">
-              <h3 className="text-[13px] font-semibold text-[#0F1412]">담은 품목</h3>
-              <span className="text-[11.5px] text-[var(--ls-muted)]">{count}개</span>
+              <h3 className="text-[16px] font-bold text-[#0F1412]">담은 품목</h3>
+              <span className="text-[13px] text-[#3B4740]">{entries.length}종</span>
             </div>
 
             {entries.length ? (
               <ul className="mt-2 divide-y divide-[var(--ls-line)] border-y border-[var(--ls-line)]">
-                {entries.map(({ product, quantity, amount }) => (
+                {entries.map(({ product, quantity, amount }) => {
+                  const limits = getOrderLimits(product.id);
+
+                  return (
                   <li className="flex items-start justify-between gap-3 py-3" key={product.id}>
                     <div className="min-w-0 flex-1">
-                      <p className="break-keep text-[13.5px] font-semibold leading-[1.35] text-[#0F1412]">
+                      <p className="break-keep text-[15px] font-bold leading-[1.35] text-[#0F1412]">
                         {product.name}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-[var(--ls-muted)]">
+                      <p className="mt-0.5 text-[12.5px] text-[#3B4740]">
                         {formatPrice(product.price)} · {product.unit}
+                        {limits.unit === "박스" ? (
+                          <span className="ml-1.5 font-semibold text-[#0B5C2A]">
+                            {quantity}박스 = {beanBoxesToBags(quantity)}봉
+                          </span>
+                        ) : null}
                         {(() => {
                           const lineDays = daysCovered(product.id, quantity, scale);
                           const lineCycle = cycleDays(product.id, scale);
@@ -488,11 +498,14 @@ export default function OrderSheet({
                       <div className="mt-2 flex items-center gap-2">
                         <QuantityStepper
                           label={product.name}
+                          max={limits.max}
+                          min={limits.min}
                           onChange={(next) => setQuantity(product.id, next)}
                           quantity={quantity}
+                          size="md"
                         />
                         <button
-                          className="ls-focus text-[11.5px] text-[var(--ls-muted)] underline decoration-[var(--ls-line-strong)] underline-offset-2 hover:text-[#0F1412]"
+                          className="ls-focus h-11 px-2 text-[13px] font-medium text-[#3B4740] underline decoration-[var(--ls-line-strong)] underline-offset-2 hover:text-[#0F1412]"
                           onClick={() => removeItem(product.id)}
                           type="button"
                         >
@@ -500,11 +513,12 @@ export default function OrderSheet({
                         </button>
                       </div>
                     </div>
-                    <p className="shrink-0 pt-0.5 text-[13.5px] font-semibold tabular-nums text-[#0F1412]">
+                    <p className="shrink-0 pt-0.5 text-[15px] font-bold tabular-nums text-[#0F1412]">
                       {formatPrice(amount)}
                     </p>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             ) : (
               <p className="mt-3 rounded-[12px] border border-dashed border-[var(--ls-line-strong)] px-4 py-8 text-center text-[13px] text-[var(--ls-muted)]">
@@ -703,30 +717,30 @@ export default function OrderSheet({
             </p>
           ) : null}
           <div className="flex items-center justify-between">
-            <p className="text-[11.5px] text-[var(--ls-muted)]">
-              합계 <span className="text-[10px]">VAT 포함</span>
+            <p className="text-[14px] font-semibold text-[#3B4740]">
+              합계 <span className="text-[12px] font-normal">부가세 포함</span>
             </p>
-            <p className="text-[18px] font-semibold tabular-nums tracking-[-0.03em] text-[#0F1412]">
+            <p className="text-[24px] font-bold tabular-nums tracking-[-0.03em] text-[#0F1412]">
               {formatPrice(total)}
             </p>
           </div>
           <button
-            className="ls-focus mt-2 flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[15px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#8A948D]"
+            className="ls-focus mt-2 flex h-[58px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[18px] font-bold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#5F6A63]"
             disabled={!canSubmit}
             onClick={handlePay}
             type="button"
           >
-            {preparing ? "결제창 여는 중..." : `결제하기 · ${formatPrice(total)}`}
+            {preparing ? "결제창 여는 중…" : `결제하기 · ${formatPrice(total)}`}
           </button>
           <button
-            className="ls-focus mt-1.5 flex h-[42px] w-full items-center justify-center rounded-[12px] text-[11.5px] font-medium text-[var(--ls-muted)] underline decoration-[var(--ls-line-strong)] underline-offset-2 transition-colors hover:text-[#0F1412] disabled:opacity-50"
+            className="ls-focus mt-1.5 flex h-12 w-full items-center justify-center rounded-[12px] text-[13.5px] font-medium text-[#3B4740] underline decoration-[var(--ls-line-strong)] underline-offset-2 transition-colors hover:text-[#0F1412] disabled:opacity-50"
             disabled={!canSubmit}
             onClick={handleBankTransfer}
             type="button"
           >
             {submitting ? "주문 접수 중..." : "계좌 입금으로 발주하기 (입금 안내)"}
           </button>
-          <p className="mt-1.5 text-center text-[10.5px] leading-[1.5] text-[var(--ls-muted)]">
+          <p className="mt-1.5 text-center text-[12.5px] leading-[1.5] text-[#3B4740]">
             {!isDirect && !selectedStore
               ? "받는 곳을 선택하면 결제할 수 있어요."
               : isDirect && !directComplete

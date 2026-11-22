@@ -46,6 +46,35 @@ export type ShopBundle = {
   items: { id: string; quantity: number }[];
 };
 
+/**
+ * 원두 발주 단위 — 대표 확정(2026-11-22)
+ *
+ *  · 최소 1박스 = 1kg × 10봉 = 10kg = 200,000원(VAT 포함, 봉당 20,000원)
+ *  · 최대 3박스까지. 4박스 이상은 본사로 문의한다.
+ *  · 1봉 단위 판매는 없다(카탈로그·장바구니·서버 모두 박스 수량으로 다룬다).
+ */
+export const BEAN_BOX_PRODUCT_ID = "bean-10kg";
+export const BEAN_BAGS_PER_BOX = 10;
+export const BEAN_PRICE_PER_BAG = 20000;
+export const BEAN_PRICE_PER_BOX = BEAN_PRICE_PER_BAG * BEAN_BAGS_PER_BOX;
+export const BEAN_MIN_BOXES = 1;
+export const BEAN_MAX_BOXES = 3;
+/** 간편 발주에 큰 카드로 놓는 박스 수량 */
+export const BEAN_BOX_OPTIONS = [1, 2, 3] as const;
+
+export function beanBoxesToBags(boxes: number) {
+  return boxes * BEAN_BAGS_PER_BOX;
+}
+
+/**
+ * 박스 이전에 쓰던 원두 상품 id → 지금의 박스 수량.
+ * 브라우저에 남아 있는 장바구니·직전 발주를 잃지 않게 옮긴다.
+ */
+const LEGACY_BEAN_LINES: Record<string, (quantity: number) => number> = {
+  "bean-1kg": (quantity) => Math.ceil(quantity / BEAN_BAGS_PER_BOX), // 1봉 수량 → 박스
+  "bean-30kg": (quantity) => quantity * 3, // 3박스 묶음 → 박스
+};
+
 const BEAN_IMG = "/assets/images/home/products/bean-bag.png";
 const PAPER_IMG = "/assets/images/home/products/print-paper.png";
 
@@ -53,44 +82,22 @@ export const shopCategories: ShopCategory[] = [
   {
     key: "bean",
     label: "원두",
-    note: "제이웨이브 레귤러핏 · 대표 확정 단가 20,000원/kg",
+    note: "1박스 = 10봉(10kg) · 1~3박스 발주",
     products: [
       {
-        id: "bean-1kg",
-        name: "제이웨이브 레귤러핏 원두",
-        spec: "1kg",
-        price: 20000,
-        unit: "1kg",
-        vendor: "제이웨이브",
-        tag: "확정단가",
-        note: "1kg 20,000원 기준(2026-11 대표 확정)",
-        imageSrc: BEAN_IMG,
-        imageAlt: "원두 1kg 포장",
-      },
-      {
-        id: "bean-10kg",
-        name: "원두 1박스",
-        spec: "10kg (1kg × 10)",
-        price: 200000,
+        id: BEAN_BOX_PRODUCT_ID,
+        name: "제이웨이브 레귤러핏 원두 1박스",
+        spec: "1kg × 10봉 (10kg)",
+        price: BEAN_PRICE_PER_BOX,
         unit: "1박스",
         vendor: "제이웨이브",
-        tag: "10kg",
-        note: "1kg 20,000원 × 10",
+        tag: "1박스부터",
+        note: "1봉 20,000원 × 10봉 · 1~3박스까지 발주",
         imageSrc: BEAN_IMG,
-        imageAlt: "원두 10kg 박스",
+        imageAlt: "원두 1박스(10봉)",
       },
-      {
-        id: "bean-30kg",
-        name: "원두 3박스",
-        spec: "30kg (10kg × 3)",
-        price: 600000,
-        unit: "3박스",
-        vendor: "제이웨이브",
-        tag: "월 발주",
-        note: "매장 규모가 큰 경우 월 1회 발주 단위",
-        imageSrc: BEAN_IMG,
-        imageAlt: "원두 30kg",
-      },
+      // 디카페인은 1개 단가만 확인돼 있어 박스 단위 전환에서 뺐다.
+      // (박스 단가가 확인되면 위 원두처럼 10봉 박스 상품으로 바꾼다.)
       {
         id: "bean-decaf",
         name: "디카페인 원두 카페모어",
@@ -962,7 +969,7 @@ export const shopBundles: ShopBundle[] = [
       "원두 10kg + 파우더 6종×3봉 + 시럽 4종×3개 + 컵·리드 4종 + 필터·캡. 개업 첫 발주 구성 그대로.",
     badge: "초도 17종",
     items: [
-      { id: "bean-10kg", quantity: 1 },
+      { id: BEAN_BOX_PRODUCT_ID, quantity: 1 },
       { id: "tc-01", quantity: 3 },
       { id: "tc-03", quantity: 3 },
       { id: "tc-04", quantity: 3 },
@@ -984,10 +991,11 @@ export const shopBundles: ShopBundle[] = [
   {
     id: "bundle-refill",
     name: "월간 보충 세트",
-    description: "원두 2kg + 인기 파우더 4종 1봉씩 + 컵·리드 각 1박스. 매달 반복되는 기본 보충.",
+    description:
+      "원두 1박스(10kg) + 인기 파우더 4종 1봉씩 + 컵·리드 각 1박스. 매달 반복되는 기본 보충.",
     badge: "정기 보충",
     items: [
-      { id: "bean-1kg", quantity: 2 },
+      { id: BEAN_BOX_PRODUCT_ID, quantity: 1 },
       { id: "tc-03", quantity: 1 },
       { id: "tc-04", quantity: 1 },
       { id: "tc-22", quantity: 1 },
@@ -1033,6 +1041,77 @@ export function formatPrice(price: number) {
 
 export function getProductById(id: string) {
   return allProducts.find((product) => product.id === id) ?? null;
+}
+
+export type OrderLimits = {
+  min: number;
+  max: number;
+  /** 수량 단위 이름 — 원두는 "박스" */
+  unit: string;
+  /** 영업일 안내 문구 */
+  notice?: string;
+};
+
+/** 품목별 발주 수량 한계. 원두만 1~3박스, 나머지는 1~999개. */
+export function getOrderLimits(productId: string): OrderLimits {
+  if (productId === BEAN_BOX_PRODUCT_ID) {
+    return {
+      max: BEAN_MAX_BOXES,
+      min: BEAN_MIN_BOXES,
+      notice: `원두는 1박스부터 ${BEAN_MAX_BOXES}박스까지 발주할 수 있어요. 그 이상은 1551-7157로 전화 주세요.`,
+      unit: "박스",
+    };
+  }
+
+  return { max: 999, min: 1, unit: "" };
+}
+
+/** 화면·장바구니에서 수량을 허용 범위로 맞춘다. */
+export function clampOrderQuantity(productId: string, quantity: number) {
+  const limits = getOrderLimits(productId);
+
+  if (!Number.isFinite(quantity)) return limits.min;
+
+  return Math.min(limits.max, Math.max(limits.min, Math.round(quantity)));
+}
+
+/**
+ * 박스 이전 id(1봉·3박스 상품)를 지금 단위로 바꾸고, 없는 품목은 버린다.
+ * 브라우저에 남은 장바구니·직전 발주·`/orders` 재담기에 함께 쓴다.
+ */
+export function normalizeOrderLine(line: { id: string; quantity: number }) {
+  const legacy = LEGACY_BEAN_LINES[line.id];
+
+  if (legacy) {
+    return {
+      id: BEAN_BOX_PRODUCT_ID,
+      quantity: clampOrderQuantity(BEAN_BOX_PRODUCT_ID, legacy(line.quantity)),
+    };
+  }
+
+  if (!getProductById(line.id)) return null;
+
+  return { id: line.id, quantity: clampOrderQuantity(line.id, line.quantity) };
+}
+
+/**
+ * 서버 공통 검증 — 범위를 벗어난 발주는 접수하지 않고 안내 문구를 돌려준다.
+ * (클라이언트를 거치지 않은 요청도 막는다)
+ */
+export function orderQuantityIssue(items: { id: string; quantity: number }[]) {
+  for (const item of items) {
+    const limits = getOrderLimits(item.id);
+
+    if (item.quantity < limits.min) {
+      return `1회 발주 수량이 너무 적습니다. ${limits.min}${limits.unit || "개"}부터 발주할 수 있어요.`;
+    }
+
+    if (item.quantity > limits.max) {
+      return limits.notice ?? `한 번에 ${limits.max}개까지 발주할 수 있어요.`;
+    }
+  }
+
+  return null;
 }
 
 export function findCategoryKeyOf(productId: string) {

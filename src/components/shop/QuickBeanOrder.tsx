@@ -1,10 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { DIRECT_SHIPPING_LABEL, DIRECT_SHIPPING_VALUE } from "@/data/address";
-import { formatPrice, getProductById, splitVat } from "@/data/products";
+import {
+  BEAN_BAGS_PER_BOX,
+  BEAN_BOX_OPTIONS,
+  BEAN_BOX_PRODUCT_ID,
+  BEAN_MAX_BOXES,
+  BEAN_PRICE_PER_BOX,
+  beanBoxesToBags,
+  formatPrice,
+  getProductById,
+  splitVat,
+} from "@/data/products";
 import {
   readRecentStore,
   writeLastOrder,
@@ -22,24 +32,10 @@ import {
   isValidTaxEmail,
   type TaxInvoiceRequest,
 } from "@/features/tax-invoice";
-import { ORDER_ACCOUNT_NUMBER, ORDER_BANK_NAME, ORDER_SUPPORT_PHONE } from "@/features/order/utils";
+import { ORDER_SUPPORT_PHONE } from "@/features/order/utils";
 import type { StoreOption } from "@/features/stores/types";
 import { useCartStore } from "@/stores/cartStore";
-import QuantityStepper from "./QuantityStepper";
 import TaxInvoiceFields from "./TaxInvoiceFields";
-
-const BEAN_PRODUCT_ID = "bean-1kg";
-const BEAN_FALLBACK_PRICE = 20000;
-const QUICK_QUANTITIES = [1, 5, 10, 20] as const;
-const MAX_QUANTITY = 100;
-
-type Step = 1 | 2 | 3;
-
-const STEPS: { key: Step; label: string }[] = [
-  { key: 1, label: "지점" },
-  { key: 2, label: "수량" },
-  { key: 3, label: "발주 확인" },
-];
 
 function mergeTax(base: TaxInvoiceRequest, fill: Partial<TaxInvoiceRequest>): TaxInvoiceRequest {
   const pick = (current: string, next: string | undefined) => current.trim() || next?.trim() || "";
@@ -56,52 +52,56 @@ function mergeTax(base: TaxInvoiceRequest, fill: Partial<TaxInvoiceRequest>): Ta
 }
 
 /**
- * 원두 3단계 빠른 발주 — 발주 페이지 최상단.
+ * 원두 간편 발주 — 한 화면에서 세 번 누르면 끝난다.
  *
- *   Step 1  지점 선택(또는 직접 입력)  → 등록된 배송지·세금계산서 기본 정보 프리필
- *   Step 2  1 / 5 / 10 / 20봉 원클릭 + -/+ 수량, 합계·부가세 실시간 계산
- *   Step 3  세금계산서 발급 확인 + 원클릭 주문 접수 → 주문 완료 화면
+ *   ① 어느 매장인가요?  (지점 선택 — 마지막에 고른 지점이 미리 선택된다)
+ *   ② 몇 박스 보낼까요?  (1·2·3박스 큰 카드 중 하나)
+ *   ③ 낼 금액을 보고 "발주하기"
  *
- * 금액은 화면에서 보여주는 값일 뿐이고, 서버(/api/orders)가 카탈로그 단가로 다시 계산한다.
- * 원두 발주가 대부분이라 99품목 탐색 없이 3단계로 끝나게 하고, 전체 품목은 아래에 그대로 둔다.
+ * 설계 원칙(럭키스팟 10원칙 · Mobile First / Simplicity Wins)
+ *  - 60대 점주가 한 손으로 누를 수 있게 버튼을 크게, 글씨를 크게, 회색 글씨는 짙게.
+ *  - 영어 라벨·단계 이동·수량 스태퍼·합계 표를 두지 않는다(오조작·고민 지점을 없앤다).
+ *  - 원두는 1박스(1kg × 10봉 = 10kg) 단위로만 발주한다. 최소 1박스 · 최대 3박스.
+ *  - 금액은 화면 표시일 뿐이고, 서버(/api/orders)가 카탈로그 단가로 다시 계산한다.
  */
 export default function QuickBeanOrder({
   onOpenCart,
-  testMode = false,
 }: {
-  /** "장바구니에 담고 카드 결제" — 기존 주문서를 연다 */
+  /** "카드로 결제하기" — 기존 주문서를 연다 */
   onOpenCart: () => void;
+  /** 토스 테스트 결제 모드 여부(결제는 주문서에서 알린다) */
   testMode?: boolean;
 }) {
   const router = useRouter();
   const addBundle = useCartStore((state) => state.addBundle);
 
-  const bean = useMemo(() => getProductById(BEAN_PRODUCT_ID), []);
-  const unitPrice = bean?.price ?? BEAN_FALLBACK_PRICE;
-  const productName = bean?.name ?? "제이웨이브 레귤러핏 원두";
+  const bean = useMemo(() => getProductById(BEAN_BOX_PRODUCT_ID), []);
 
-  const [step, setStep] = useState<Step>(1);
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storesLoaded, setStoresLoaded] = useState(false);
   const [storeCode, setStoreCode] = useState<string>("");
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [quantity, setQuantity] = useState(1);
+  const [boxes, setBoxes] = useState(1);
   const [tax, setTax] = useState<TaxInvoiceRequest>({ ...EMPTY_TAX_INVOICE });
   const [taxHint, setTaxHint] = useState<string | null>(null);
+  const [taxOpen, setTaxOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [storeError, setStoreError] = useState<string | null>(null);
+
+  const unitPrice = bean?.price ?? BEAN_PRICE_PER_BOX;
+  const bags = beanBoxesToBags(boxes);
+  const total = unitPrice * boxes;
+  const vat = splitVat(total);
 
   const isDirect = storeCode === DIRECT_SHIPPING_VALUE;
   const selectedStore = stores.find((store) => store.code === storeCode) ?? null;
 
-  const total = unitPrice * quantity;
-  const vat = splitVat(total);
-
   const directComplete =
     customerName.trim().length > 0 && /^01\d{8,9}$/.test(phone) && deliveryAddress.trim().length > 0;
-  const step1Complete = isDirect ? directComplete : Boolean(selectedStore);
+  const storeComplete = isDirect ? directComplete : Boolean(selectedStore);
 
   const taxComplete =
     !tax.requested ||
@@ -115,7 +115,7 @@ export default function QuickBeanOrder({
 
     if (recent) setStoreCode(recent.code);
 
-    // 지점을 아직 고르지 않았을 때도 마지막에 쓴 발급 정보를 제안한다.
+    // 세금계산서 정보가 이미 있으면 접어 두고, 없으면 펼쳐서 바로 입력하게 한다.
     const lastTax = readRecentTaxProfile();
 
     if (lastTax) setTax((current) => mergeTax(current, lastTax));
@@ -135,7 +135,7 @@ export default function QuickBeanOrder({
       .catch(() => {
         if (cancelled) return;
         setStoresLoaded(true);
-        setErrorMessage("지점 목록을 불러오지 못했어요. 직접 입력으로 발주하거나 새로고침해 주세요.");
+        setErrorMessage("지점 목록을 불러오지 못했어요. 새로고침해 주세요.");
       });
 
     return () => {
@@ -152,9 +152,7 @@ export default function QuickBeanOrder({
 
     setTaxHint(null);
 
-    if (stored) {
-      setTax((current) => mergeTax(current, stored));
-    }
+    if (stored) setTax((current) => mergeTax(current, stored));
 
     if (!key) return;
 
@@ -166,25 +164,37 @@ export default function QuickBeanOrder({
         if (cancelled || !data?.profile) return;
 
         setTax((current) => mergeTax(current, data.profile ?? {}));
-        setTaxHint(`${selectedStore?.label ?? "지점"}에 등록된 사업자 정보를 채웠어요. 필요하면 수정하세요.`);
+        setTaxHint("지점에 등록된 사업자 정보를 채웠어요.");
       })
       .catch(() => undefined);
 
     return () => {
       cancelled = true;
     };
-    // selectedStore 는 storeCode 가 바뀔 때 함께 바뀐다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeCode]);
 
-  const setQuantitySafe = useCallback((next: number) => {
-    if (!Number.isFinite(next)) return;
-
-    setQuantity(Math.min(MAX_QUANTITY, Math.max(1, Math.round(next))));
-  }, []);
-
   const handleSubmit = async () => {
-    if (submitting || !step1Complete || !taxComplete) return;
+    if (submitting) return;
+
+    // 막힌 곳을 버튼 아래 글로만 알리지 않고, 그 자리로 데려가 바로 고치게 한다.
+    if (!storeComplete) {
+      setStoreError(
+        isDirect ? "성함·연락처·주소를 모두 입력해 주세요." : "매장을 먼저 골라 주세요.",
+      );
+      document.getElementById("quick-store")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    setStoreError(null);
+
+    if (!taxComplete) {
+      setTaxOpen(true);
+      setErrorMessage(
+        "세금계산서 사업자 정보를 채워 주세요. 발급이 필요 없으면 ‘세금계산서 발급 요청’ 체크를 풀어 주세요.",
+      );
+      document.getElementById("quick-tax")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     setSubmitting(true);
     setErrorMessage(null);
@@ -192,7 +202,7 @@ export default function QuickBeanOrder({
     try {
       const response = await fetch("/api/orders", {
         body: JSON.stringify({
-          items: [{ id: BEAN_PRODUCT_ID, quantity }],
+          items: [{ id: BEAN_BOX_PRODUCT_ID, quantity: boxes }],
           taxInvoice: tax,
           // 지점 주문은 코드만 보낸다 — 이름·연락처·주소는 서버가 지점 정보로 채운다.
           ...(isDirect
@@ -215,7 +225,7 @@ export default function QuickBeanOrder({
       };
 
       if (!response.ok || !result.orderId) {
-        throw new Error(result.error ?? "발주 접수에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        throw new Error(result.error ?? "발주를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       const orderId = result.orderId;
@@ -226,9 +236,9 @@ export default function QuickBeanOrder({
       }
 
       writeLastOrder({
-        count: quantity,
+        count: boxes,
         createdAt: new Date().toISOString(),
-        items: [{ id: BEAN_PRODUCT_ID, quantity }],
+        items: [{ id: BEAN_BOX_PRODUCT_ID, quantity: boxes }],
         orderNumber: orderId,
         storeCode: selectedStore?.code ?? null,
         storeName: selectedStore?.label ?? null,
@@ -241,18 +251,18 @@ export default function QuickBeanOrder({
       router.push(
         `/order-complete?orderId=${encodeURIComponent(orderId)}&totalPrice=${encodeURIComponent(
           String(totalPrice),
-        )}&count=${encodeURIComponent(String(quantity))}&quick=1`,
+        )}&count=${encodeURIComponent(String(boxes))}&unit=${encodeURIComponent("박스")}`,
       );
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "발주 접수에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        error instanceof Error ? error.message : "발주를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.",
       );
       setSubmitting(false);
     }
   };
 
-  const handleCartCheckout = () => {
-    addBundle([{ id: BEAN_PRODUCT_ID, quantity }]);
+  const handleCardCheckout = () => {
+    addBundle([{ id: BEAN_BOX_PRODUCT_ID, quantity: boxes }]);
     onOpenCart();
   };
 
@@ -267,343 +277,290 @@ export default function QuickBeanOrder({
         className="pointer-events-none absolute -right-16 -top-20 size-[240px] rounded-full bg-[radial-gradient(closest-side,rgba(29,255,38,0.16),rgba(29,255,38,0))]"
       />
 
-      <div className="relative px-4 pb-4 pt-4 sm:px-5">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <p className="text-[10px] font-semibold tracking-[0.18em] text-[#7CE785]">
-              BEAN QUICK ORDER · 20,000원/봉
-            </p>
-            <h2
-              className="mt-1 break-keep text-[20px] font-semibold tracking-[-0.03em] text-white"
-              id="quick-bean-title"
-            >
-              원두는 3단계면 끝
-            </h2>
-            <p className="mt-1 break-keep text-[11.5px] leading-[1.55] text-[#A9B4AC]">
-              지점 → 수량 → 발주 확인. 99품목을 찾지 않아도 됩니다. 세금계산서도 여기서 함께
-              신청하세요.
-            </p>
-          </div>
-          <button
-            className="ls-focus h-8 shrink-0 rounded-full border border-[#2C3730] px-3 text-[11px] font-medium text-[#C8D0CA] transition-colors hover:border-[#1DFF26] hover:text-white"
-            onClick={handleCartCheckout}
-            type="button"
+      <div className="relative px-4 pb-5 pt-5 sm:px-6">
+        <h2
+          className="break-keep text-[24px] font-bold leading-[1.2] tracking-[-0.03em] text-white"
+          id="quick-bean-title"
+        >
+          원두 발주
+        </h2>
+        <p className="mt-1.5 break-keep text-[15px] leading-[1.5] text-[#D5DCD7]">
+          1박스 = {BEAN_BAGS_PER_BOX}봉(10kg) ·{" "}
+          <strong className="font-bold text-[#1DFF26]">{formatPrice(unitPrice)}</strong>
+        </p>
+      </div>
+
+      <div className="relative rounded-t-[18px] bg-white px-4 pb-5 pt-5 text-[#0F1412] sm:px-6">
+        {/* ① 지점 */}
+        <StepLabel step={1} title="어느 매장인가요?" />
+
+        <div className="relative mt-2" id="quick-store">
+          <select
+            aria-label="발주 지점 선택"
+            className="ls-focus h-14 w-full appearance-none rounded-[12px] border-2 border-[var(--ls-line-strong)] bg-white px-4 pr-11 text-[17px] font-semibold text-[#0F1412] outline-none"
+            onChange={(event) => {
+              setStoreCode(event.target.value);
+              setTaxHint(null);
+              setStoreError(null);
+            }}
+            value={storeCode}
           >
-            장바구니에 담고 카드 결제
-          </button>
+            <option disabled value="">
+              {storesLoaded ? "매장을 선택해 주세요" : "매장 목록 불러오는 중…"}
+            </option>
+            {stores.map((store) => (
+              <option key={store.code} value={store.code}>
+                {store.label}
+              </option>
+            ))}
+            <option value={DIRECT_SHIPPING_VALUE}>{DIRECT_SHIPPING_LABEL}</option>
+          </select>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#0F1412]"
+          >
+            <svg height="16" viewBox="0 0 14 14" width="16">
+              <path
+                d="M3 5.5L7 9.5l4-4"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+              />
+            </svg>
+          </span>
         </div>
 
-        <ol className="mt-3 flex items-center gap-1.5" aria-label="빠른 발주 단계">
-          {STEPS.map((item, index) => {
-            const active = step === item.key;
-            const done = step > item.key;
+        {selectedStore ? (
+          <p className="mt-2 break-keep text-[14px] leading-[1.5] text-[#3B4740]">
+            <strong className="font-semibold text-[#0F1412]">{selectedStore.label}</strong>으로
+            배송합니다.
+          </p>
+        ) : null}
+
+        {storeError ? (
+          <p
+            className="mt-2 break-keep rounded-[10px] bg-[#FDF2F2] px-3.5 py-2.5 text-[15px] font-semibold leading-[1.5] text-[#8A2323]"
+            role="alert"
+          >
+            {storeError}
+          </p>
+        ) : null}
+
+        {isDirect ? (
+          <div className="mt-2 space-y-2">
+            <input
+              aria-label="주문자 성함"
+              className="ls-focus h-14 w-full rounded-[12px] border-2 border-[var(--ls-line-strong)] px-4 text-[16px] text-[#0F1412] outline-none placeholder:text-[#6B746D]"
+              onChange={(event) => setCustomerName(event.target.value)}
+              placeholder="주문자 성함"
+              type="text"
+              value={customerName}
+            />
+            <input
+              aria-label="휴대폰 번호"
+              className="ls-focus h-14 w-full rounded-[12px] border-2 border-[var(--ls-line-strong)] px-4 text-[16px] text-[#0F1412] outline-none placeholder:text-[#6B746D]"
+              inputMode="numeric"
+              maxLength={11}
+              onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 11))}
+              placeholder="휴대폰 번호 11자리"
+              type="tel"
+              value={phone}
+            />
+            <input
+              aria-label="배송지 주소"
+              className="ls-focus h-14 w-full rounded-[12px] border-2 border-[var(--ls-line-strong)] px-4 text-[16px] text-[#0F1412] outline-none placeholder:text-[#6B746D]"
+              onChange={(event) => setDeliveryAddress(event.target.value)}
+              placeholder="배송지 주소"
+              type="text"
+              value={deliveryAddress}
+            />
+          </div>
+        ) : null}
+
+        {/* ② 박스 수량 */}
+        <div className="mt-6">
+          <StepLabel step={2} title="몇 박스 보낼까요?" />
+        </div>
+
+        <div className="mt-2 space-y-2 sm:grid sm:grid-cols-3 sm:gap-3 sm:space-y-0" role="group" aria-label="원두 박스 수량 선택">
+          {BEAN_BOX_OPTIONS.map((option) => {
+            const active = boxes === option;
 
             return (
-              <li className="flex flex-1 items-center gap-1.5" key={item.key}>
-                <button
-                  aria-current={active ? "step" : undefined}
-                  className={`ls-focus flex h-8 w-full items-center justify-center gap-1.5 rounded-full text-[11.5px] font-semibold transition-colors ${
-                    active
-                      ? "bg-[#1DFF26] text-[#0F1412]"
-                      : done
-                        ? "border border-[#1DFF26]/40 bg-[#16231A] text-[#7CE785]"
-                        : "border border-[#2C3730] text-[#8C9690]"
+              <button
+                aria-pressed={active}
+                className={`ls-focus flex min-h-[78px] w-full items-center justify-between gap-3 rounded-[14px] px-4 text-left transition-colors sm:min-h-[118px] sm:flex-col sm:items-start sm:justify-center sm:gap-1 sm:px-5 ${
+                  active
+                    ? "bg-[#0F1412] text-white ring-2 ring-[#0F1412] ring-offset-2"
+                    : "border-2 border-[var(--ls-line-strong)] bg-white text-[#0F1412] hover:border-[#0F1412]"
+                }`}
+                key={option}
+                onClick={() => setBoxes(option)}
+                type="button"
+              >
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2">
+                    <span className="text-[21px] font-bold leading-none">{option}박스</span>
+                    {option === 1 ? (
+                      <span
+                        className={`rounded-full px-2 py-[3px] text-[11.5px] font-bold ${
+                          active ? "bg-[#1DFF26] text-[#0F1412]" : "bg-[#EDFBEF] text-[#0B5C2A]"
+                        }`}
+                      >
+                        최소
+                      </span>
+                    ) : null}
+                    {active ? (
+                      <svg aria-hidden height="16" viewBox="0 0 24 24" width="16">
+                        <path
+                          d="M5 12.5l4.5 4.5L19 7.5"
+                          fill="none"
+                          stroke="#1DFF26"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="3"
+                        />
+                      </svg>
+                    ) : null}
+                  </span>
+                  <span
+                    className={`mt-1 block text-[14px] font-medium ${
+                      active ? "text-[#C8D0CA]" : "text-[#3B4740]"
+                    }`}
+                  >
+                    {beanBoxesToBags(option)}봉 · {beanBoxesToBags(option)}kg
+                  </span>
+                </span>
+                <span
+                  className={`shrink-0 text-[19px] font-bold tabular-nums sm:mt-1 ${
+                    active ? "text-[#1DFF26]" : "text-[#0F1412]"
                   }`}
-                  disabled={item.key > step && !(step === 1 && item.key === 2 && step1Complete)}
-                  onClick={() => {
-                    if (item.key <= step) setStep(item.key);
-                    else if (step === 1 && item.key === 2 && step1Complete) setStep(2);
-                  }}
-                  type="button"
                 >
-                  <span className="tabular-nums">{done ? "✓" : item.key}</span>
-                  {item.label}
-                </button>
-                {index < STEPS.length - 1 ? <span aria-hidden className="h-px w-2 bg-[#2C3730]" /> : null}
-              </li>
+                  {formatPrice(unitPrice * option)}
+                </span>
+              </button>
             );
           })}
-        </ol>
-      </div>
+        </div>
 
-      <div className="relative rounded-t-[18px] bg-white px-4 pb-4 pt-4 text-[#0F1412] sm:px-5">
-        {step === 1 ? (
-          <div>
-            <h3 className="text-[14px] font-semibold">어느 지점으로 보낼까요?</h3>
-            <p className="mt-0.5 text-[11px] text-[var(--ls-muted)]">
-              지점을 고르면 등록된 배송지·연락처로 접수되고, 세금계산서 기본 정보도 함께 채워집니다.
-            </p>
+        <p className="mt-2 break-keep text-[14px] leading-[1.5] text-[#3B4740]">
+          한 번에 최대 {BEAN_MAX_BOXES}박스까지예요. 더 필요하면{" "}
+          <a
+            className="whitespace-nowrap font-semibold underline underline-offset-2"
+            href={`tel:${ORDER_SUPPORT_PHONE.replace(/\D/g, "")}`}
+          >
+            {ORDER_SUPPORT_PHONE}
+          </a>
+          에 전화 주세요.
+        </p>
 
-            <div className="relative mt-2.5">
-              <select
-                aria-label="발주 지점 선택"
-                className="ls-focus h-12 w-full appearance-none rounded-[10px] border border-[var(--ls-line-strong)] bg-white px-3.5 pr-10 text-[13.5px] text-[#0F1412] outline-none"
-                onChange={(event) => {
-                  setStoreCode(event.target.value);
-                  setTaxHint(null);
-                }}
-                value={storeCode}
-              >
-                <option disabled value="">
-                  {storesLoaded ? "지점을 선택해 주세요" : "지점 목록 불러오는 중…"}
-                </option>
-                {stores.map((store) => (
-                  <option key={store.code} value={store.code}>
-                    {store.label}
-                  </option>
-                ))}
-                <option value={DIRECT_SHIPPING_VALUE}>{DIRECT_SHIPPING_LABEL}</option>
-              </select>
+        {/* 세금계산서 — 평소에는 접힌 한 줄, 필요할 때만 연다 */}
+        <div className="mt-5 rounded-[14px] border-2 border-[var(--ls-line)]" id="quick-tax">
+          <button
+            aria-expanded={taxOpen}
+            className="ls-focus flex min-h-[56px] w-full items-center justify-between gap-2 rounded-[12px] px-4 text-left"
+            onClick={() => setTaxOpen((open) => !open)}
+            type="button"
+          >
+            <span className="text-[16px] font-semibold text-[#0F1412]">세금계산서</span>
+            <span className="flex items-center gap-1.5">
               <span
-                aria-hidden
-                className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--ls-muted)]"
+                className={`text-[14.5px] font-semibold ${
+                  tax.requested && !taxComplete ? "text-[#B42318]" : tax.requested ? "text-[#0B5C2A]" : "text-[#3B4740]"
+                }`}
               >
-                <svg height="14" viewBox="0 0 14 14" width="14">
-                  <path
-                    d="M3 5.5L7 9.5l4-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.6"
-                  />
-                </svg>
+                {tax.requested ? (taxComplete ? "발급 신청함" : "정보 입력 필요") : "발급 안 함"}
               </span>
-            </div>
-
-            {selectedStore ? (
-              <p className="mt-2 rounded-[10px] bg-[#F4F5F6] px-3.5 py-2.5 text-[11.5px] leading-[1.55] text-[var(--ls-muted)]">
-                <strong className="font-semibold text-[#0F1412]">{selectedStore.label}</strong> 배송지
-                {selectedStore.address ? (
-                  <>
-                    <br />
-                    {selectedStore.address}
-                  </>
-                ) : null}
-                <br />
-                연락처는 지점에 등록된 점주 번호로 안내되며, 화면에는 표시하지 않습니다.
-              </p>
-            ) : null}
-
-            {isDirect ? (
-              <div className="mt-2 space-y-2">
-                <input
-                  aria-label="주문자 성함"
-                  className="ls-focus h-12 w-full rounded-[10px] border border-[var(--ls-line-strong)] px-3.5 text-[13.5px] text-[#0F1412] outline-none placeholder:text-[var(--ls-muted)]"
-                  onChange={(event) => setCustomerName(event.target.value)}
-                  placeholder="주문자 성함"
-                  type="text"
-                  value={customerName}
-                />
-                <input
-                  aria-label="휴대폰 번호"
-                  className="ls-focus h-12 w-full rounded-[10px] border border-[var(--ls-line-strong)] px-3.5 text-[13.5px] text-[#0F1412] outline-none placeholder:text-[var(--ls-muted)]"
-                  inputMode="numeric"
-                  maxLength={11}
-                  onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 11))}
-                  placeholder="휴대폰 번호 11자리"
-                  type="tel"
-                  value={phone}
-                />
-                <input
-                  aria-label="배송지 주소"
-                  className="ls-focus h-12 w-full rounded-[10px] border border-[var(--ls-line-strong)] px-3.5 text-[13.5px] text-[#0F1412] outline-none placeholder:text-[var(--ls-muted)]"
-                  onChange={(event) => setDeliveryAddress(event.target.value)}
-                  placeholder="배송지 주소"
-                  type="text"
-                  value={deliveryAddress}
-                />
-              </div>
-            ) : null}
-
-            {errorMessage ? (
-              <p className="mt-2 rounded-[10px] border border-[#E4B4B4] bg-[#FDF2F2] px-3 py-2 text-[11.5px] leading-[1.5] text-[#8A2323]">
-                {errorMessage}
-              </p>
-            ) : null}
-
-            <button
-              className="ls-focus mt-3 h-12 w-full rounded-[12px] bg-[#0F1412] text-[14px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#8A948D]"
-              disabled={!step1Complete}
-              onClick={() => {
-                setErrorMessage(null);
-                setStep(2);
-              }}
-              type="button"
-            >
-              {step1Complete
-                ? "다음 · 원두 수량"
-                : isDirect
-                  ? "성함·연락처·주소를 모두 입력해 주세요"
-                  : "지점을 선택해 주세요"}
-            </button>
-          </div>
-        ) : null}
-
-        {step === 2 ? (
-          <div>
-            <div className="flex items-end justify-between gap-2">
-              <div>
-                <h3 className="text-[14px] font-semibold">{productName}</h3>
-                <p className="mt-0.5 text-[11px] text-[var(--ls-muted)]">
-                  1봉 {formatPrice(unitPrice)} · VAT 포함 · 1kg
-                </p>
-              </div>
-              <button
-                className="ls-focus text-[11.5px] text-[var(--ls-muted)] underline decoration-[var(--ls-line-strong)] underline-offset-2 hover:text-[#0F1412]"
-                onClick={() => setStep(1)}
-                type="button"
+              <svg
+                aria-hidden
+                className={`text-[#3B4740] transition-transform ${taxOpen ? "rotate-180" : ""}`}
+                height="14"
+                viewBox="0 0 14 14"
+                width="14"
               >
-                지점 변경
-              </button>
+                <path
+                  d="M3 5.5L7 9.5l4-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.8"
+                />
+              </svg>
+            </span>
+          </button>
+
+          {taxOpen ? (
+            <div className="px-3 pb-3">
+              <TaxInvoiceFields hint={taxHint} idPrefix="quick" onChange={setTax} value={tax} />
             </div>
+          ) : null}
+        </div>
 
-            <div className="mt-3 grid grid-cols-4 gap-1.5">
-              {QUICK_QUANTITIES.map((option) => {
-                const active = quantity === option;
-
-                return (
-                  <button
-                    aria-pressed={active}
-                    className={`ls-focus flex h-[58px] flex-col items-center justify-center rounded-[12px] text-[13.5px] font-semibold transition-colors ${
-                      active
-                        ? "bg-[#0F1412] text-[#1DFF26]"
-                        : "border border-[var(--ls-line-strong)] bg-white text-[#0F1412] hover:border-[#0F1412]"
-                    }`}
-                    key={option}
-                    onClick={() => setQuantitySafe(option)}
-                    type="button"
-                  >
-                    {option}봉
-                    <span
-                      className={`mt-0.5 text-[10px] font-medium tabular-nums ${
-                        active ? "text-[#8CF695]" : "text-[var(--ls-muted)]"
-                      }`}
-                    >
-                      {formatPrice(unitPrice * option)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] text-[var(--ls-muted)]">수량 조절</p>
-                <p className="mt-0.5 text-[26px] font-semibold tabular-nums leading-none tracking-[-0.03em]">
-                  {quantity}
-                  <span className="ml-1 text-[12px] font-medium text-[var(--ls-muted)]">봉</span>
-                </p>
-              </div>
-              <QuantityStepper
-                label="원두 수량"
-                onChange={setQuantitySafe}
-                quantity={quantity}
-                size="md"
-              />
-            </div>
-
-            <dl className="mt-3 space-y-1.5 rounded-[12px] bg-[#F4F5F6] px-3.5 py-3 text-[12.5px]">
-              <div className="flex justify-between">
-                <dt className="text-[var(--ls-muted)]">공급가액</dt>
-                <dd className="tabular-nums">{formatPrice(vat.supply)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-[var(--ls-muted)]">부가세</dt>
-                <dd className="tabular-nums">{formatPrice(vat.vat)}</dd>
-              </div>
-              <div className="flex items-baseline justify-between border-t border-[var(--ls-line)] pt-2">
-                <dt className="text-[13px] font-semibold">
-                  합계 <span className="text-[10px] font-normal text-[var(--ls-muted)]">VAT 포함</span>
-                </dt>
-                <dd className="text-[19px] font-semibold tabular-nums tracking-[-0.02em]">
-                  {formatPrice(total)}
-                </dd>
-              </div>
-            </dl>
-
-            <button
-              className="ls-focus mt-3 h-12 w-full rounded-[12px] bg-[#0F1412] text-[14px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F]"
-              onClick={() => setStep(3)}
-              type="button"
-            >
-              다음 · 발주 확인
-            </button>
-          </div>
-        ) : null}
-
-        {step === 3 ? (
-          <div>
-            <div className="flex items-end justify-between gap-2">
-              <h3 className="text-[14px] font-semibold">이대로 발주할까요?</h3>
-              <button
-                className="ls-focus text-[11.5px] text-[var(--ls-muted)] underline decoration-[var(--ls-line-strong)] underline-offset-2 hover:text-[#0F1412]"
-                onClick={() => setStep(2)}
-                type="button"
-              >
-                수량 변경
-              </button>
-            </div>
-
-            <dl className="mt-2 space-y-1.5 rounded-[12px] border border-[var(--ls-line)] px-3.5 py-3 text-[12.5px]">
-              <div className="flex justify-between gap-3">
-                <dt className="shrink-0 text-[var(--ls-muted)]">받는 곳</dt>
-                <dd className="text-right font-medium">
-                  {isDirect ? `${customerName || "직접 입력"} · ${deliveryAddress || "주소 입력"}` : selectedStore?.label}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="shrink-0 text-[var(--ls-muted)]">품목</dt>
-                <dd className="text-right font-medium">
-                  {productName} × {quantity}봉
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3 border-t border-[var(--ls-line)] pt-2">
-                <dt className="text-[13px] font-semibold">합계 (VAT 포함)</dt>
-                <dd className="text-[17px] font-semibold tabular-nums">{formatPrice(total)}</dd>
-              </div>
-            </dl>
-
-            <div className="mt-2.5">
-              <TaxInvoiceFields
-                hint={taxHint}
-                idPrefix="quick"
-                onChange={setTax}
-                value={tax}
-              />
-            </div>
-
-            <div className="mt-2.5 rounded-[12px] border border-[var(--ls-line)] px-3.5 py-3">
-              <p className="text-[12.5px] font-semibold">결제 · 입금 안내</p>
-              <p className="mt-1 text-[11.5px] leading-[1.6] text-[var(--ls-muted)]">
-                발주 접수 후 {ORDER_BANK_NAME} {ORDER_ACCOUNT_NUMBER} 로 입금하시면 확인 후
-                출고됩니다. 카드 결제는 위 “장바구니에 담고 카드 결제”로 진행해 주세요.
-                {testMode ? " (지금은 테스트 결제 모드입니다)" : ""}
+        {/* ③ 낼 금액과 발주 */}
+        <div className="mt-5 border-t-2 border-[#0F1412] pt-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[16px] font-semibold text-[#3B4740]">낼 금액</p>
+              <p className="mt-0.5 text-[13.5px] tabular-nums text-[#3B4740]">
+                {boxes}박스 · {bags}봉 · 부가세 포함
               </p>
             </div>
-
-            {errorMessage ? (
-              <p className="mt-2 rounded-[10px] border border-[#E4B4B4] bg-[#FDF2F2] px-3 py-2 text-[11.5px] leading-[1.5] text-[#8A2323]" role="alert">
-                {errorMessage}
-              </p>
-            ) : null}
-
-            <button
-              className="ls-focus mt-3 flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[15px] font-semibold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#8A948D]"
-              disabled={submitting || !step1Complete || !taxComplete}
-              onClick={() => void handleSubmit()}
-              type="button"
-            >
-              {submitting ? "발주 접수 중…" : `원클릭 발주 · ${formatPrice(total)}`}
-            </button>
-            <p className="mt-1.5 text-center text-[10.5px] leading-[1.5] text-[var(--ls-muted)]">
-              {!taxComplete
-                ? "세금계산서 정보를 채우거나 발급 요청을 해제해 주세요."
-                : "주문취소·문의 " + ORDER_SUPPORT_PHONE}
+            <p className="text-[30px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#0F1412]">
+              {formatPrice(total)}
             </p>
           </div>
+          <p className="mt-1 text-right text-[13px] tabular-nums text-[#3B4740]">
+            공급가액 {formatPrice(vat.supply)} + 부가세 {formatPrice(vat.vat)}
+          </p>
+        </div>
+
+        {errorMessage ? (
+          <p
+            className="mt-3 break-keep rounded-[12px] border-2 border-[#E4B4B4] bg-[#FDF2F2] px-4 py-3 text-[15px] font-semibold leading-[1.5] text-[#8A2323]"
+            role="alert"
+          >
+            {errorMessage}
+          </p>
         ) : null}
+
+        <button
+          className="ls-focus mt-4 flex h-[60px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[19px] font-bold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#5F6A63]"
+          disabled={submitting}
+          onClick={() => void handleSubmit()}
+          type="button"
+        >
+          {submitting ? "발주 접수 중…" : `${boxes}박스 발주하기`}
+        </button>
+
+        <p className="mt-2 break-keep text-center text-[14px] leading-[1.5] text-[#3B4740]">
+          발주하면 접수되고, 입금하시면 출고됩니다.
+        </p>
+
+        <button
+          className="ls-focus mt-3 flex h-[54px] w-full items-center justify-center rounded-[14px] border-2 border-[var(--ls-line-strong)] text-[15.5px] font-semibold text-[#0F1412] transition-colors hover:border-[#0F1412]"
+          onClick={handleCardCheckout}
+          type="button"
+        >
+          카드로 결제하기
+        </button>
       </div>
     </section>
+  );
+}
+
+function StepLabel({ step, title }: { step: number; title: string }) {
+  return (
+    <h3 className="flex items-center gap-2 text-[18px] font-bold leading-[1.3] tracking-[-0.02em] text-[#0F1412]">
+      <span
+        aria-hidden
+        className="grid size-7 shrink-0 place-items-center rounded-full bg-[#0F1412] text-[14px] font-bold text-[#1DFF26]"
+      >
+        {step}
+      </span>
+      {title}
+    </h3>
   );
 }

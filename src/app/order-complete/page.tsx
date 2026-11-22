@@ -12,6 +12,7 @@ type OrderCompletePageProps = {
     orderId?: string | string[];
     totalPrice?: string | string[];
     count?: string | string[];
+    unit?: string | string[];
   }>;
 };
 
@@ -31,6 +32,7 @@ export default async function OrderCompletePage({ searchParams }: OrderCompleteP
       itemCount={getSingleSearchParamValue(resolvedSearchParams?.count)}
       orderId={getSingleSearchParamValue(resolvedSearchParams?.orderId)}
       totalPrice={getSingleSearchParamValue(resolvedSearchParams?.totalPrice)}
+      unit={getSingleSearchParamValue(resolvedSearchParams?.unit)}
     />
   );
 }

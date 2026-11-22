@@ -1,20 +1,15 @@
 import type { Metadata } from "next";
 
 import ShopApp from "@/components/shop/ShopApp";
-import { formatPrice, shopCategories } from "@/data/products";
+import { formatPrice } from "@/data/products";
 import { ORDER_SUPPORT_PHONE } from "@/features/order/utils";
 import { isTossTestMode } from "@/features/payments/keys";
 
 export const metadata: Metadata = {
   title: "점주 발주 | 럭키스팟",
   description:
-    "럭키스팟 점주 발주 페이지. 원두는 3단계 빠른 발주로, 파우더·시럽·컵·부자재까지 2026년 11월 최신 단가로 한 번에 발주하고 세금계산서도 함께 신청하세요.",
+    "럭키스팟 점주 발주 페이지. 원두는 1박스(10봉·10kg) 단위로 매장·박스·발주 세 번이면 끝나고, 파우더·시럽·컵·부자재까지 2026년 11월 최신 단가로 한 번에 발주할 수 있습니다.",
 };
-
-const productCount = shopCategories.reduce(
-  (sum, category) => sum + category.products.length,
-  0,
-);
 
 export default function HomePage() {
   // 토스페이먼츠 실키가 설정되기 전에는 테스트 결제 모드다 — 화면 상단에 분명히 알린다.
@@ -33,81 +28,56 @@ export default function HomePage() {
             </span>
             <div className="leading-none">
               <p className="text-[13px] font-semibold tracking-[0.2em] text-white">LUCKY SPOT</p>
-              <p className="mt-1 text-[9.5px] font-medium tracking-[0.18em] text-[#7C867E]">
-                STORE ORDER
+              <p className="mt-1 text-[10px] font-medium tracking-[0.14em] text-[#9AA39C]">
+                점주 발주
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
             <a
-              className="flex items-center gap-1 rounded-full bg-[#1DFF26] px-3 py-1.5 text-[11px] font-semibold text-[#0F1412] transition-colors hover:bg-[#7CE785]"
+              className="flex h-10 items-center gap-1 rounded-full bg-[#1DFF26] px-3.5 text-[13.5px] font-bold text-[#0F1412] transition-colors hover:bg-[#7CE785]"
               href="/orders"
             >
-              내 발주 내역 조회
+              내 발주 내역
             </a>
             <a
-              className="hidden items-center gap-1.5 rounded-full border border-[#2C3730] px-3 py-1.5 text-[11px] font-medium text-[#C8D0CA] transition-colors hover:border-[#1DFF26] hover:text-white sm:flex"
+              aria-label={`주문 문의 ${ORDER_SUPPORT_PHONE}`}
+              className="grid size-10 place-items-center rounded-full border border-[#2C3730] text-[#C8D0CA] transition-colors hover:border-[#1DFF26] hover:text-white"
               href={`tel:${ORDER_SUPPORT_PHONE.replace(/\D/g, "")}`}
             >
-              <svg aria-hidden height="11" viewBox="0 0 12 12" width="11">
+              <svg aria-hidden height="15" viewBox="0 0 12 12" width="15">
                 <path
                   d="M3 1.5h2l.8 2.2-1.2.9a7 7 0 0 0 2.8 2.8l.9-1.2 2.2.8v2c0 .8-.6 1.5-1.4 1.4C5.6 11 1 6.4.6 2.9.5 2.1 1.1 1.5 2 1.5z"
                   fill="none"
                   stroke="currentColor"
                   strokeLinejoin="round"
-                  strokeWidth="1.1"
+                  strokeWidth="1.2"
                 />
               </svg>
-              주문 문의 {ORDER_SUPPORT_PHONE}
             </a>
           </div>
         </div>
       </header>
 
-      <section className="relative overflow-hidden bg-[#0F1412] pb-7 pt-6 text-white sm:pb-9 sm:pt-8">
+      <section className="relative overflow-hidden bg-[#0F1412] pb-6 pt-5 text-white sm:pb-9 sm:pt-7">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-24 -top-24 size-[320px] rounded-full bg-[radial-gradient(closest-side,rgba(29,255,38,0.16),rgba(29,255,38,0))]"
         />
         <div className="relative mx-auto w-full max-w-[1200px] px-4 sm:px-6">
-          <p className="text-[10.5px] font-semibold tracking-[0.2em] text-[#7CE785]">
-            STORE ORDER · 2026.11 단가
-          </p>
-          <h1 className="mt-2.5 break-keep text-[28px] font-semibold leading-[1.15] tracking-[-0.04em] sm:text-[38px]">
-            필요한 것만,
-            <br className="sm:hidden" /> <span className="text-[#1DFF26]">정확한 단가</span>로
-            발주하세요
+          <h1 className="break-keep text-[26px] font-bold leading-[1.2] tracking-[-0.04em] sm:text-[34px]">
+            원두 발주, <span className="text-[#1DFF26]">세 번</span>이면 끝
           </h1>
+          <p className="mt-2 max-w-[560px] break-keep text-[14.5px] leading-[1.6] text-[#D5DCD7] sm:text-[15.5px]">
+            매장 고르고, 1·2·3박스 중 하나 누르고, 발주하기. 모두 부가세 포함 금액입니다.
+          </p>
           {testMode ? (
-            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#E5C86A]/50 bg-[#FFF7DD]/10 px-2.5 py-1 text-[10.5px] font-semibold text-[#FFE08A]">
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#E5C86A]/50 bg-[#FFF7DD]/10 px-2.5 py-1 text-[12px] font-semibold text-[#FFE08A]">
               <span aria-hidden className="size-1.5 rounded-full bg-[#FFE08A]" />
               테스트 결제 모드 · 실제 금액이 청구되지 않습니다
             </p>
           ) : null}
-          <p className="mt-3 max-w-[560px] break-keep text-[13px] leading-[1.65] text-[#A9B4AC] sm:text-[14px]">
-            원두는 지점·수량·발주 확인 3단계로 끝내고, 파우더·시럽부터 컵·부자재·가구·식물까지
-            한 화면에 모았습니다. 모든 금액은 부가세 포함이고, 세금계산서 발급도 주문서에서 함께
-            신청할 수 있습니다.
-          </p>
-
-          <dl className="mt-5 grid grid-cols-3 gap-2 sm:max-w-[520px]">
-            {[
-              { label: "발주 품목", value: `${productCount}종` },
-              { label: "단가 기준", value: "11.19" },
-              { label: "표시 금액", value: "VAT 포함" },
-            ].map((item) => (
-              <div
-                className="rounded-[12px] border border-[#252E28] bg-[#131A16] px-3 py-2.5"
-                key={item.label}
-              >
-                <dt className="text-[9.5px] font-medium tracking-[0.06em] text-[#7C867E]">
-                  {item.label}
-                </dt>
-                <dd className="mt-1 text-[13px] font-semibold text-white">{item.value}</dd>
-              </div>
-            ))}
-          </dl>
         </div>
       </section>
 
@@ -121,7 +91,7 @@ export default function HomePage() {
               주문 문의 {ORDER_SUPPORT_PHONE} · 입금 확인 후 출고 · 단가는 부가세 포함
             </p>
             <p className="mt-1">
-              원두 {formatPrice(20000)}/kg · 더캐럿 파우더·농축 단가표 2026-11-19 기준
+              원두 1박스(10kg) {formatPrice(200000)} · 더캐럿 파우더·농축 단가표 2026-11-19 기준
             </p>
           </div>
         </footer>

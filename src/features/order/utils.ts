@@ -1,4 +1,4 @@
-import { formatPrice, getProductById } from "@/data/products";
+import { clampOrderQuantity, formatPrice, getProductById } from "@/data/products";
 import { formatBusinessNo, type TaxInvoiceRequest } from "@/features/tax-invoice";
 
 const ORDER_ID_RANDOM_DIGITS = 3;
@@ -141,7 +141,8 @@ export function buildOrderLines(items: OrderItemInput[]): OrderLine[] {
 
     if (!product) return [];
 
-    const quantity = Math.min(999, Math.max(1, Math.round(item.quantity)));
+    // 원두는 1~3박스로 맞춘다(클라이언트를 거치지 않은 요청도 같은 규칙).
+    const quantity = clampOrderQuantity(product.id, item.quantity);
 
     return [
       {

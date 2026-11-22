@@ -2,7 +2,12 @@
 
 import { create } from "zustand";
 
-import { getProductById, type ShopProduct } from "@/data/products";
+import {
+  clampOrderQuantity,
+  getProductById,
+  normalizeOrderLine,
+  type ShopProduct,
+} from "@/data/products";
 
 export type CartLine = {
   id: string;
@@ -21,7 +26,6 @@ type CartState = {
 };
 
 const MAX_QUANTITY = 999;
-
 /**
  * 장바구니는 브라우저에 남긴다.
  * 토스 결제창은 successUrl/failUrl 로 페이지를 이동시키므로, 이동해도 담은 품목이
@@ -49,9 +53,14 @@ function readStoredLines(): CartLine[] {
       const id = typeof candidate.id === "string" ? candidate.id : "";
       const quantity = Number(candidate.quantity);
 
-      if (!id || !getProductById(id) || !Number.isFinite(quantity) || quantity < 1) continue;
+      if (!id || !Number.isFinite(quantity) || quantity < 1) continue;
 
-      merged.set(id, Math.min(MAX_QUANTITY, (merged.get(id) ?? 0) + Math.round(quantity)));
+      // 박스 이전 원두(1봉·3박스 상품)도 지금의 박스 수량으로 옮겨 담는다.
+      const line = normalizeOrderLine({ id, quantity });
+
+      if (!line) continue;
+
+      merged.set(line.id, clamp(line.id, (merged.get(line.id) ?? 0) + line.quantity));
     }
 
     return Array.from(merged, ([id, quantity]) => ({ id, quantity }));
@@ -104,13 +113,13 @@ export const useCartStore = create<CartState>((set) => ({
       const existing = state.lines.find((line) => line.id === productId);
 
       if (!existing) {
-        return { lines: [...state.lines, { id: productId, quantity: clamp(quantity) }] };
+        return { lines: [...state.lines, { id: productId, quantity: clamp(productId, quantity) }] };
       }
 
       return {
         lines: state.lines.map((line) =>
           line.id === productId
-            ? { ...line, quantity: clamp(line.quantity + quantity) }
+            ? { ...line, quantity: clamp(productId, line.quantity + quantity) }
             : line,
         ),
       };
@@ -122,14 +131,14 @@ export const useCartStore = create<CartState>((set) => ({
         quantity <= 0
           ? state.lines.filter((line) => line.id !== productId)
           : state.lines.map((line) =>
-              line.id === productId ? { ...line, quantity: clamp(quantity) } : line,
+              line.id === productId ? { ...line, quantity: clamp(productId, quantity) } : line,
             ),
     })),
 
   increase: (productId) =>
     set((state) => ({
       lines: state.lines.map((line) =>
-        line.id === productId ? { ...line, quantity: clamp(line.quantity + 1) } : line,
+        line.id === productId ? { ...line, quantity: clamp(productId, line.quantity + 1) } : line,
       ),
     })),
 
@@ -157,10 +166,10 @@ export const useCartStore = create<CartState>((set) => ({
         if (index >= 0) {
           next[index] = {
             ...next[index],
-            quantity: clamp(next[index].quantity + item.quantity),
+            quantity: clamp(item.id, next[index].quantity + item.quantity),
           };
         } else {
-          next.push({ id: item.id, quantity: clamp(item.quantity) });
+          next.push({ id: item.id, quantity: clamp(item.id, item.quantity) });
         }
       }
 
@@ -170,8 +179,9 @@ export const useCartStore = create<CartState>((set) => ({
   clearItems: () => set({ lines: [] }),
 }));
 
-function clamp(quantity: number) {
-  return Math.min(MAX_QUANTITY, Math.max(1, Math.round(quantity)));
+/** 품목별 허용 범위로 맞춘다(원두는 1~3박스, 나머지는 1~999개). */
+function clamp(productId: string, quantity: number) {
+  return Math.min(MAX_QUANTITY, clampOrderQuantity(productId, quantity));
 }
 
 export type CartEntry = {

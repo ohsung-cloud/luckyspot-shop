@@ -18,6 +18,8 @@ type OrderCompletePageClientProps = {
   orderId: string | null;
   totalPrice: string | null;
   itemCount: string | null;
+  /** 수량 단위 — 원두 간편 발주는 "박스" */
+  unit?: string | null;
 };
 
 function extractAmount(value: string | null) {
@@ -40,6 +42,7 @@ export function OrderCompletePageClient({
   orderId,
   totalPrice,
   itemCount,
+  unit,
 }: OrderCompletePageClientProps) {
   const router = useRouter();
   const [fallbackOrderId] = React.useState(() => generateOrderId());
@@ -132,7 +135,7 @@ export function OrderCompletePageClient({
         <div className="rounded-[18px] bg-white p-5 shadow-[0_20px_50px_-30px_rgba(15,20,18,0.5)]">
           <dl className="space-y-2.5">
             <Row label="주문번호" value={resolvedOrderId} />
-            <Row label="품목" value={count > 0 ? `${count}개` : "-"} />
+            <Row label="품목" value={count > 0 ? `${count}${unit === "박스" ? "박스" : "개"}` : "-"} />
             {taxReceipt ? (
               <Row
                 label="세금계산서"

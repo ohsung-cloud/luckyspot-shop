@@ -12,7 +12,7 @@
  * 여기 담기는 것은 "무엇을 몇 개 담았는지" 뿐이고, 이름·연락처·주소는 저장하지 않는다.
  */
 
-import { getProductById } from "@/data/products";
+import { normalizeOrderLine } from "@/data/products";
 import { DEFAULT_STORE_SCALE, isStoreScale, type StoreScale } from "@/data/consumables";
 
 export type ReorderLine = { id: string; quantity: number };
@@ -103,7 +103,7 @@ function normalizeLastOrder(value: unknown): LastOrder | null {
   };
 }
 
-/** 지금 카탈로그에 있는 품목만 남기고 수량을 다듬는다. */
+/** 지금 카탈로그에 있는 품목만 남기고 수량을 허용 범위로 다듬는다. */
 export function normalizeLines(value: unknown): ReorderLine[] {
   if (!Array.isArray(value)) return [];
 
@@ -114,17 +114,22 @@ export function normalizeLines(value: unknown): ReorderLine[] {
 
     const candidate = raw as { id?: unknown; quantity?: unknown };
     const id = typeof candidate.id === "string" ? candidate.id : "";
-
-    if (!id || !getProductById(id)) continue;
-
     const quantity = Number(candidate.quantity);
-    if (!Number.isFinite(quantity) || quantity < 1) continue;
 
-    const next = Math.min(MAX_QUANTITY, Math.round(quantity));
-    merged.set(id, Math.min(MAX_QUANTITY, (merged.get(id) ?? 0) + next));
+    if (!id || !Number.isFinite(quantity) || quantity < 1) continue;
+
+    // 박스 이전 원두(1봉·3박스 상품)도 지금의 박스 수량으로 옮긴다.
+    const line = normalizeOrderLine({ id, quantity });
+
+    if (!line) continue;
+
+    merged.set(line.id, Math.min(MAX_QUANTITY, (merged.get(line.id) ?? 0) + line.quantity));
   }
 
-  return Array.from(merged, ([id, quantity]) => ({ id, quantity })).slice(0, MAX_LINES);
+  return Array.from(merged, ([id, quantity]) => ({
+    id,
+    quantity: Math.min(MAX_QUANTITY, normalizeOrderLine({ id, quantity })?.quantity ?? quantity),
+  })).slice(0, MAX_LINES);
 }
 
 export function readStoreScale(): StoreScale {

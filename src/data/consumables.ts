@@ -54,22 +54,10 @@ const printNote = "프린트 카페 기준 인쇄량(하루 60~200매) 가정";
 
 export const consumptionGuides: ConsumptionGuide[] = [
   {
-    productId: "bean-1kg",
-    cycleDays: { small: 14, medium: 14, large: 7 },
-    daysPerUnit: { small: 2, medium: 1, large: 1 },
-    reason: `1kg은 중형 매장에서 하루치 남짓 — 2주에 3~4kg을 한 번에 받는 편이 낫습니다. ${beanNote}`,
-  },
-  {
     productId: "bean-10kg",
     cycleDays: { small: 30, medium: 14, large: 7 },
     daysPerUnit: { small: 25, medium: 13, large: 7 },
     reason: `10kg 1박스는 중형 매장 약 13일치 — 도착 3일을 빼면 2주마다 1박스가 맞습니다. ${beanNote}`,
-  },
-  {
-    productId: "bean-30kg",
-    cycleDays: { small: 60, medium: 30, large: 21 },
-    daysPerUnit: { small: 75, medium: 40, large: 20 },
-    reason: "30kg은 하루 120잔 이상 매장의 월 단위 발주량입니다.",
   },
   {
     productId: "cup-plastic-16",
@@ -207,7 +195,7 @@ export const essentialItems: EssentialItem[] = [
     hint: "10kg 박스 기준",
     productId: "bean-10kg",
     quantity: { small: 1, medium: 1, large: 2 },
-    relatedIds: ["bean-1kg", "bean-10kg", "bean-30kg"],
+    relatedIds: ["bean-10kg"],
   },
   {
     key: "cup",

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { splitVat } from "@/data/products";
+import { orderQuantityIssue, splitVat } from "@/data/products";
 import {
   boundedText,
   clientIp,
@@ -81,6 +81,11 @@ export async function POST(request: Request) {
   const items = readItems(parsed.data.items);
 
   if (!items) return jsonError("주문 품목을 확인할 수 없습니다.", 400);
+
+  // 원두는 1~3박스까지만 — 화면을 거치지 않은 요청도 같은 규칙으로 막는다.
+  const quantityIssue = orderQuantityIssue(items);
+
+  if (quantityIssue) return jsonError(quantityIssue, 400);
 
   const methodRaw = boundedText(parsed.data.method, 1, 20) ?? "card";
 

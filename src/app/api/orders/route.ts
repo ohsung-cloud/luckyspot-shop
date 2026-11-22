@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { orderQuantityIssue } from "@/data/products";
 import {
   buildOrderLines,
   createOrderCreatedAt,
@@ -214,6 +215,13 @@ export async function POST(request: Request) {
 
   if (!items) {
     return createBadRequest("Invalid order payload");
+  }
+
+  // 원두는 1~3박스까지만 — 화면을 거치지 않은 요청도 같은 규칙으로 막는다.
+  const quantityIssue = orderQuantityIssue(items);
+
+  if (quantityIssue) {
+    return createBadRequest(quantityIssue);
   }
 
   // 클라이언트가 보낸 지점 코드(또는 지점명)로 받는 곳을 서버에서 확정한다.

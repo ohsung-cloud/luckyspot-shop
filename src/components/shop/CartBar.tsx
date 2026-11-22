@@ -12,6 +12,11 @@ export default function CartBar({ onOpen }: { onOpen: () => void }) {
   const total = cartTotal(entries);
   const isEmpty = count === 0;
 
+  // 원두만 담았으면 "3개"가 아니라 "3박스"로 보여준다.
+  const countUnit = entries.length > 0 && entries.every((entry) => entry.product.unit === "1박스")
+    ? "박스"
+    : "개";
+
   // 빈 장바구니에는 띠를 띄우지 않는다 — 빠른 발주 버튼을 가리지 않고, 담을 것이 없다는 것도 이미 안다.
   if (isEmpty) return null;
 
@@ -20,7 +25,8 @@ export default function CartBar({ onOpen }: { onOpen: () => void }) {
       <div className="pointer-events-auto mx-auto flex w-full max-w-[1120px] items-center justify-between gap-3 rounded-[18px] bg-[#0F1412] px-3.5 py-2.5 shadow-[0_18px_40px_-12px_rgba(15,20,18,0.55)]">
         <div className="min-w-0 pl-1">
           <p className="text-[10.5px] font-medium text-[#9AA39C]">
-            장바구니 <span className="text-white">{count}</span>개 · VAT 포함
+            장바구니 <span className="text-white">{count}</span>
+            {countUnit} · VAT 포함
           </p>
           <p className="mt-0.5 text-[18px] font-semibold leading-none tabular-nums tracking-[-0.03em] text-white">
             {formatPrice(total)}

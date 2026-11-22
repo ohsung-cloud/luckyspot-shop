@@ -45,35 +45,35 @@ export default function TaxInvoiceFields({
   );
 
   const inputClass =
-    "ls-focus h-11 w-full rounded-[10px] border border-[var(--ls-line-strong)] bg-white px-3.5 text-[13.5px] text-[#0F1412] outline-none placeholder:text-[var(--ls-muted)]";
-  const labelClass = "text-[11.5px] font-medium text-[var(--ls-muted)]";
+    "ls-focus h-12 w-full rounded-[10px] border border-[var(--ls-line-strong)] bg-white px-3.5 text-[15.5px] text-[#0F1412] outline-none placeholder:text-[#6B746D]";
+  const labelClass = "text-[13.5px] font-semibold text-[#3B4740]";
 
   return (
     <div className="rounded-[14px] border border-[var(--ls-line)] bg-[#FAFBFB] p-3.5">
       <label className="flex cursor-pointer items-start gap-2.5" htmlFor={`${idPrefix}-tax-toggle`}>
         <input
           checked={value.requested}
-          className="mt-[2px] size-4 accent-[#0F1412]"
+          className="mt-[2px] size-5 accent-[#0F1412]"
           id={`${idPrefix}-tax-toggle`}
           onChange={(event) => patch({ requested: event.target.checked })}
           type="checkbox"
         />
         <span className="min-w-0">
-          <span className="flex flex-wrap items-center gap-1.5 text-[13px] font-semibold text-[#0F1412]">
+          <span className="flex flex-wrap items-center gap-1.5 text-[15.5px] font-semibold text-[#0F1412]">
             세금계산서 발급 요청
-            <span className="rounded-[4px] bg-[#EDFBEF] px-1.5 py-[1px] text-[9.5px] font-semibold text-[#0B5C2A]">
+            <span className="rounded-[4px] bg-[#EDFBEF] px-1.5 py-[1px] text-[10.5px] font-semibold text-[#0B5C2A]">
               기본 ON
             </span>
           </span>
-          <span className="mt-0.5 block break-keep text-[11px] leading-[1.55] text-[var(--ls-muted)]">
-            입금·결제 확인 후 아래 사업자 정보로 전자세금계산서를 발급해 이메일로 보내드립니다.
+          <span className="mt-0.5 block break-keep text-[13px] leading-[1.55] text-[#3B4740]">
+            입금 확인 후 아래 사업자 정보로 전자세금계산서를 발급해 이메일로 보내드립니다.
             필요 없으면 체크를 해제하세요.
           </span>
         </span>
       </label>
 
       {hint ? (
-        <p className="mt-2 rounded-[8px] bg-[#EAF8EF] px-2.5 py-1.5 text-[10.5px] leading-[1.5] text-[#0B5C2A]">
+        <p className="mt-2 rounded-[8px] bg-[#EAF8EF] px-3 py-2 text-[12.5px] leading-[1.5] text-[#0B5C2A]">
           {hint}
         </p>
       ) : null}
@@ -100,7 +100,7 @@ export default function TaxInvoiceFields({
               value={formatBusinessNo(value.businessNo)}
             />
             {businessNoInvalid ? (
-              <span className="mt-1 block text-[10.5px] text-[#B42318]" id={`${idPrefix}-tax-business-no-error`}>
+              <span className="mt-1 block text-[12.5px] text-[#B42318]" id={`${idPrefix}-tax-business-no-error`}>
                 10자리 사업자등록번호를 정확히 입력해 주세요.
               </span>
             ) : null}
@@ -156,7 +156,7 @@ export default function TaxInvoiceFields({
               value={value.email}
             />
             {emailInvalid ? (
-              <span className="mt-1 block text-[10.5px] text-[#B42318]" id={`${idPrefix}-tax-email-error`}>
+              <span className="mt-1 block text-[12.5px] text-[#B42318]" id={`${idPrefix}-tax-email-error`}>
                 이메일 주소를 정확히 입력해 주세요.
               </span>
             ) : null}
@@ -190,15 +190,15 @@ export default function TaxInvoiceFields({
 
           {missing ? (
             <p
-              className={`sm:col-span-2 text-[10.5px] leading-[1.5] ${
-                touched ? "text-[#B42318]" : "text-[var(--ls-muted)]"
+              className={`sm:col-span-2 text-[12.5px] leading-[1.5] ${
+                touched ? "text-[#B42318]" : "text-[#3B4740]"
               }`}
             >
               사업자등록번호·상호·대표자명·이메일을 모두 입력해야 발급을 신청할 수 있어요.
             </p>
           ) : (
-            <p className="sm:col-span-2 text-[10.5px] leading-[1.5] text-[#0B5C2A]">
-              발급 정보가 확인됐어요. 발급은 입금·결제 확인 후 처리됩니다.
+            <p className="sm:col-span-2 text-[12.5px] leading-[1.5] text-[#0B5C2A]">
+              발급 정보가 확인됐어요. 발급은 입금 확인 후 처리됩니다.
             </p>
           )}
         </div>
