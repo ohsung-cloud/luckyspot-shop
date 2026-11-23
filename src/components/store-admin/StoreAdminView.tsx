@@ -370,8 +370,8 @@ export default function StoreAdminView({ store, monthly, snapshot, history }: Pr
 
         <div className="mt-2.5 grid grid-cols-2 gap-1.5 text-[10.5px]">
           <div className="rounded-[10px] bg-white/8 px-2.5 py-2">
-            <p className="text-[#9AA39C]">지난달</p>
-            <p className="mt-0.5 text-[13px] font-bold tabular-nums">{previous ? formatWon(previous.total) : "—"}</p>
+            <p className="text-[#9AA39C]">지난달 커피</p>
+            <p className="mt-0.5 text-[13px] font-bold tabular-nums">{previous ? formatWon(previous.coffee.amount) : "—"}</p>
           </div>
           <div className="rounded-[10px] bg-white/8 px-2.5 py-2">
             <p className="text-[#9AA39C]">지난달 프린트</p>
