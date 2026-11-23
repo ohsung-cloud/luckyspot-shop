@@ -3,7 +3,7 @@
 import type { ApprovalView, ProposalListResponse } from "@/features/auto-order/types";
 
 import SplitSlips from "./SplitSlips";
-import { clock, dateLabel, days, pct, remainingTone, won } from "./format";
+import { clock, dateLabel, days, packUnit, pct, remainingTone, shortEvidence, won } from "./format";
 
 type OwnerViewProps = {
   state: ProposalListResponse | null;
@@ -186,38 +186,46 @@ export default function OwnerView({
 
           <ul className="divide-y divide-[#EFF1F0]">
             {pending.map((proposal) => (
-              <li key={proposal.id} className="flex items-start gap-3 px-5 py-4">
+              <li key={proposal.id} className="flex items-start gap-3 px-5 py-3.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[16.5px] font-bold text-[#0F1412]">{proposal.name}</p>
                   <p className="mt-1 flex items-center gap-1.5 text-[12px] text-[#6B746D]">
                     <span className={`rounded-full px-2 py-0.5 font-bold ${remainingTone(proposal.remainingDays)}`}>
                       약 {days(proposal.remainingDays)} 남음
                     </span>
-                    <span className="truncate">{proposal.evidenceLine}</span>
+                    <span className="truncate">{shortEvidence(proposal.evidenceLine)}</span>
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-[14px] font-bold tabular-nums text-[#0F1412]">{proposal.quantity}개</p>
+                  <p className="text-[14px] font-bold tabular-nums text-[#0F1412]">{proposal.quantity}{packUnit(proposal.packLabel)}</p>
                   <p className="mt-0.5 text-[12px] tabular-nums text-[#6B746D]">{won(proposal.amount)}</p>
                 </div>
               </li>
             ))}
           </ul>
 
-          <div className="px-4 pb-5 pt-1">
+        </section>
+      ) : null}
+
+      {!state.hold && pending.length > 0 && !grace && !approval ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#E6E9E7] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+          <div className="mx-auto w-full max-w-[760px] px-4 py-3">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[13px] font-semibold text-[#3B4740]">
+                총 <span className="text-[17px] font-bold tabular-nums text-[#0F1412]">{won(state.totals.totalAmount)}</span>
+              </span>
+              <span className="text-[11.5px] text-[#6B746D]">누르면 5분 동안 취소할 수 있어요</span>
+            </div>
             <button
-              className="h-[72px] w-full rounded-[20px] bg-[#1DFF26] text-[21px] font-bold text-[#0F1412] shadow-[0_8px_20px_rgba(29,255,38,0.28)] transition-colors hover:bg-[#7CE785] disabled:opacity-60"
+              className="mt-2 h-[62px] w-full rounded-[18px] bg-[#1DFF26] text-[20px] font-bold text-[#0F1412] shadow-[0_8px_20px_rgba(29,255,38,0.28)] transition-colors hover:bg-[#7CE785] disabled:opacity-60"
               disabled={busy}
               onClick={onApprove}
               type="button"
             >
               {busy ? "승인하는 중…" : "이대로 발주하기"}
             </button>
-            <p className="mt-2.5 text-center text-[12px] text-[#6B746D]">
-              누르면 5분 동안 취소할 수 있어요. 그 뒤에 사업자별로 자동 확정됩니다.
-            </p>
           </div>
-        </section>
+        </div>
       ) : null}
 
       {!state.hold && pending.length > 0 && !grace ? (
@@ -251,6 +259,8 @@ export default function OwnerView({
           </button>
         </section>
       ) : null}
+
+      <div aria-hidden className={!state.hold && pending.length > 0 && !grace && !approval ? "h-24" : "h-0"} />
 
       <p className="px-1 text-[11.5px] leading-[1.7] text-[#98A29B]">
         데이터 출처:{" "}

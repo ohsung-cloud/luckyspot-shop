@@ -73,7 +73,7 @@ function syntheticSeries(input: {
 section("1. BOM 규칙 · 카탈로그 단가");
 
 const rules = resolveRules();
-check("규칙 8종 로드", rules.length === 8, `${rules.length}종`);
+check("규칙 7종 로드", rules.length === 7, `${rules.length}종`);
 
 for (const rule of rules) {
   const product = getProductById(rule.sku);
@@ -85,8 +85,8 @@ for (const rule of rules) {
 }
 
 check(
-  "점주 사업자 5종 · 본사 사업자 3종",
-  rules.filter((rule) => rule.ownerEntityType === "franchisee_cafe").length === 5 &&
+  "점주 사업자 4종 · 본사 사업자 3종",
+  rules.filter((rule) => rule.ownerEntityType === "franchisee_cafe").length === 4 &&
     rules.filter((rule) => rule.ownerEntityType === "hq_print").length === 3,
 );
 
@@ -225,7 +225,7 @@ check(
   "점주 전표는 카페 소모품만",
   split.slips
     .find((slip) => slip.entityType === "franchisee_cafe")
-    ?.lines.every((line) => ["bean-10kg", "cup-plastic-16", "cup-paper-16", "lid-white-16", "napkin"].includes(line.sku)) === true,
+    ?.lines.every((line) => ["bean-10kg", "cup-plastic-16", "cup-paper-16", "lid-white-16"].includes(line.sku)) === true,
 );
 check(
   "본사 전표는 프린트 소모품만",

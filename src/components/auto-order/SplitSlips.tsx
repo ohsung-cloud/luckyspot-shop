@@ -2,7 +2,7 @@
 
 import type { SplitResult } from "@/features/auto-order/types";
 
-import { ENTITY_LABEL, ENTITY_TONE, won } from "./format";
+import { ENTITY_LABEL, ENTITY_TONE, packUnit, won } from "./format";
 
 /**
  * 사업자별 분기 결과 — 점주 사업자 전표와 본사 사업자 전표를 나란히 보여준다.
@@ -18,7 +18,7 @@ export default function SplitSlips({ split, compact = false }: { split: SplitRes
   }
 
   return (
-    <div className={compact ? "grid gap-3" : "grid gap-3 md:grid-cols-2"}>
+    <div className={compact ? "grid gap-3" : "grid items-start gap-3 md:grid-cols-2"}>
       {split.slips.map((slip) => (
         <article
           key={slip.entityType}
@@ -39,7 +39,7 @@ export default function SplitSlips({ split, compact = false }: { split: SplitRes
               <li key={line.sku} className="flex items-start justify-between gap-2 text-[13.5px]">
                 <span className="text-[#3B4740]">
                   {line.name}
-                  <span className="ml-1 text-[11.5px] text-[#6B746D]">×{line.quantity}</span>
+                  <span className="ml-1 text-[11.5px] text-[#6B746D]">×{line.quantity}{packUnit(line.packLabel)}</span>
                 </span>
                 <span className="shrink-0 font-semibold tabular-nums text-[#0F1412]">{won(line.amount)}</span>
               </li>

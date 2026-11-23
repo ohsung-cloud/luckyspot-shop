@@ -98,6 +98,41 @@ export default function AutoOrderClient() {
     return () => clearInterval(timer);
   }, [approval]);
 
+  /**
+   * 취소·확정을 화면 상태에 즉시 반영한다.
+   *
+   * 서버(서버리스)는 요청마다 다른 인스턴스일 수 있어, 목록을 다시 부르면
+   * 방금 취소한 항목이 '대기'로 되살아나 보일 수 있다. 그래서 취소·확정 직후에는
+   * 재조회 대신 이 화면의 제안 상태를 직접 바꾼다(같은 세션 안에서 일관).
+   */
+  const applyLocalStatus = (ids: string[], status: "canceled" | "confirmed_split") => {
+    const idSet = new Set(ids);
+
+    setState((prev) => {
+      if (!prev) return prev;
+
+      const proposals = prev.proposals.map((proposal) =>
+        idSet.has(proposal.id) ? { ...proposal, status } : proposal,
+      );
+      const actionable = proposals.filter(
+        (proposal) => proposal.status === "pending_approval" || proposal.status === "grace_cancel_window",
+      );
+
+      const totals = actionable.reduce(
+        (sum, proposal) => {
+          sum.count += 1;
+          sum.totalAmount += proposal.amount;
+          if (proposal.ownerEntityType === "franchisee_cafe") sum.cafeAmount += proposal.amount;
+          else sum.hqAmount += proposal.amount;
+          return sum;
+        },
+        { count: 0, cafeAmount: 0, hqAmount: 0, totalAmount: 0 },
+      );
+
+      return { ...prev, proposals, totals };
+    });
+  };
+
   const resolveNow = useCallback(async () => {
     if (!approval || approval.status !== "grace_cancel_window" || resolving.current) return;
 
@@ -115,8 +150,10 @@ export default function AutoOrderClient() {
       if (response.ok && payload?.ok && payload.split) {
         setApproval({ ...approval, status: "confirmed_split", remainingSeconds: 0, splitPreview: payload.split });
         setNotice("5분이 지나 사업자별 발주로 확정됐어요.");
-        setScenario(scenario);
-        await load({ scenario });
+        applyLocalStatus(
+          approval.proposals.map((proposal) => proposal.id),
+          "confirmed_split",
+        );
       }
     } catch {
       setNotice("확정 확인이 늦어지고 있어요. 잠시 후 새로고침해 주세요.");
@@ -124,7 +161,7 @@ export default function AutoOrderClient() {
       resolving.current = false;
       setBusy(false);
     }
-  }, [approval, load, scenario]);
+  }, [approval]);
 
   useEffect(() => {
     if (!approval || approval.status !== "grace_cancel_window") return;
@@ -191,7 +228,10 @@ export default function AutoOrderClient() {
       if (payload?.status === "confirmed_split" && payload.split) {
         setApproval({ ...approval, status: "confirmed_split", remainingSeconds: 0, splitPreview: payload.split });
         setNotice(payload.message ?? "유예가 이미 끝나 확정됐습니다.");
-        await load({ scenario });
+        applyLocalStatus(
+          approval.proposals.map((proposal) => proposal.id),
+          "confirmed_split",
+        );
         return;
       }
 
@@ -201,7 +241,10 @@ export default function AutoOrderClient() {
 
       setApproval(null);
       setNotice(payload.message ?? "발주를 취소했습니다.");
-      await load({ scenario });
+      applyLocalStatus(
+        approval.proposals.map((proposal) => proposal.id),
+        "canceled",
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "취소하지 못했습니다.");
     } finally {

@@ -6,7 +6,7 @@ import { DEMO_STORES, SCENARIO_LABELS, type DemoScenario } from "@/features/auto
 import type { ProposalListResponse } from "@/features/auto-order/types";
 
 import SplitSlips from "./SplitSlips";
-import { dateLabel, days, ENTITY_LABEL, ENTITY_TONE, pct, won } from "./format";
+import { dateLabel, days, ENTITY_LABEL, ENTITY_TONE, packUnit, pct, won } from "./format";
 
 export type SimulateInput = {
   storeCode: string;
@@ -219,7 +219,7 @@ export default function HqView({ state, loading, error, simulating, notice, onSi
                         </span>
                       </td>
                       <td className="px-2 py-2.5 text-right tabular-nums text-[#3B4740]">
-                        {forecast.baseDailyConsumption.toLocaleString("ko-KR")}
+                        {forecast.baseDailyConsumption.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}
                       </td>
                       <td
                         className={`px-2 py-2.5 text-right font-semibold tabular-nums ${
@@ -229,7 +229,7 @@ export default function HqView({ state, loading, error, simulating, notice, onSi
                         ×{forecast.crossFactor.toFixed(2)}
                       </td>
                       <td className="px-2 py-2.5 text-right tabular-nums text-[#0F1412]">
-                        {forecast.predictedDailyConsumption.toLocaleString("ko-KR")}
+                        {forecast.predictedDailyConsumption.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}
                       </td>
                       <td className="px-2 py-2.5 text-right tabular-nums text-[#0F1412]">{days(forecast.remainingDays)}</td>
                       <td className="px-3 py-2.5 text-right">
@@ -237,7 +237,7 @@ export default function HqView({ state, loading, error, simulating, notice, onSi
                           <span className="rounded-full bg-[#FFF6E0] px-2 py-0.5 text-[10.5px] font-bold text-[#8A5A00]">보류</span>
                         ) : forecast.due ? (
                           <span className="rounded-full bg-[#EDFBEF] px-2 py-0.5 text-[10.5px] font-bold text-[#0B5C2A]">
-                            발주 {forecast.suggestedQty}
+                            발주 {forecast.suggestedQty}{packUnit(forecast.packLabel)}
                           </span>
                         ) : (
                           <span className="text-[11px] text-[#98A29B]">정상</span>

@@ -44,3 +44,20 @@ export function remainingTone(remainingDays: number) {
   if (remainingDays <= 4) return "bg-[#FFF6E0] text-[#8A5A00]";
   return "bg-[#EDFBEF] text-[#0B5C2A]";
 }
+
+/** 발주 단위 이름 — packLabel이 "1박스(...)"면 박스, "1개(...)"면 개. */
+export function packUnit(packLabel: string) {
+  return packLabel.trim().startsWith("1박스") ? "박스" : "개";
+}
+
+/**
+ * 점주 화면용 짧은 교차 근거.
+ * 본사 뷰는 교차 가중치까지 보여주지만, 점주 화면은 "프린트 출력 +32% → 소모품 1.09배"까지만 쓴다.
+ */
+export function shortEvidence(line: string) {
+  return line
+    .replace(" 최근 3일", "")
+    .replace(/\s*\(교차 가중[^)]*\)/, "")
+    .replace("소진 ×", "소모품 ")
+    .replace("교차 보정 없음 (×1.00)", "평소와 같음");
+}
