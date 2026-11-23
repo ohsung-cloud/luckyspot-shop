@@ -73,15 +73,19 @@ export function renderSummary(report) {
     for (const warning of report.warnings.slice(0, 10)) lines.push(`- ${warning}`);
   }
 
-  lines.push("");
-  lines.push("## 지점 경로(다음 실행 튜닝용)");
-  lines.push("");
+  const routeLines = [];
   for (const store of report.stores) {
     if (!store.routes) continue;
     const parts = Object.entries(store.routes)
-      .filter(([, value]) => value && value.hash)
+      .filter(([, value]) => value && value.hash && value.hash !== "#/login")
       .map(([key, value]) => `${key}=${value.hash}`);
-    if (parts.length > 0) lines.push(`- ${store.storeCode}: ${parts.join(" ")}`);
+    if (parts.length > 0) routeLines.push(`- ${store.storeCode}: ${parts.join(" ")}`);
+  }
+  if (routeLines.length > 0) {
+    lines.push("");
+    lines.push("## 지점 경로(다음 실행 튜닝용)");
+    lines.push("");
+    lines.push(...routeLines);
   }
 
   return `${lines.join("\n")}\n`;

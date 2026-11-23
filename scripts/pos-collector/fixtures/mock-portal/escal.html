@@ -125,12 +125,18 @@
 
   <!-- 일정 -->
   <section id="view-calendar" class="hidden">
-    <h1>2026년 11월</h1>
-    <table>
-      <tr><td>19</td><td>수능</td></tr>
-      <tr><td>21</td><td>대학 논술시험기간</td></tr>
-      <tr><td>25</td><td>대학 논술시험기간 종료</td></tr>
-    </table>
+    <h1>일정</h1>
+    <button id="prevMonth">‹ 이전달</button>
+    <div id="monthTitle">2026년 11월</div>
+    <button id="nextMonth">다음달 ›</button>
+    <div id="monthList">
+      <div>학사일정</div>
+      <div>2026-11-19 · 27년 대학수학능력시험</div>
+      <div>학사일정</div>
+      <div>2026-11-21 ~ 2026-11-25 · 대학 논술시험기간</div>
+      <div>이용료 납부</div>
+      <div>매월 10일 반복 · 솔루션 이용료 납부마감</div>
+    </div>
   </section>
 </div>
 
@@ -168,6 +174,37 @@
         document.getElementById("bill-" + name).classList.toggle("hidden", name !== button.dataset.bill);
       }
     });
+  });
+
+  // 일정: 달 이동 시 그 달 목록으로 바꾼다(실제 사이트와 같은 목록 형식).
+  const MONTHS = {
+    11: [
+      "학사일정",
+      "2026-11-19 · 27년 대학수학능력시험",
+      "학사일정",
+      "2026-11-21 ~ 2026-11-25 · 대학 논술시험기간",
+      "이용료 납부",
+      "매월 10일 반복 · 솔루션 이용료 납부마감",
+    ],
+    12: [
+      "학사일정",
+      "2026-12-14 ~ 2026-12-21 · 기말고사",
+      "휴일",
+      "2026-12-25 · 성탄절",
+    ],
+  };
+  let currentMonth = 11;
+  const renderMonth = () => {
+    document.getElementById("monthTitle").textContent = `2026년 ${currentMonth}월`;
+    document.getElementById("monthList").innerHTML = (MONTHS[currentMonth] || []).map((line) => `<div>${line}</div>`).join("");
+  };
+  document.getElementById("nextMonth").addEventListener("click", () => {
+    currentMonth = 12;
+    renderMonth();
+  });
+  document.getElementById("prevMonth").addEventListener("click", () => {
+    currentMonth = 11;
+    renderMonth();
   });
 </script>
 </body>

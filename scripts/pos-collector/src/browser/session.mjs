@@ -115,6 +115,20 @@ export async function settle(page, ms = 800) {
   await page.waitForTimeout(ms);
 }
 
+/** 화면에 특정 문구가 나타날 때까지 기다린다(못 나타나도 예외를 올리지 않는다). */
+export async function waitForAnyText(page, texts, timeout = 15000) {
+  try {
+    await page.waitForFunction(
+      (list) => list.some((text) => (document.body.innerText || "").includes(text)),
+      texts,
+      { timeout },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const NO_EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu;
 
 /**

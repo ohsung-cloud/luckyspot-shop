@@ -17,6 +17,7 @@ import {
   pageLocation,
   runExtractor,
   settle,
+  waitForAnyText,
 } from "./session.mjs";
 
 const INVENTORY_API = [/inventory/i, /stock/i, /material/i, /reagent/i, /재고/i, /slot/i];
@@ -239,8 +240,12 @@ export async function collectStore(browser, store, options) {
           await step(steps, "escalprint.catalog", async () => {
             const clicked = await clickByText(page, ["발주하기"]);
             if (!clicked) throw new Error("발주하기 탭을 찾지 못했습니다");
-            await settle(page, 1500);
-            fragments["escalprint.catalog"] = await runExtractor(page, "escalprint.catalog");
+            // 카탈로그는 수십 개 상품을 지연 로딩한다 — 가격 문구가 나올 때까지 기다린다.
+            await waitForAnyText(page, ["VAT 별도", "원 /"], 20000);
+            await settle(page, 800);
+            const catalog = await runExtractor(page, "escalprint.catalog");
+            if ((catalog.items ?? []).length === 0) throw new Error("카탈로그 상품을 하나도 읽지 못했습니다");
+            fragments["escalprint.catalog"] = catalog;
           });
 
           await step(steps, "escalprint.calendar", async () => {
@@ -248,6 +253,14 @@ export async function collectStore(browser, store, options) {
             if (!clicked) throw new Error("일정 탭을 찾지 못했습니다");
             await settle(page, 1000);
             fragments["escalprint.calendar"] = await runExtractor(page, "escalprint.calendar");
+          });
+
+          // 다음 달 일정까지 보면 예열·발주 계획을 미리 세울 수 있다(기간이 있으면 그대로 쓴다).
+          await step(steps, "escalprint.calendar.next", async () => {
+            const moved = await clickByText(page, ["다음달"], { timeout: 4000 });
+            if (!moved) throw new Error("다음달 버튼을 찾지 못했습니다");
+            await settle(page, 1000);
+            fragments["escalprint.calendar.next"] = await runExtractor(page, "escalprint.calendar");
           });
         }
       } catch (error) {

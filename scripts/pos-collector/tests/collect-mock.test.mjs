@@ -68,7 +68,8 @@ test("목 포털 e2e: 로그인 → 추출 → 병합 → 분석 → 전송본 �
   assert.equal(a4.price, 22800);
   assert.equal(a4.minQty, 5);
   assert.equal(a4.unit, "BOX");
-  assert.ok(snapshot.escalprint.calendar.some((event) => event.date === "2026-11-21" && event.demandWeight === 1.35));
+  assert.ok(snapshot.escalprint.calendar.some((event) => event.date === "2026-11-21" && event.end === "2026-11-25" && event.demandWeight === 1.35));
+  assert.ok(snapshot.escalprint.calendar.some((event) => event.date === "2026-12-14"), "다음달 일정까지 읽어야 합니다");
 
   /* 로얄선즈 */
   assert.equal(snapshot.loyalsuns.revenue.today, 14600);

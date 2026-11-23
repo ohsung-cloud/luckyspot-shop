@@ -51,31 +51,53 @@ export const extractors = {
     });
   })()`,
 
-  /** 📅 일정 — 학사일정(시험기간 등) */
+  /**
+   * 📅 일정 — 학사일정 등
+   *
+   * 실제 화면(2026-11-23 확인)은 달력 아래에 `카테고리 2026-11-21 ~ 2026-11-25 · 대학 논술시험기간`
+   * 형식의 목록을 준다. 이 줄이 가장 정확해서 우선 읽고(기간까지 확보),
+   * 목록이 없는 달은 달력 칸에서 이벤트 이름과 날짜를 읽는다.
+   */
   "escalprint.calendar": String.raw`(() => {
-    const KEY = /(수능|논술|기말|중간|고사|시험|개강|방학|성탄|공휴일)/;
+    const KEY = /(수능|논술|기말|중간|고사|시험|개강|방학|성탄|공휴일|납부\s*마감)/;
     const visible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
     const body = document.body.innerText.replace(/\u00a0/g, " ");
     const header = body.match(/(\d{4})년\s*(\d{1,2})월/);
-    const rows = [];
+    const events = [];
     const seen = new Set();
-    for (const el of document.querySelectorAll("td, .cal-cell, [class*=day], [class*=event], li")) {
-      if (!visible(el)) continue;
-      const t = el.innerText.replace(/\s+/g, " ").trim();
-      if (!t || t.length > 120 || !KEY.test(t)) continue;
-      const row = el.closest("tr, .cal-cell, li") || el;
-      const rowText = (row.innerText || t).replace(/\s+/g, " " ).trim();
-      const title = t.replace(/^[\d.\/]+\s*/, "").trim() || t;
-      if (seen.has(title)) continue;
-      seen.add(title);
-      const day = (rowText.match(/(?:^|\s)(\d{1,2})(?:\s|일)/) || [])[1];
-      rows.push({ day: day ? Number(day) : null, title });
+
+    for (const raw of body.split("\n")) {
+      const line = raw.trim();
+      if (!line) continue;
+      const m = line.match(/(\d{4}-\d{2}-\d{2})(?:\s*~\s*(\d{4}-\d{2}-\d{2}))?\s*·\s*(.+)$/);
+      if (!m) continue;
+      const title = m[3].trim().slice(0, 60);
+      const key = m[1] + "|" + (m[2] || "") + "|" + title;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      events.push({ date: m[1], end: m[2] || null, title });
     }
+
+    if (events.length === 0) {
+      for (const el of document.querySelectorAll("td, .cal-cell, [class*=day], [class*=event], li")) {
+        if (!visible(el)) continue;
+        const t = el.innerText.replace(/\s+/g, " ").trim();
+        if (!t || t.length > 120 || !KEY.test(t)) continue;
+        const row = el.closest("tr, .cal-cell, li") || el;
+        const rowText = (row.innerText || t).replace(/\s+/g, " ").trim();
+        const title = t.replace(/^[\d.\/]+\s*/, "").trim() || t;
+        if (seen.has(title)) continue;
+        seen.add(title);
+        const day = (rowText.match(/(?:^|\s)(\d{1,2})(?:\s|일)/) || [])[1];
+        events.push({ date: null, end: null, day: day ? Number(day) : null, title });
+      }
+    }
+
     return JSON.stringify({
       capturedAt: new Date().toISOString(),
       year: header ? Number(header[1]) : null,
       month: header ? Number(header[2]) : null,
-      events: rows,
+      events,
     });
   })()`,
 
@@ -138,9 +160,12 @@ export const extractors = {
   "escalprint.catalog": String.raw`(() => {
     const text = document.body.innerText.replace(/\u00a0/g, " ");
     const visible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
-    const free = text.match(/(\d+)\s*만원\s*이상\s*무료배송/);
+    const freeMatches = [...text.matchAll(/(\d+)\s*만원\s*이상\s*무료배송/g)];
+    const changed = freeMatches.find(m => /변경\s*후/.test(text.slice(Math.max(0, m.index - 12), m.index)));
+    const free = changed ?? freeMatches[freeMatches.length - 1] ?? null;
     const items = [];
-    const nodes = [...document.querySelectorAll("[class*=product], [class*=item], li, article")];
+    // 실제 사이트 카드: div.lost-grid > div.card > (분류·배지·상품명·설명·최소수량·가격)
+    const nodes = [...document.querySelectorAll("[class*=card], [class*=product], [class*=item], li, article")];
     const seen = new Set();
     for (const node of nodes) {
       const t = node.innerText;
@@ -155,6 +180,7 @@ export const extractors = {
         if (!line) continue;
         if (/^(최소|최대|수량|단가|추천매가|사진 없음|\d)/.test(line)) continue;
         if (/최소\s*\d|단위로\s*주문|^[\d,]+\s*원/.test(line)) continue;
+        if (/[.。]$/.test(line) || /습니다|입니다|주세요/.test(line)) continue;
         if (line.replace(/[^가-힣A-Za-z0-9]/g, "").length < 3) continue;
         name = line;
         break;

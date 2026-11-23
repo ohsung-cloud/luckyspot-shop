@@ -30,16 +30,22 @@ function calendarEvents(calendar) {
 
   return events
     .map((event) => {
+      const isExam = /수능|논술|고사|시험/.test(String(event?.title ?? ""));
+      const start = typeof event?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(event.date)
+        ? event.date
+        : null;
       const day = num(event?.day);
-      if (!day) return null;
+
+      if (!start && !day) return null;
+
       const useYear = year ?? today.getFullYear();
       const useMonth = month ?? today.getMonth() + 1;
-      const isExam = /수능|논술|고사|시험/.test(String(event.title ?? ""));
+
       return {
-        date: `${useYear}-${pad2(useMonth)}-${pad2(day)}`,
-        end: null,
+        date: start ?? `${useYear}-${pad2(useMonth)}-${pad2(day)}`,
+        end: typeof event?.end === "string" && /^\d{4}-\d{2}-\d{2}$/.test(event.end) ? event.end : null,
         title: String(event.title ?? "").trim(),
-        kind: isExam ? "exam" : "event",
+        kind: isExam ? "exam" : /납부\s*마감/.test(String(event.title ?? "")) ? "deadline" : "event",
         demandWeight: isExam ? 1.35 : 1.0,
       };
     })
@@ -67,6 +73,7 @@ export function buildSnapshot({ fragments, store, capturedAt, captureMode = "bro
   const f = fragments ?? {};
   const home = f["escalprint.home"] ?? null;
   const calendar = f["escalprint.calendar"] ?? null;
+  const calendarNext = f["escalprint.calendar.next"] ?? null;
   const revenue = f["escalprint.revenue"] ?? null;
   const refundsFragment = f["escalprint.refunds"] ?? null;
   const spend = f["escalprint.spend"] ?? null;
@@ -167,7 +174,7 @@ export function buildSnapshot({ fragments, store, capturedAt, captureMode = "bro
       spend: spend ? { month: spend.month, total: num(spend.total), rows: spend.rows ?? [] } : null,
       catalog: catalog?.items ?? [],
       shipping: catalog?.freeShippingThreshold ? { freeThreshold: catalog.freeShippingThreshold } : null,
-      calendar: calendarEvents(calendar),
+      calendar: dedupeEvents([...calendarEvents(calendar), ...calendarEvents(calendarNext)]),
     },
     loyalsuns: {
       portal: "http://coffee.loyalsuns.com:8090/",
@@ -227,8 +234,19 @@ export function buildSnapshot({ fragments, store, capturedAt, captureMode = "bro
   return snapshot;
 }
 
-function incomeRefund(revenue, month) {
-  if (!month) return null;
+function dedupeEvents(events) {
+  const seen = new Set();
+  const out = [];
+  for (const event of events) {
+    const key = `${event.date}|${event.end ?? ""}|${event.title}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(event);
+  }
+  return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
+function incomeRefund(revenue, month) {  if (!month) return null;
   const row = (revenue.refunds ?? []).find((entry) => entry.month === month);
   return row ? num(row.total) : null;
 }
