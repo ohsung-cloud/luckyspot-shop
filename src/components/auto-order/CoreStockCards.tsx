@@ -47,7 +47,7 @@ export default function CoreStockCards({
         const sub =
           item.sku === "bean-10kg"
             ? forecast
-              ? `${Math.round(forecast.stockOnHand).toLocaleString("ko-KR")}g · 하루 ${forecast.predictedDailyConsumption.toFixed(0)}g`
+              ? `${Math.round(forecast.stockOnHand).toLocaleString("ko-KR")}g · ${forecast.predictedDailyConsumption.toFixed(0)}g/일`
               : "수집 전"
             : item.sku === "toner-black"
               ? telemetry
@@ -57,10 +57,14 @@ export default function CoreStockCards({
                     ),
                     100,
                   )}%`
-                : forecast?.stockNote ?? "수집 전"
+                : forecast
+                  ? `${Math.round(forecast.stockOnHand).toLocaleString("ko-KR")}g · ${forecast.predictedDailyConsumption.toFixed(1)}g/일`
+                  : "수집 전"
               : telemetry
                 ? `Tray ${telemetry.paper.tray1 ?? "—"}% · ${telemetry.paper.tray2 ?? "—"}%`
-                : forecast?.stockNote ?? "수집 전";
+                : forecast
+                  ? `${Math.round(forecast.stockOnHand).toLocaleString("ko-KR")}매 · ${forecast.predictedDailyConsumption.toFixed(0)}매/일`
+                  : "수집 전";
 
         return (
           <div key={item.sku} className={`rounded-[16px] border p-2.5 ${tone(forecast?.remainingDays, limit)}`}>
