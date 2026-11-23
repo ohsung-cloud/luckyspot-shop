@@ -158,7 +158,7 @@ export default function SalesReportPage() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[760px] px-4 py-5 sm:px-6 sm:py-7">
+      <div className="mx-auto w-full max-w-[760px] px-4 py-5 pb-28 sm:px-6 sm:py-7 sm:pb-28">
         <div className="grid gap-3.5">
           <header className="px-1">
             <p className="text-[13.5px] font-semibold text-[#007A36]">{data.storeLabel}</p>
@@ -196,7 +196,7 @@ export default function SalesReportPage() {
 
             <p className="mt-4 text-[12px] text-[#9AA39C]">오늘 (12:10까지)</p>
             <div className="mt-0.5 flex items-baseline gap-2">
-              <p className="text-[38px] font-bold leading-none tabular-nums tracking-[-0.02em]">{won(coffee.today)}</p>
+              <p className="text-[32px] font-bold leading-none tabular-nums tracking-[-0.02em] sm:text-[38px]">{won(coffee.today)}</p>
               <span className={`text-[13px] font-bold ${coffee.trendPct >= 0 ? "text-[#1DFF26]" : "text-[#FF8A8A]"}`}>
                 {pct(coffee.trendPct)}
               </span>
@@ -205,7 +205,7 @@ export default function SalesReportPage() {
               어제 하루 {won(coffee.yesterday)} 대비 · 오늘은 아직 집계 중이라 낮게 보입니다
             </p>
 
-            <div className="mt-4 grid grid-cols-3 gap-1.5">
+            <div className="mt-4 grid grid-cols-2 gap-1.5">
               <div className="rounded-[14px] bg-white/8 px-3 py-3">
                 <p className="text-[11px] text-[#9AA39C]">이달</p>
                 <p className="mt-1 text-[17px] font-bold tabular-nums">{won(coffee.month)}</p>
@@ -214,8 +214,8 @@ export default function SalesReportPage() {
                 <p className="text-[11px] text-[#9AA39C]">일평균</p>
                 <p className="mt-1 text-[17px] font-bold tabular-nums">{won(coffee.dailyRate)}</p>
               </div>
-              <div className="rounded-[14px] bg-white/8 px-3 py-3">
-                <p className="text-[11px] text-[#9AA39C]">누적</p>
+              <div className="col-span-2 rounded-[14px] bg-white/8 px-3 py-3">
+                <p className="text-[11px] text-[#9AA39C]">누적 (개점 이후)</p>
                 <p className="mt-1 text-[17px] font-bold tabular-nums">{manwon(coffee.cumulativeTotal)}원</p>
               </div>
             </div>
@@ -313,7 +313,7 @@ export default function SalesReportPage() {
                   <th className="py-1.5 text-right font-semibold">잔</th>
                   <th className="py-1.5 text-right font-semibold">g/잔</th>
                   <th className="py-1.5 text-right font-semibold">원두</th>
-                  <th className="py-1.5 text-right font-semibold">기계 로그</th>
+                  <th className="hidden py-1.5 text-right font-semibold sm:table-cell">기계 로그</th>
                 </tr>
               </thead>
               <tbody>
@@ -323,7 +323,7 @@ export default function SalesReportPage() {
                     <td className="py-2 text-right tabular-nums text-[#3B4740]">{row.drinks}</td>
                     <td className="py-2 text-right tabular-nums text-[#3B4740]">{row.gramsPerDrink}</td>
                     <td className="py-2 text-right font-bold tabular-nums text-[#0F1412]">{row.totalGrams}g</td>
-                    <td className="py-2 text-right tabular-nums text-[#98A29B]">
+                    <td className="hidden py-2 text-right tabular-nums text-[#98A29B] sm:table-cell">
                       {row.machineGrams === null ? "—" : `${row.machineGrams}g`}
                     </td>
                   </tr>
@@ -519,6 +519,22 @@ export default function SalesReportPage() {
               수집 {capturedLabel(data.capturedAt)} · 스키마 {data.schemaVersion} · 내부용(검색 비노출)
             </p>
           </footer>
+        </div>
+      </div>
+
+      {/* 모바일에서도 바로 발주로 이어지게 — 하단 고정 */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#E6E9E7] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[760px] items-center gap-3 px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[10.5px] text-[#6B746D]">추천 발주</p>
+            <p className="text-[16px] font-bold tabular-nums text-[#0F1412]">{won(knownOrderTotal)}</p>
+          </div>
+          <a
+            className="flex h-12 flex-1 items-center justify-center rounded-[14px] bg-[#1DFF26] text-[15.5px] font-bold text-[#0F1412]"
+            href="/auto-order?storeCode=STORE_GNM"
+          >
+            사업자별로 나눠 발주
+          </a>
         </div>
       </div>
     </main>
