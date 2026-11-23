@@ -371,8 +371,8 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
               </div>
 
               <p className="mt-1.5 text-[12px] text-[#6B746D]">
-                {store.storeType} · {store.region || "지역 미입력"} · 점주 {store.ownerName || "미등록"} ·{" "}
-                {store.phoneMasked}
+                {store.storeType} · {store.region || "지역 미입력"} · 점주 {store.ownerName || "미등록"}
+                {store.phoneMasked !== "미등록" ? ` · ${store.phoneMasked}` : ""}
               </p>
               <p className="text-[11px] text-[#98A29B]">
                 {PRINT_VENDOR_LABELS[store.printVendor]} · 고정비{" "}

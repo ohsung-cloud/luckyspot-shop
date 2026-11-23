@@ -100,7 +100,7 @@ export default function OwnerView({
           <CoreStockCards
             calibrating={calibrating}
             forecasts={state.run.forecasts}
-            onCalibrate={onCalibrate}
+            onCalibrate={state.storeRegistered === false ? undefined : onCalibrate}
             replacementNotes={replacementNotes}
             telemetry={state.telemetry}
             thresholds={{ beanDays: 4, tonerDays: 5, paperDays: 4 }}

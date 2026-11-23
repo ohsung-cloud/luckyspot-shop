@@ -394,4 +394,6 @@ export type ProposalListResponse = {
   };
   /** 실측 일수 — 7일 미만이면 sparse(예측이 흔들릴 수 있음) */
   dataQuality: { days: number; sparse: boolean };
+  /** 본사에 등록된 매장인가 — 교체완료(학습) 기록은 등록 매장에만 저장된다. */
+  storeRegistered?: boolean;
 };

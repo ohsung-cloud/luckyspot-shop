@@ -64,9 +64,8 @@ export async function buildState(input: BuildStateInput = {}): Promise<BuiltStat
   const stockOverrides = stockOverridesFromTelemetry(latestTelemetry);
 
   // 교체완료 피드백 루프 — 점주가 누른 교체 기록(학습 계수·마지막 교체일)을 예측에 바로 넣는다.
-  const calibration = await findStoreRecord(storeCode)
-    .then((record) => record?.calibrations ?? {})
-    .catch(() => ({}));
+  const register = await findStoreRecord(storeCode).catch(() => null);
+  const calibration = register?.calibrations ?? {};
 
   const run = forecastStore({
     storeCode,
@@ -162,6 +161,7 @@ export async function buildState(input: BuildStateInput = {}): Promise<BuiltStat
       telemetry: telemetrySummary(latestTelemetry),
       overview: { revenue, machine },
       dataQuality: { days: rows.length, sparse: rows.length > 0 && rows.length < 7 },
+      storeRegistered: Boolean(register),
     },
   };
 }
