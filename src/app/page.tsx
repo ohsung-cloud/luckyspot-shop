@@ -36,6 +36,12 @@ export default function HomePage() {
 
           <div className="flex items-center gap-1.5">
             <a
+              className="flex h-10 items-center rounded-full border border-[#2C3730] px-2.5 text-[12px] font-semibold text-[#C8D0CA] transition-colors hover:border-[#1DFF26] hover:text-white"
+              href="/auto-order"
+            >
+              통합 현황
+            </a>
+            <a
               className="flex h-10 items-center gap-1 rounded-full bg-[#1DFF26] px-3.5 text-[13.5px] font-bold text-[#0F1412] transition-colors hover:bg-[#7CE785]"
               href="/orders"
             >

@@ -171,24 +171,34 @@ export type ForecastInput = {
   storeLabel: string;
   rows: PosDailySales[];
   dataSource: DataSource;
+  /**
+   * 포털 실측 잔량(토너 K % · 용지 트레이 %)으로 덮어쓸 현재고.
+   * 값이 있는 SKU만 실측을 쓰고, 없으면 BOM 기본 현재고를 쓴다.
+   * 키는 SKU, 값은 소모 단위(g·매·개).
+   */
+  stockOverrides?: Record<string, number>;
 };
 
 /** 한 지점의 예측 1회 실행. */
 export function forecastStore(input: ForecastInput): ForecastRun {
-  const rows = normalizeSales(input.rows);
-  const windowRows = rows.slice(-FORECAST_WINDOW_DAYS);
+  const allRows = normalizeSales(input.rows);
   const rules = resolveRules();
 
-  const drinks = windowRows.map((row) => row.drinksSold);
-  const sheets = windowRows.map((row) => row.printSheets);
-  const colorSheets = windowRows.map((row) => row.colorSheets);
+  // 도메인별로 '보고된 날'만 시계열로 쓴다. 한쪽 포털만 들어온 날을 0으로 읽지 않기 위함.
+  const cafeRows = allRows.filter((row) => row.cafeReported !== false);
+  const printRows = allRows.filter((row) => row.printReported !== false);
+
+  const windowRows = allRows.slice(-FORECAST_WINDOW_DAYS);
+  const drinks = cafeRows.slice(-FORECAST_WINDOW_DAYS).map((row) => row.drinksSold);
+  const sheets = printRows.slice(-FORECAST_WINDOW_DAYS).map((row) => row.printSheets);
+  const colorSheets = printRows.slice(-FORECAST_WINDOW_DAYS).map((row) => row.colorSheets);
 
   const seriesByDriver: Record<DriverField, number[]> = { drinks, sheets, colorSheets };
 
   const driverWindow: Record<DriverField, number[]> = {
-    drinks: rows.slice(-FORECAST_WINDOW_DAYS).map((row) => row.drinksSold),
-    sheets: rows.slice(-FORECAST_WINDOW_DAYS).map((row) => row.printSheets),
-    colorSheets: rows.slice(-FORECAST_WINDOW_DAYS).map((row) => row.colorSheets),
+    drinks,
+    sheets,
+    colorSheets,
   };
 
   const baseByDriver: Record<DriverField, number> = {
@@ -207,7 +217,7 @@ export function forecastStore(input: ForecastInput): ForecastRun {
   const printRatio = ratioByDriver.sheets;
   const anomalies = anomalyFor(cafeRatio, printRatio);
 
-  const asOfDate = rows.length > 0 ? rows[rows.length - 1].salesDate : "";
+  const asOfDate = allRows.length > 0 ? allRows[allRows.length - 1].salesDate : "";
   const totalSheets = mean(sheets);
   const colorShare = totalSheets > 0 ? mean(colorSheets) / totalSheets : 0;
 
@@ -216,21 +226,27 @@ export function forecastStore(input: ForecastInput): ForecastRun {
     const crossRatio = ratioByDriver[rule.crossDriverField];
     const crossFactor = round(1 + rule.crossDomainWeight * Math.max(-CROSS_CLAMP, Math.min(CROSS_CLAMP, crossRatio - 1)), 3);
 
+    const override = input.stockOverrides?.[rule.sku];
+    const hasOverride = typeof override === "number" && Number.isFinite(override);
+    const stockOnHand = hasOverride ? Math.max(0, override as number) : rule.stockOnHand;
+    const stockSource: "manual" | "telemetry" = hasOverride ? "telemetry" : "manual";
+
     const baseDailyConsumption = round(baseDriver * rule.consumptionPerDriverUnit, 3);
     const predictedDailyConsumption = round(baseDailyConsumption * crossFactor, 3);
     const remainingDays =
-      predictedDailyConsumption > 0 ? round(rule.stockOnHand / predictedDailyConsumption, 1) : 999;
+      predictedDailyConsumption > 0 ? round(stockOnHand / predictedDailyConsumption, 1) : 999;
     const reorderPointDays = rule.leadTimeDays + rule.safetyStockDays;
     const due = remainingDays <= reorderPointDays;
 
     const targetDays = rule.leadTimeDays + rule.safetyStockDays + COVER_EXTRA_DAYS;
-    const need = targetDays * predictedDailyConsumption - rule.stockOnHand;
+    const need = targetDays * predictedDailyConsumption - stockOnHand;
     const rawQty = need > 0 ? Math.ceil(need / rule.packSize) : 0;
     const suggestedQty = Math.min(rule.maxOrderQty, rawQty);
     const cappedByMax = rawQty > rule.maxOrderQty;
 
     const cv = baseDriver > 0 ? stdev(seriesByDriver[rule.driverField]) / baseDriver : 1;
-    const confidence = round(Math.max(0.35, Math.min(0.97, 1 - cv * 2)), 2);
+    const windowFactor = windowRows.length >= 7 ? 1 : 0.5;
+    const confidence = round(Math.max(0.3, Math.min(0.97, (1 - cv * 2) * windowFactor)), 2);
 
     return {
       sku: rule.sku,
@@ -243,7 +259,7 @@ export function forecastStore(input: ForecastInput): ForecastRun {
       crossFactor,
       crossDriverRatio: round(crossRatio, 3),
       predictedDailyConsumption,
-      stockOnHand: rule.stockOnHand,
+      stockOnHand: round(stockOnHand, 1),
       stockUnit: rule.stockUnit,
       remainingDays,
       leadTimeDays: rule.leadTimeDays,
@@ -256,6 +272,10 @@ export function forecastStore(input: ForecastInput): ForecastRun {
       unitPrice: rule.unitPrice,
       amount: suggestedQty * rule.unitPrice,
       confidence,
+      stockSource,
+      stockNote: hasOverride
+        ? `실측 ${Math.round(stockOnHand).toLocaleString("ko-KR")}${rule.stockUnit} (포털 ${rule.stockSignal ?? "신호"})`
+        : undefined,
       evidenceLine: evidenceLine({
         crossDomain: rule.crossDomain,
         crossRatio,
@@ -272,7 +292,7 @@ export function forecastStore(input: ForecastInput): ForecastRun {
     storeLabel: input.storeLabel,
     asOfDate,
     windowDays: windowRows.length,
-    rowCount: rows.length,
+    rowCount: allRows.length,
     cafeDailyAvg: round(mean(seriesByDriver.drinks), 1),
     printDailyAvg: round(mean(seriesByDriver.sheets), 1),
     colorSheetShare: round(colorShare, 3),

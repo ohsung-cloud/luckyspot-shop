@@ -76,6 +76,12 @@ export default function OwnerView({
         </p>
       </header>
 
+      {state.dataQuality.sparse ? (
+        <p className="rounded-[14px] bg-[#FFF9EA] px-4 py-3 text-[12px] leading-[1.6] text-[#8A5A00]">
+          실측 {state.dataQuality.days}일치입니다. 7일 이상 쌓이면 예측이 안정됩니다.
+        </p>
+      ) : null}
+
       {notice ? (
         <p className="rounded-[14px] bg-[#EDFBEF] px-4 py-3 text-[13.5px] font-semibold text-[#0B5C2A]">
           {notice}

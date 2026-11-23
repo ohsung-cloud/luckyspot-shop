@@ -10,6 +10,7 @@
 --
 -- 담긴 것 (순서를 바꾸면 안 된다)
 --   1) pos_daily_sales          지점별 일일 카페 매출/잔수 + 프린트 매출/출력매수
+--   1-1) device_telemetry_snapshots 외 3종 — 에스칼프린트·로얄선즈 실측 스냅샷(§6)
 --   2) consumable_bom_rules     SKU별 단위 소모량 · 교차 상관계수 · 안전재고일 · 상한 · 부담 사업자
 --   3) auto_order_proposals     예측 제안 큐 (pending_approval → grace_cancel_window 5분
 --                               → confirmed_split | canceled, 이상 시 held_anomaly)
@@ -69,12 +70,19 @@ create table if not exists public.pos_daily_sales (
   print_sheets  integer     not null default 0 check (print_sheets >= 0),
   color_sheets  integer     not null default 0 check (color_sheets >= 0),
   -- 'manual' | 'auto-order-ingest' | 'pos-api' 등 입력 경로
+  -- 그날 그 도메인 값이 실제로 보고되었는가. 한쪽 포털만 들어온 날을 0(=급감)으로 읽지 않기 위한 플래그.
+  cafe_reported  boolean     not null default true,
+  print_reported boolean     not null default true,
   source        text        not null default 'manual',
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
 
 -- 지점·날짜 1건. ON CONFLICT (store_code, sales_date) 업서트가 이 인덱스를 쓴다.
+alter table public.pos_daily_sales
+  add column if not exists cafe_reported  boolean not null default true,
+  add column if not exists print_reported boolean not null default true;
+
 create unique index if not exists pos_daily_sales_store_date_uidx
   on public.pos_daily_sales (store_code, sales_date);
 
@@ -304,21 +312,144 @@ grant all on table public.auto_order_proposals to service_role;
 grant all on table public.auto_order_ledger    to service_role;
 
 
+
+-- ----------------------------------------------------------------------------
+-- 6) 포털 실측 스냅샷 — 에스칼프린트(프린트) · 로얄선즈(커피)
+--
+--   수집기(스크래핑)가 하루 3회 보내는 값을 그대로 쌓는다.
+--   /api/auto-order/ingest-pos 의 snapshot 입력이 이 표들로 들어온다.
+--
+--   device_telemetry_snapshots : 장비 모델·S/N·누적 출력 매수·토너 K/C/M/Y %·용지 Tray1/Tray2 %
+--   beverage_sales_snapshots   : 베스트셀러 상품명칭별 판매량(잔)
+--   portal_revenue_snapshots   : 카페 금일/어제/이달, 프린트 월 실매출(카드+티머니+키오스크−환불)
+--   coffee_machine_status_snapshots : 온라인/오프라인, 재료 부족 알림
+--
+--   ★ 토너·용지 %는 consumable_bom_rules.stock_signal 로 현재고 환산에 쓰인다.
+--     stock_signal: toner_black_pct | toner_color_pct | paper_tray_pct
+--     stock_signal_capacity: 100%일 때의 소모 단위(토너 500g, A4 2트레이 1,100매)
+-- ----------------------------------------------------------------------------
+alter table public.consumable_bom_rules
+  add column if not exists stock_signal          text,
+  add column if not exists stock_signal_capacity numeric(14,2);
+
+create table if not exists public.device_telemetry_snapshots (
+  id                     uuid        primary key default gen_random_uuid(),
+  store_code             text        not null,
+  source                 text        not null default 'escalprint',
+  device_model           text,
+  device_serial          text,
+  captured_at            timestamptz not null,
+  cumulative_print_count bigint      check (cumulative_print_count is null or cumulative_print_count >= 0),
+  toner_k_pct            numeric(5,2) check (toner_k_pct is null or (toner_k_pct >= 0 and toner_k_pct <= 100)),
+  toner_c_pct            numeric(5,2) check (toner_c_pct is null or (toner_c_pct >= 0 and toner_c_pct <= 100)),
+  toner_m_pct            numeric(5,2) check (toner_m_pct is null or (toner_m_pct >= 0 and toner_m_pct <= 100)),
+  toner_y_pct            numeric(5,2) check (toner_y_pct is null or (toner_y_pct >= 0 and toner_y_pct <= 100)),
+  tray1_pct              numeric(5,2) check (tray1_pct is null or (tray1_pct >= 0 and tray1_pct <= 100)),
+  tray2_pct              numeric(5,2) check (tray2_pct is null or (tray2_pct >= 0 and tray2_pct <= 100)),
+  raw                    jsonb,
+  created_at             timestamptz not null default now()
+);
+
+-- 하루 3회 스냅샷이 같은 시각에 다시 들어와도 1건만 남긴다(재수집 멱등).
+create unique index if not exists device_telemetry_store_source_captured_uidx
+  on public.device_telemetry_snapshots (store_code, source, captured_at);
+create index if not exists device_telemetry_store_captured_idx
+  on public.device_telemetry_snapshots (store_code, captured_at desc);
+
+create table if not exists public.beverage_sales_snapshots (
+  id           uuid        primary key default gen_random_uuid(),
+  store_code   text        not null,
+  source       text        not null default 'loyalsuns',
+  captured_at  timestamptz not null,
+  sales_date   date        not null,
+  product_name text        not null,
+  quantity     integer     not null default 0 check (quantity >= 0),
+  amount       integer     check (amount is null or amount >= 0),
+  raw          jsonb,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists beverage_sales_store_date_idx
+  on public.beverage_sales_snapshots (store_code, sales_date desc);
+
+create table if not exists public.portal_revenue_snapshots (
+  id            uuid        primary key default gen_random_uuid(),
+  store_code    text        not null,
+  source        text        not null check (source in ('loyalsuns', 'escalprint', 'manual')),
+  scope         text        not null check (scope in ('day', 'month')),
+  period_start  date,
+  period_end    date,
+  captured_at   timestamptz not null,
+  gross_amount  bigint      not null default 0 check (gross_amount >= 0),
+  refund_amount bigint      not null default 0 check (refund_amount >= 0),
+  net_amount    bigint      not null default 0,
+  order_count   integer,
+  refund_count  integer,
+  raw           jsonb,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists portal_revenue_store_scope_idx
+  on public.portal_revenue_snapshots (store_code, source, scope, captured_at desc);
+
+create table if not exists public.coffee_machine_status_snapshots (
+  id          uuid        primary key default gen_random_uuid(),
+  store_code  text        not null,
+  source      text        not null default 'loyalsuns',
+  captured_at timestamptz not null,
+  online      boolean,
+  alerts      jsonb       not null default '[]'::jsonb,
+  raw         jsonb,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists coffee_machine_store_captured_idx
+  on public.coffee_machine_status_snapshots (store_code, captured_at desc);
+
+comment on table public.device_telemetry_snapshots is
+  '프린트 장비 실측 스냅샷(일 3회) — 누적 출력 매수·토너 %·용지 트레이 %. %는 BOM stock_signal로 현재고 환산';
+comment on table public.beverage_sales_snapshots is
+  '커피 포털 베스트셀러 판매 라인 — 상품명칭별 판매량. 음료 잔수(driver)의 실측 입력';
+comment on table public.portal_revenue_snapshots is
+  '포털 매출 스냅샷 — 카페 금일/어제/이달, 프린트 월 실매출(카드+티머니+키오스크−환불)';
+comment on table public.coffee_machine_status_snapshots is
+  '커피 머신 상태 스냅샷 — 온라인 여부·재료 부족 알림(재고 소진과 구분하기 위한 신호)';
+
+alter table public.device_telemetry_snapshots   enable row level security;
+alter table public.beverage_sales_snapshots     enable row level security;
+alter table public.portal_revenue_snapshots     enable row level security;
+alter table public.coffee_machine_status_snapshots enable row level security;
+
+revoke all on table public.device_telemetry_snapshots   from anon, authenticated;
+revoke all on table public.beverage_sales_snapshots     from anon, authenticated;
+revoke all on table public.portal_revenue_snapshots     from anon, authenticated;
+revoke all on table public.coffee_machine_status_snapshots from anon, authenticated;
+
+grant all on table public.device_telemetry_snapshots   to service_role;
+grant all on table public.beverage_sales_snapshots     to service_role;
+grant all on table public.portal_revenue_snapshots     to service_role;
+grant all on table public.coffee_machine_status_snapshots to service_role;
+
+
 -- ----------------------------------------------------------------------------
 -- 확인 쿼리 (Run 후 결과를 눈으로 확인)
---   tables = 4, rls_true = 4, bom_rules = 8, policies = 0 이면 정상
+--   tables = 8, rls_true = 8, bom_rules = 7, policies = 0 이면 정상
 -- ----------------------------------------------------------------------------
 select 'tables' as check,
        count(*) as value
   from information_schema.tables
  where table_schema = 'public'
-   and table_name in ('pos_daily_sales', 'consumable_bom_rules', 'auto_order_proposals', 'auto_order_ledger');
+   and table_name in ('pos_daily_sales', 'consumable_bom_rules', 'auto_order_proposals', 'auto_order_ledger',
+                      'device_telemetry_snapshots', 'beverage_sales_snapshots', 'portal_revenue_snapshots',
+                      'coffee_machine_status_snapshots');
 
 select 'rls_true' as check,
        count(*) as value
   from pg_tables
  where schemaname = 'public'
-   and tablename in ('pos_daily_sales', 'consumable_bom_rules', 'auto_order_proposals', 'auto_order_ledger')
+   and tablename in ('pos_daily_sales', 'consumable_bom_rules', 'auto_order_proposals', 'auto_order_ledger',
+                     'device_telemetry_snapshots', 'beverage_sales_snapshots', 'portal_revenue_snapshots',
+                     'coffee_machine_status_snapshots')
    and rowsecurity = true;
 
 select 'bom_rules' as check, count(*) as value
@@ -327,12 +458,18 @@ select 'bom_rules' as check, count(*) as value
 select 'policies' as check, count(*) as value
   from pg_policies
  where schemaname = 'public'
-   and tablename in ('pos_daily_sales', 'consumable_bom_rules', 'auto_order_proposals', 'auto_order_ledger');
+   and tablename in ('pos_daily_sales', 'consumable_bom_rules', 'auto_order_proposals', 'auto_order_ledger',
+                     'device_telemetry_snapshots', 'beverage_sales_snapshots', 'portal_revenue_snapshots',
+                     'coffee_machine_status_snapshots');
 
 
 -- ----------------------------------------------------------------------------
 -- 되돌리기 (필요할 때만 직접 실행 — 이 파일은 스스로 지우지 않는다)
 --
+--   drop table if exists public.coffee_machine_status_snapshots;
+--   drop table if exists public.portal_revenue_snapshots;
+--   drop table if exists public.beverage_sales_snapshots;
+--   drop table if exists public.device_telemetry_snapshots;
 --   drop table if exists public.auto_order_ledger;
 --   drop table if exists public.auto_order_proposals;
 --   drop table if exists public.consumable_bom_rules;

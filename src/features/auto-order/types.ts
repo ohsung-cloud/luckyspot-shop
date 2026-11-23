@@ -44,6 +44,13 @@ export type PosDailySales = {
   printRevenue: number;
   printSheets: number;
   colorSheets: number;
+  /**
+   * 그날 그 도메인 값이 실제로 보고되었는가.
+   * 포털 두 곳이 따로 들어오면 한쪽만 있는 날이 생기는데, 없는 쪽을 0으로 읽으면
+   * '매출 급감'으로 오인된다. undefined는 true(수동 rows·데모)로 본다.
+   */
+  cafeReported?: boolean;
+  printReported?: boolean;
 };
 
 /** 소모품 SKU별 소진 규칙(BOM). 특허 청구항 (b)의 장비ID↔사업자↔SKU↔환산계수↔리드타임 매핑. */
@@ -73,7 +80,18 @@ export type ConsumableBomRule = {
   stockOnHand: number;
   /** 공급처(세금계산서 발행 주체) */
   supplier: string;
+  /**
+   * 실측 잔량 신호 — 포털이 %로 주는 값을 현재고로 환산할 때 쓴다.
+   *  toner_black_pct : 에스칼프린트 토너 K %
+   *  toner_color_pct : 토너 C/M/Y 중 최소 %
+   *  paper_tray_pct  : 용지 Tray1/Tray2 평균 %
+   */
+  stockSignal?: StockSignal;
+  /** 신호 100%일 때의 소모 단위 수 (토너 1개=500g, A4 2트레이=1,100매) */
+  signalCapacity?: number;
 };
+
+export type StockSignal = "toner_black_pct" | "toner_color_pct" | "paper_tray_pct";
 
 /** 카탈로그 단가·품명까지 붙은 규칙. */
 export type ResolvedBomRule = ConsumableBomRule & {
@@ -117,6 +135,10 @@ export type SkuForecast = {
   amount: number;
   /** 예측 신뢰도 0~1 (최근 14일 변동계수 기반) */
   confidence: number;
+  /** 현재고의 출처 — manual(기본값) | telemetry(포털 실측 %) */
+  stockSource: "manual" | "telemetry";
+  /** 실측 신호 한 줄 (예: "토너 K 62% · 500g 중 310g") */
+  stockNote?: string;
   /** 화면에 한 줄로 보여줄 교차 근거 */
   evidenceLine: string;
 };
@@ -151,6 +173,81 @@ export type ForecastRun = {
 };
 
 export type DataSource = "supabase" | "memory" | "demo";
+
+/** 프린트 포털(에스칼프린트) 장비 스냅샷 — 하루 3회 수집된다. */
+export type DeviceTelemetry = {
+  storeCode: string;
+  source: "escalprint" | "manual";
+  capturedAt: string;
+  deviceModel: string | null;
+  deviceSerial: string | null;
+  cumulativePrintCount: number | null;
+  tonerKPct: number | null;
+  tonerCPct: number | null;
+  tonerMPct: number | null;
+  tonerYPct: number | null;
+  tray1Pct: number | null;
+  tray2Pct: number | null;
+};
+
+/** 음료 포털(로얄선즈) 베스트셀러 라인 — 상품명칭별 판매량. */
+export type BeverageLine = {
+  name: string;
+  quantity: number;
+  amount: number | null;
+};
+
+/** 포털 매출 스냅샷 (일/월 스코프). */
+export type RevenueSnapshot = {
+  source: "loyalsuns" | "escalprint" | "manual";
+  scope: "day" | "month";
+  periodStart: string;
+  periodEnd: string;
+  grossAmount: number;
+  refundAmount: number;
+  netAmount: number;
+  orderCount: number | null;
+  refundCount: number | null;
+};
+
+/** ingest-pos가 포털 스냅샷을 받았을 때 돌려주는 요약. */
+export type SnapshotIngestSummary = {
+  source: "escalprint" | "loyalsuns" | "both";
+  capturedAt: string;
+  salesDate: string;
+  derived: {
+    drinksSold: number | null;
+    printSheets: number | null;
+    colorSheets: number | null;
+    stockOverrides: Record<string, number>;
+  };
+  notes: string[];
+  warnings: string[];
+};
+
+/** 통합 매출 요약 — 카페(로얄선즈)와 프린트(에스칼프린트)를 한 카드에 모은다. */
+export type RevenueSummary = {
+  source: "portal" | "demo";
+  cafeToday: number | null;
+  cafeYesterday: number | null;
+  cafeMonth: number | null;
+  printMonth: number | null;
+  capturedAt: string | null;
+};
+
+export type MachineStatusSummary = {
+  online: boolean | null;
+  alerts: string[];
+  capturedAt: string | null;
+};
+
+export type TelemetrySummary = {
+  capturedAt: string;
+  deviceModel: string | null;
+  cumulativePrintCount: number | null;
+  toner: { k: number | null; c: number | null; m: number | null; y: number | null };
+  paper: { tray1: number | null; tray2: number | null };
+};
 
 /** 발주 제안 1건 = SKU 1건. */
 export type AutoOrderProposal = {
@@ -276,4 +373,13 @@ export type ProposalListResponse = {
   };
   splitPreview: SplitResult | null;
   run: ForecastRun;
+  /** 포털 실측 신호가 있으면 화면에 그대로 보여준다. */
+  telemetry: TelemetrySummary | null;
+  /** 통합 매출·기계 상태 (통합 현황 탭) */
+  overview: {
+    revenue: RevenueSummary | null;
+    machine: MachineStatusSummary | null;
+  };
+  /** 실측 일수 — 7일 미만이면 sparse(예측이 흔들릴 수 있음) */
+  dataQuality: { days: number; sparse: boolean };
 };

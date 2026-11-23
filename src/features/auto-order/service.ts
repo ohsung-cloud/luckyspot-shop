@@ -10,7 +10,14 @@ import {
 import { splitProposals } from "./entity-split";
 import { forecastStore } from "./forecast";
 import { buildProposals, proposalTotals } from "./proposal";
-import { loadSales, listApprovals } from "./store";
+import {
+  loadMachineStatus,
+  loadRevenueSummary,
+  loadSales,
+  loadTelemetryHistory,
+  listApprovals,
+} from "./store";
+import { stockOverridesFromTelemetry, telemetrySummary } from "./telemetry";
 import type { AutoOrderProposal, ProposalListResponse, ProposalStatus, SplitResult } from "./types";
 
 /**
@@ -50,11 +57,17 @@ export async function buildState(input: BuildStateInput = {}): Promise<BuiltStat
       scenario,
     });
 
+  // 포털 실측이 있으면 토너 K/C/M/Y % · 용지 트레이 %를 현재고로 환산해 덮어쓴다.
+  const telemetryHistory = await loadTelemetryHistory(storeCode);
+  const latestTelemetry = telemetryHistory.length > 0 ? telemetryHistory[telemetryHistory.length - 1] : null;
+  const stockOverrides = stockOverridesFromTelemetry(latestTelemetry);
+
   const run = forecastStore({
     storeCode,
     storeLabel,
     rows,
     dataSource: loaded?.dataSource ?? "demo",
+    stockOverrides,
   });
 
   const rawProposals = buildProposals(run);
@@ -92,6 +105,25 @@ export async function buildState(input: BuildStateInput = {}): Promise<BuiltStat
     (proposal) => proposal.status === "pending_approval" || proposal.status === "grace_cancel_window",
   );
 
+  // 통합 현황 — 포털 실측이 없으면 데모 시계열의 마지막 날/누적을 보여준다.
+  const portalRevenue = await loadRevenueSummary(storeCode);
+  const machine = await loadMachineStatus(storeCode);
+  const lastRow = rows[rows.length - 1];
+  const previousRow = rows[rows.length - 2];
+
+  const revenue =
+    portalRevenue ??
+    (lastRow
+      ? {
+          source: "demo" as const,
+          cafeToday: lastRow.cafeRevenue,
+          cafeYesterday: previousRow?.cafeRevenue ?? null,
+          cafeMonth: rows.reduce((sum, row) => sum + row.cafeRevenue, 0),
+          printMonth: rows.reduce((sum, row) => sum + row.printRevenue, 0),
+          capturedAt: null,
+        }
+      : null);
+
   const splitPreview: SplitResult | null =
     actionable.length > 0 && !run.hold
       ? splitProposals({
@@ -120,6 +152,9 @@ export async function buildState(input: BuildStateInput = {}): Promise<BuiltStat
       totals: proposalTotals(actionable),
       splitPreview,
       run,
+      telemetry: telemetrySummary(latestTelemetry),
+      overview: { revenue, machine },
+      dataQuality: { days: rows.length, sparse: rows.length > 0 && rows.length < 7 },
     },
   };
 }

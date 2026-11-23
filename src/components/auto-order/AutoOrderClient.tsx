@@ -6,6 +6,7 @@ import type { DemoScenario } from "@/features/auto-order/demo-pos";
 import type { ApprovalView, ProposalListResponse, SplitResult } from "@/features/auto-order/types";
 
 import HqView, { type SimulateInput } from "./HqView";
+import OverviewView from "./OverviewView";
 import OwnerView from "./OwnerView";
 
 /**
@@ -17,7 +18,7 @@ import OwnerView from "./OwnerView";
  * 서버 상태가 없어도(테이블 미적용) API가 데모 실측 폴백을 돌려주므로 화면은 그대로 동작한다.
  */
 
-type Tab = "owner" | "hq";
+type Tab = "overview" | "owner" | "hq";
 
 type ApproveResponse = {
   ok: true;
@@ -34,7 +35,7 @@ type ActionResponse = {
 };
 
 export default function AutoOrderClient() {
-  const [tab, setTab] = useState<Tab>("owner");
+  const [tab, setTab] = useState<Tab>("overview");
   const [state, setState] = useState<ProposalListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
@@ -300,31 +301,41 @@ export default function AutoOrderClient() {
   return (
     <div className="grid gap-4">
       <div className="flex rounded-[16px] bg-white p-1 shadow-[0_2px_10px_rgba(15,20,18,0.05)]" role="tablist">
-        <button
-          aria-selected={tab === "owner"}
-          className={`h-12 flex-1 rounded-[12px] text-[14.5px] font-bold transition-colors ${
-            tab === "owner" ? "bg-[#0F1412] text-white" : "text-[#6B746D]"
-          }`}
-          onClick={() => setTab("owner")}
-          role="tab"
-          type="button"
-        >
-          점주 뷰
-        </button>
-        <button
-          aria-selected={tab === "hq"}
-          className={`h-12 flex-1 rounded-[12px] text-[14.5px] font-bold transition-colors ${
-            tab === "hq" ? "bg-[#0F1412] text-white" : "text-[#6B746D]"
-          }`}
-          onClick={() => setTab("hq")}
-          role="tab"
-          type="button"
-        >
-          본사 · 특허 실증 뷰
-        </button>
+        {(
+          [
+            { key: "overview", label: "통합 현황" },
+            { key: "owner", label: "발주 승인" },
+            { key: "hq", label: "본사·특허" },
+          ] as { key: Tab; label: string }[]
+        ).map((item) => (
+          <button
+            key={item.key}
+            aria-selected={tab === item.key}
+            className={`h-12 flex-1 rounded-[12px] text-[13.5px] font-bold transition-colors ${
+              tab === item.key ? "bg-[#0F1412] text-white" : "text-[#6B746D]"
+            }`}
+            onClick={() => setTab(item.key)}
+            role="tab"
+            type="button"
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
-      {tab === "owner" ? (
+      {tab === "overview" ? (
+        <OverviewView
+          error={error}
+          loading={loading}
+          onGoHq={() => setTab("hq")}
+          onGoOrder={() => setTab("owner")}
+          onRefresh={() => {
+            setNotice(null);
+            void load();
+          }}
+          state={state}
+        />
+      ) : tab === "owner" ? (
         <OwnerView
           approval={approval}
           busy={busy}

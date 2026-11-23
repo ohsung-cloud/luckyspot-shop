@@ -21,6 +21,9 @@ import { buildProposals } from "../src/features/auto-order/proposal";
 import { resolveRules } from "../src/features/auto-order/rules";
 import { graceState, issueGrace, remainingSeconds, verifyGrace } from "../src/features/auto-order/state";
 import type { PosDailySales } from "../src/features/auto-order/types";
+import { normalizeEscalprintSnapshot } from "../src/features/auto-order/adapters/escalprint";
+import { normalizeLoyalsunsSnapshot } from "../src/features/auto-order/adapters/loyalsuns";
+import { sheetsFromCounters, stockOverridesFromTelemetry } from "../src/features/auto-order/telemetry";
 import { getProductById } from "../src/data/products";
 
 let passed = 0;
@@ -308,6 +311,72 @@ check(
   "행 순서를 뒤집어도 같은 예측",
   shuffledRun.cafeDailyAvg === demoRun.cafeDailyAvg && shuffledRun.printDailyAvg === demoRun.printDailyAvg,
 );
+
+/* ------------------------------------------------------------------ */
+section("9. 포털 실측 어댑터 (에스칼프린트 · 로얄선즈)");
+
+const capturedAt = "2026-11-23T03:10:00.000Z"; // KST 12:10
+
+const escal = normalizeEscalprintSnapshot(
+  {
+    capturedAt,
+    device: { model: "TASKalfa MZ3501ci", serial: "Z7K1234567", cumulativePrintCount: 1_234_567 },
+    toner: { k: 62, c: 71, m: 68, y: 74 },
+    paper: { tray1: 45, tray2: 80 },
+    revenue: { month: "2026-11", total: 1_234_000, refund: 34_000 },
+  },
+  { storeCode: "STORE_GNG" },
+);
+
+check("장비 모델·S/N", escal.telemetry?.deviceModel === "TASKalfa MZ3501ci" && escal.telemetry?.deviceSerial === "Z7K1234567");
+check("토너 K % 유지", escal.telemetry?.tonerKPct === 62);
+check("용지 트레이 % 유지", escal.telemetry?.tray1Pct === 45 && escal.telemetry?.tray2Pct === 80);
+check("KST 날짜", escal.salesDate === "2026-11-23", escal.salesDate);
+check("월 실매출 = 총액 − 환불", escal.revenues[0]?.netAmount === 1_200_000, String(escal.revenues[0]?.netAmount));
+
+const overrides = stockOverridesFromTelemetry(escal.telemetry);
+check("검정토너 현재고 = 62% × 500g", overrides["toner-black"] === 310, String(overrides["toner-black"]));
+check("컬러토너 = 최소(C/M/Y 68%) × 500g", overrides["toner-color"] === 340, String(overrides["toner-color"]));
+check("A4 = 평균(45,80)% × 1,100매", overrides["a4-paper"] === 687.5, String(overrides["a4-paper"]));
+
+const loyalsuns = normalizeLoyalsunsSnapshot(
+  {
+    capturedAt,
+    machine: { online: true, alerts: [{ code: "MAT-01", message: "원두 부족", serial: "LP-77" }] },
+    revenue: { today: 966_000, yesterday: 1_012_000, month: 21_400_000 },
+    orders: { todayCount: 420, refundCount: 2 },
+    bestsellers: [
+      { name: "아메리카노 HOT", quantity: 180 },
+      { name: "아메리카노 ICED", quantity: 150 },
+      { name: "바닐라밀크티", quantity: 42 },
+    ],
+  },
+  { storeCode: "STORE_GNG" },
+);
+
+check("음료 잔수 = 베스트셀러 합", loyalsuns.patch.drinksSold === 372, String(loyalsuns.patch.drinksSold));
+check("카페 매출 반영", loyalsuns.patch.cafeRevenue === 966_000);
+check("금일·어제·이달 매출 스냅샷 3건", loyalsuns.revenues.length === 3, String(loyalsuns.revenues.length));
+check("기계 알림 보존", loyalsuns.machine?.alerts[0] === "원두 부족", loyalsuns.machine?.alerts.join(","));
+check("판매일 KST", loyalsuns.salesDate === "2026-11-23");
+
+const sheets = sheetsFromCounters([
+  { ...escal.telemetry!, capturedAt: "2026-11-22T03:00:00.000Z", cumulativePrintCount: 1_234_000 },
+  { ...escal.telemetry!, capturedAt: "2026-11-23T03:00:00.000Z", cumulativePrintCount: 1_234_384 },
+]);
+check("누적 카운터 384매/24h", sheets.sheets === 384, String(sheets.sheets));
+
+// 실측 현재고가 예측 잔여일에 반영되는가
+const withStock = forecastStore({
+  storeCode: "STORE_TEST",
+  storeLabel: "테스트",
+  rows: steady,
+  dataSource: "demo",
+  stockOverrides: { "a4-paper": 50 },
+});
+const paper = withStock.forecasts.find((item) => item.sku === "a4-paper")!;
+check("실측 현재고로 잔여일 재계산", paper.stockSource === "telemetry" && paper.remainingDays <= 0.5, `${paper.remainingDays}일`);
+check("실측 표기", Boolean(paper.stockNote?.includes("실측")), paper.stockNote);
 
 /* ------------------------------------------------------------------ */
 console.log(`\n결과: ${passed} PASS / ${failed} FAIL`);

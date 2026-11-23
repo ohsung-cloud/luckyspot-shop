@@ -110,6 +110,8 @@ const BASE_RULES: ConsumableBomRule[] = [
     maxOrderQty: 4,
     stockOnHand: 420,
     supplier: "본사 지정 공급처",
+    stockSignal: "paper_tray_pct",
+    signalCapacity: 1100,
   },
   {
     sku: "toner-black",
@@ -128,6 +130,8 @@ const BASE_RULES: ConsumableBomRule[] = [
     maxOrderQty: 2,
     stockOnHand: 14,
     supplier: "본사 지정 공급처",
+    stockSignal: "toner_black_pct",
+    signalCapacity: 500,
   },
   {
     sku: "toner-color",
@@ -146,6 +150,8 @@ const BASE_RULES: ConsumableBomRule[] = [
     maxOrderQty: 2,
     stockOnHand: 12,
     supplier: "본사 지정 공급처",
+    stockSignal: "toner_color_pct",
+    signalCapacity: 500,
   },
 ];
 
