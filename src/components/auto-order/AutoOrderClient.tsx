@@ -87,7 +87,16 @@ export default function AutoOrderClient() {
   );
 
   useEffect(() => {
-    void load();
+    // 딥링크: ?storeCode=STORE_GNG&scenario=cafe_drop (수집기·본사 테스트용)
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("storeCode") ?? undefined;
+    const scenarioParam = params.get("scenario");
+    const initialScenario =
+      scenarioParam === "normal" || scenarioParam === "print_surge" || scenarioParam === "cafe_drop"
+        ? scenarioParam
+        : undefined;
+
+    void load({ storeCode: code, scenario: initialScenario });
     // 최초 1회만 — 이후는 명시적 새로고침·시뮬레이션에서 부른다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
