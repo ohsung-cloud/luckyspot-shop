@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import snapshotJson from "@/data/sales-report/snapshot-2026-11-23.json";
+import { RevenueMixDonut } from "@/features/sales-report/RevenueMixDonut";
 import type { SalesReportSnapshot } from "@/features/sales-report/types";
 
 /**
@@ -8,9 +9,9 @@ import type { SalesReportSnapshot } from "@/features/sales-report/types";
  *
  * 데이터: 두 사이트 수집기(two-site-collector) 2026-11-23 12:10 KST 분석 결과.
  * 화면 순서는 점주가 매일 보는 순서다.
- *   ① 오늘·이달 커피 매출 → ② 통합 월 런레이트 → ③ 프린트 월별 추이
- *   → ④ 원두 소모·잔여일 → ⑤ 소모품 잔여 → ⑥ 이상 징후 → ⑦ 프린트 장비
- *   → ⑧ 추천 발주(사업자 분리) → 발주 승인 연결
+ *   ① 오늘·이달 커피 매출 → ② 이달 매출 비중(커피 vs 프린트 도넛) → ③ 통합 월 런레이트
+ *   → ④ 프린트 월별 추이 → ⑤ 원두 소모·잔여일 → ⑥ 소모품 잔여 → ⑦ 이상 징후
+ *   → ⑧ 프린트 장비 → ⑨ 추천 발주(사업자 분리) → 발주 승인 연결
  *
  * 내부용: 검색 비노출(noindex). 홈페이지 메뉴에는 걸지 않는다.
  */
@@ -221,7 +222,12 @@ export default function SalesReportPage() {
             </div>
           </section>
 
-          {/* ② 통합 런레이트 */}
+          {/* ② 이달 매출 비중 */}
+          <Section title="이달 매출 비중" caption="커피 vs 프린트">
+            <RevenueMixDonut revenue={data.revenue} today={data.today} />
+          </Section>
+
+          {/* ③ 통합 런레이트 */}
           <Section title="통합 월 런레이트" caption="방향성 지표">
             <div className="mt-3 flex items-end justify-between gap-3">
               <div>
@@ -232,14 +238,11 @@ export default function SalesReportPage() {
                   하루 {won(data.revenue.blended.dailyRate)} · 커피 + 프린트
                 </p>
               </div>
-              <span className="hidden shrink-0 rounded-full bg-[#F4F5F6] px-2.5 py-1 text-[11px] font-semibold text-[#6B746D] sm:inline-flex">
-                커피 1,059,700 + 프린트 500,200
-              </span>
             </div>
             <p className="mt-2 text-[11px] leading-[1.6] text-[#98A29B]">{data.revenue.blended.basis}</p>
           </Section>
 
-          {/* ③ 프린트 월별 추이 */}
+          {/* ④ 프린트 월별 추이 */}
           <Section title="프린트 월별 추이" caption={`${print.month} ${won(print.total)}`}>
             <ul className="mt-3 space-y-2">
               {months.map((month) => (
@@ -273,7 +276,7 @@ export default function SalesReportPage() {
             </p>
           </Section>
 
-          {/* ④ 원두 */}
+          {/* ⑤ 원두 */}
           <Section title="원두 소모·잔여" caption="메뉴 구성 기준">
             <div className="mt-3 grid grid-cols-2 gap-2">
               <div className="rounded-[16px] bg-[#EDFBEF] p-3.5">
@@ -335,7 +338,7 @@ export default function SalesReportPage() {
             </p>
           </Section>
 
-          {/* ⑤ 소모품 잔여 */}
+          {/* ⑥ 소모품 잔여 */}
           <Section
             title="소모품 잔여"
             caption={`바닥 ${emptyStock.length} · 주의 ${watchStock.length}`}
@@ -402,7 +405,7 @@ export default function SalesReportPage() {
             </details>
           </Section>
 
-          {/* ⑥ 이상 징후 */}
+          {/* ⑦ 이상 징후 */}
           <Section title="이상 징후" caption={data.drift.summary}>
             <ul className="mt-3 space-y-2">
               {data.drift.findings.map((finding) => (
@@ -435,7 +438,7 @@ export default function SalesReportPage() {
             </p>
           </Section>
 
-          {/* ⑦ 프린트 장비 */}
+          {/* ⑧ 프린트 장비 */}
           <Section title="프린트 장비" caption={`누적 ${data.print.cumulativePrintCount.toLocaleString("ko-KR")}매`}>
             <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
               <Gauge label="토너 K" pctValue={data.print.toner.k} />
@@ -456,7 +459,7 @@ export default function SalesReportPage() {
             ))}
           </Section>
 
-          {/* ⑧ 추천 발주 */}
+          {/* ⑨ 추천 발주 */}
           <section className="rounded-[24px] border-2 border-[#0F1412] bg-white p-4 sm:p-5">
             <div className="flex items-baseline justify-between">
               <h2 className="text-[15px] font-bold text-[#0F1412]">추천 발주</h2>
