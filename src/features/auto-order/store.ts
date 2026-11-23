@@ -40,7 +40,7 @@ export type StoredApproval = {
 type MemoryDb = {
   sales: Map<string, PosDailySales[]>;
   approvals: Map<string, StoredApproval>;
-  /** 포털 스냅샷(최신이 뒤). 하루 3회 수집분을 그대로 보관한다. */
+  /** 포털 스냅샷(최신이 뒤). 2시간마다 + 00:05 마감 수집분을 그대로 보관한다. */
   telemetry: Map<string, DeviceTelemetry[]>;
   beverages: Map<string, BeverageLine[]>;
   revenue: Map<string, RevenueSnapshot[]>;

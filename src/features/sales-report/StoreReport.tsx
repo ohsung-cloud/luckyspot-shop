@@ -52,6 +52,7 @@ export function StoreReport({ store, period }: { store: StoreEntry; period: Mont
     <div className="grid gap-2.5">
       <p className="px-1 text-[11px] text-[#6B746D]">
         {store.label} · {capturedLabel(data.capturedAt)} 수집 · {store.tagline}
+        <span className="mt-0.5 block text-[10px] text-[#98A29B]">매일 08~22시 1시간마다 · 00:05 마감 업데이트</span>
       </p>
 
       {/* ① 매출 — 최상위 위계 */}

@@ -2,7 +2,7 @@
 
 `.github/workflows/daily-pos-collect.yml` 은 Pickle 의 GitHub 연결 권한에 **Workflows 쓰기**가 없어
 자동 푸시가 거부되었다(`refusing to allow a GitHub App to create or update workflow ... without workflows permission`).
-아래 두 방법 중 하나로 넣으면 매일 08:30 KST 자동 수집이 시작된다.
+아래 두 방법 중 하나로 넣으면 하루 16회(08~22시 1시간마다 + 00:05 마감) 자동 수집이 시작된다.
 
 ## 방법 A — 권한을 한 번 허용하고 다시 푸시 (권장)
 
@@ -31,4 +31,4 @@ git push
 - Actions 탭에 “매일 POS 자동 수집 (로얄선즈 · 에스칼프린트)” 이 보인다.
 - Secrets 8개(+선택 `INGEST_API_SECRET`)를 등록한다 → `README.md` 의 표 참고.
 - `Run workflow` 로 한 번 수동 실행해 Step Summary 의 “지점별 결과 / 실패한 단계”를 확인한다.
-- cron 은 UTC 기준이라 `30 23 * * *` = 매일 08:30 KST 다. GitHub 의 예약 실행은 혼잡하면 수 분 늦을 수 있다.
+- cron 은 UTC 기준이다. `0 0-13,23 * * *` = KST 08~22시 매 정시, `5 15 * * *` = KST 00:05 마감. GitHub 의 예약 실행은 혼잡하면 수 분 늦을 수 있다.

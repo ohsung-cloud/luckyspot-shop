@@ -33,7 +33,8 @@ export default function AutoOrderPage() {
 
       <div className="mx-auto w-full max-w-[760px] px-4 py-4 sm:px-6 sm:py-5">
         <HqTabs active="/auto-order" />
-        <div className="mt-3">
+        <p className="mt-1.5 px-1 text-[10px] text-[#98A29B]">매일 08~22시 1시간마다 · 00:05 마감 업데이트</p>
+        <div className="mt-2.5">
           <AutoOrderClient />
         </div>
       </div>

@@ -179,7 +179,7 @@ export type ForecastRun = {
 
 export type DataSource = "supabase" | "memory" | "demo";
 
-/** 프린트 포털(에스칼프린트) 장비 스냅샷 — 하루 3회 수집된다. */
+/** 프린트 포털(에스칼프린트) 장비 스냅샷 — 2시간마다(08~22시) + 00:05 마감에 수집된다. */
 export type DeviceTelemetry = {
   storeCode: string;
   source: "escalprint" | "manual";

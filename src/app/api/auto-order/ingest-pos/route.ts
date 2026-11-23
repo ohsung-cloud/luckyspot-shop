@@ -36,7 +36,7 @@ import { jsonError, readJsonObject, takeRateLimit } from "@/features/http/guard"
  *                      orders:{todayCount, refundCount}, bestsellers:[{name,quantity,amount}] }
  *      }
  *    }
- *    → 장비 스냅샷은 device_telemetry_snapshots(하루 3회), 베스트셀러는 beverage_sales_snapshots,
+ *    → 장비 스냅샷은 device_telemetry_snapshots(2시간마다·00:05 마감), 베스트셀러는 beverage_sales_snapshots,
  *      매출은 portal_revenue_snapshots에 쌓고, 그날의 pos_daily_sales 행을 갱신한다.
  *    → 토너 K/C/M/Y %와 용지 트레이 %는 **현재고로 환산해 예측에 직접 반영**한다.
  *    → 출력 매수는 누적 카운터 두 스냅샷의 차이로 하루 환산한다.

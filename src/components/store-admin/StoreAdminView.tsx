@@ -328,6 +328,7 @@ export default function StoreAdminView({ store, monthly, snapshot, history }: Pr
         <h1 className="mt-1.5 text-[21px] font-bold leading-[1.25] tracking-[-0.02em] text-[#0F1412]">
           {store.shortLabel} 점주 어드민
         </h1>
+        <p className="mt-1 text-[10px] text-[#98A29B]">매일 08~22시 1시간마다 · 00:05 마감 업데이트</p>
       </header>
 
       {/* ① 매출 — 최상위 위계 */}

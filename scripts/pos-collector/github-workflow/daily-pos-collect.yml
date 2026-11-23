@@ -1,12 +1,18 @@
 name: 매일 POS 자동 수집 (로얄선즈 · 에스칼프린트)
 
-# 매일 08:30 KST(= 23:30 UTC 전날)에 두 포털에 로그인해 지점별 실데이터를 수집하고
+# KST 기준 하루 16회 수집한다.
+#  - 08~22시 : 1시간마다 (UTC 23, 00~13시 매 정시)
+#  - 00:05 : 일일 마감 수집 (UTC 15:05 전날)
+# 두 포털(로얄선즈·에스칼프린트)에 로그인해 지점별 실데이터를 모아
 # luckyspot-shop /api/auto-order/ingest-pos 로 보낸다.
 # 수동 실행: Actions → 이 워크플로우 → Run workflow (지점 선택 all / STORE_GNM / STORE_HYJ)
 
 on:
   schedule:
-    - cron: "30 23 * * *"
+    # KST 00:05 일일 마감 (UTC 15:05)
+    - cron: "5 15 * * *"
+    # KST 08~22시 1시간마다 (UTC 23, 00~13시)
+    - cron: "0 0-13,23 * * *"
   workflow_dispatch:
     inputs:
       store:
