@@ -50,7 +50,7 @@ export type ConsumptionGuide = {
 
 const beanNote = "잔당 원두 12.5g · 리드타임 3일 기준";
 const cupNote = "테이크아웃 비중 80% · 1,000개들이 1박스 기준";
-const printNote = "프린트 카페 기준 인쇄량(하루 60~200매) 가정";
+const printNote = "무인카페 & 프린트 기준 인쇄량(하루 60~200매) 가정";
 
 export const consumptionGuides: ConsumptionGuide[] = [
   {

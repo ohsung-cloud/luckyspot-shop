@@ -1,0 +1,126 @@
+import { days, manwon, pct, won } from "./format";
+import type { SalesReportSnapshot } from "./types";
+import { STORES } from "./stores";
+
+/**
+ * 두 지점을 **나란히** 놓고 보는 화면.
+ *
+ * 여기에는 더하기가 없다. 매출·재고 어디에도 두 지점을 합친 숫자를 만들지 않고,
+ * 같은 항목끼리 좌우로 비교만 한다(사용자 지시: 합산 금지).
+ */
+
+function metrics(snapshot: SalesReportSnapshot) {
+  const bean = snapshot.bean;
+  const stockEmpty = snapshot.stock.filter((item) => item.status === "empty");
+  const toner = [
+    snapshot.print.toner.k,
+    snapshot.print.toner.c,
+    snapshot.print.toner.m,
+    snapshot.print.toner.y,
+  ];
+
+  return [
+    { key: "커피 오늘", value: won(snapshot.revenue.coffee.today), hint: `${bean.coffeeDrinks}잔 · 어제 ${won(snapshot.revenue.coffee.yesterday)}` },
+    { key: "커피 이달", value: won(snapshot.revenue.coffee.month), hint: `일평균 ${won(snapshot.revenue.coffee.dailyRate)}` },
+    { key: "프린트 실매출", value: won(snapshot.revenue.print.total), hint: `${snapshot.revenue.print.month} · 전월 ${pct(snapshot.revenue.print.trendPct)}` },
+    { key: "프린트 누적", value: `${snapshot.print.cumulativePrintCount.toLocaleString("ko-KR")}매`, hint: `토너 평균 ${snapshot.print.tonerAvgPct}%` },
+    { key: "토너 최저", value: `${Math.min(...toner)}%`, hint: `K ${snapshot.print.toner.k} · C ${snapshot.print.toner.c} · M ${snapshot.print.toner.m} · Y ${snapshot.print.toner.y}` },
+    { key: "용지", value: `Tray1 ${snapshot.print.paper.tray1}%`, hint: `Tray2 ${snapshot.print.paper.tray2}%` },
+    { key: "원두 잔여", value: `${snapshot.bean.stockPct}%`, hint: `${Math.round(snapshot.bean.stockGrams ?? 0).toLocaleString("ko-KR")}g · ${days(snapshot.bean.daysLeftWithBurst)}` },
+    { key: "오늘 원두 소모", value: `${snapshot.bean.dailyGrams}g`, hint: `${snapshot.bean.coffeeDrinks}잔 · 잔당 ${snapshot.bean.avgGramsPerDrink}g` },
+    { key: "재고 0% 칸", value: `${stockEmpty.length}칸`, hint: stockEmpty.map((item) => item.material).join(" · ") || "없음" },
+    { key: "누적 커피 매출", value: manwon(snapshot.revenue.coffee.cumulativeTotal) + "원", hint: "개점 이후" },
+  ];
+}
+
+export function StoreCompare() {
+  const columns = STORES.map((store) => ({ store, rows: metrics(store.snapshot) }));
+  const keys = columns[0].rows.map((row) => row.key);
+
+  return (
+    <div className="grid gap-3.5">
+      <header className="px-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full bg-[#0F1412] px-2.5 py-1 text-[11.5px] font-bold text-[#1DFF26]">지점 나란히 비교</span>
+          <span className="rounded-full border border-[#D7DBD9] px-2 py-0.5 text-[10.5px] font-semibold text-[#6B746D]">합산하지 않음</span>
+        </div>
+        <h1 className="mt-2 text-[24px] font-bold leading-[1.3] tracking-[-0.02em] text-[#0F1412] sm:text-[28px]">
+          두 지점을 같은 항목으로
+          <br />
+          좌우에서 봅니다
+        </h1>
+        <p className="mt-1.5 text-[12.5px] leading-[1.6] text-[#6B746D]">
+          위 매출은 지점별 숫자이고, 두 지점을 더한 값은 이 화면 어디에도 없습니다. 매출 구조가 달라 합계보다 항목 비교가
+          판단에 쓸모가 있습니다.
+        </p>
+      </header>
+
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        {columns.map(({ store, rows }) => (
+          <section key={store.id} className="rounded-[22px] border border-[#E6E9E7] bg-white p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className={`rounded-full px-2.5 py-1 text-[11.5px] font-bold ${store.badgeClass}`}>{store.label}</span>
+              <span className="text-[10.5px] font-semibold text-[#98A29B]">{store.region}</span>
+            </div>
+            <p className="mt-2 text-[11.5px] leading-[1.5] text-[#6B746D]">{store.tagline}</p>
+
+            <dl className="mt-3 divide-y divide-[#F1F3F2]">
+              {rows.slice(0, 4).map((row) => (
+                <div key={row.key} className="flex items-baseline justify-between gap-2 py-2">
+                  <dt className="text-[11.5px] font-semibold text-[#6B746D]">{row.key}</dt>
+                  <dd className="text-right">
+                    <span className="block text-[15px] font-bold tabular-nums text-[#0F1412]">{row.value}</span>
+                    <span className="block text-[10.5px] text-[#98A29B]">{row.hint}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))}
+      </div>
+
+      <section className="rounded-[22px] border border-[#E6E9E7] bg-white p-4 sm:p-5">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-[15px] font-bold text-[#0F1412]">항목별 비교</h2>
+          <span className="text-[11px] text-[#6B746D]">단위는 각 지점 실측</span>
+        </div>
+
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[320px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-[#EFF1F0] text-[10.5px] text-[#6B746D]">
+                <th className="py-2 pr-2 font-semibold">항목</th>
+                {columns.map(({ store }) => (
+                  <th key={store.id} className="py-2 pl-2 text-right font-semibold">
+                    {store.shortLabel}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {keys.map((key) => (
+                <tr key={key} className="border-b border-[#F6F7F7] align-top">
+                  <td className="py-2 pr-2 text-[11.5px] font-semibold text-[#3B4740]">{key}</td>
+                  {columns.map(({ store, rows }) => {
+                    const row = rows.find((entry) => entry.key === key);
+                    return (
+                      <td key={store.id} className="py-2 pl-2 text-right">
+                        <span className="block text-[12.5px] font-bold tabular-nums text-[#0F1412]">{row?.value ?? "—"}</span>
+                        <span className="block text-[10px] leading-[1.4] text-[#98A29B]">{row?.hint ?? ""}</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="mt-3 rounded-[12px] bg-[#F8F9F9] px-3 py-2.5 text-[11px] leading-[1.65] text-[#6B746D]">
+          합계 줄을 두지 않았습니다. 한 지점이 하루 커피 20잔 규모이고 다른 지점이 60잔 규모라 더한 값은 어느 쪽 판단에도 쓰이지
+          않습니다. 발주·재고는 지점 탭에서 각각 확인하세요.
+        </p>
+      </section>
+    </div>
+  );
+}

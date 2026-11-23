@@ -2,6 +2,7 @@
 
 export type SalesReportSnapshot = {
   schemaVersion: string;
+  storeId?: string;
   storeCode: string;
   storeLabel: string;
   capturedAt: string;
@@ -47,6 +48,7 @@ export type SalesReportSnapshot = {
     daysLeftWithBurst: number;
     servingsLeft: number;
     unitBasis: { confirmed: string; assumed: string; logScale: string };
+    unresolved?: string[];
     refillLog: {
       at: string;
       serial: string;
@@ -81,7 +83,7 @@ export type SalesReportSnapshot = {
     unitsPerDay: number;
     daysLeft: number | null;
     safetyDays: number;
-    status: "ok" | "watch" | "empty";
+    status: "ok" | "watch" | "empty" | "below-safety";
   }[];
   print: {
     toner: { k: number; c: number; m: number; y: number };
@@ -90,13 +92,22 @@ export type SalesReportSnapshot = {
     tonerAvgPct: number;
     hasCounterHistory: boolean;
     cumulativePrintCount: number;
-    nextParts: { name: string; price: number; note: string }[];
+    nextParts: { name: string; price: number; note: string; replaceEvery?: number | null }[];
     actions: {
       sku: string;
       owner: string;
       reason: string;
-      options: { boxes: number; amount: number; shipping: boolean }[];
-      recommendBoxes: number;
+      options: ({
+        boxes?: number;
+        count?: number;
+        amount: number;
+        shipping?: boolean;
+      })[];
+      recommendBoxes?: number;
+      recommendCount?: number;
+      unit?: string;
+      labels?: string[];
+      priceBasis?: string;
     }[];
   };
   orders: {
@@ -134,7 +145,7 @@ export type SalesReportSnapshot = {
       prevMonth: { month: string; total: number; changePct: number };
       refund: number;
       currentMonthPending: boolean;
-      history: { month: string; total: number; changePct: number | null }[];
+      history: { month: string; total: number; changePct: number | null; yoyPct?: number | null }[];
       trendPct: number;
     };
     blended: { dailyRate: number; monthlyRunRate: number; basis: string };

@@ -1,0 +1,796 @@
+{
+  "schemaVersion": "two-site/1.0",
+  "storeCode": "STORE_HYJ",
+  "storeLabel": "럭키스팟 한예종점",
+  "capturedAt": "2026-11-23T15:50:00+09:00",
+  "today": "2026-11-23",
+  "burst": {
+    "today": "2026-11-23",
+    "printWeight": 1.35,
+    "coffeeWeight": 1.14,
+    "activeWindow": {
+      "title": "대학 논술시험기간",
+      "end": "2026-11-25"
+    },
+    "events": [
+      {
+        "title": "대학 논술시험기간",
+        "phase": "in-window",
+        "daysToStart": -2,
+        "daysSinceEnd": -2,
+        "weight": 1.35
+      }
+    ]
+  },
+  "demand": {
+    "mix": [
+      {
+        "name": "연한아메리카노HOT",
+        "quantity": 7
+      },
+      {
+        "name": "연한아메리카노ICED",
+        "quantity": 5
+      },
+      {
+        "name": "진한아메리카노HOT",
+        "quantity": 2
+      },
+      {
+        "name": "진한아메리카노ICED",
+        "quantity": 2
+      },
+      {
+        "name": "카페라떼HOT",
+        "quantity": 1
+      },
+      {
+        "name": "카페라떼ICED",
+        "quantity": 1
+      },
+      {
+        "name": "아샷추(복숭아커피)",
+        "quantity": 1
+      },
+      {
+        "name": "녹차(따뜻한물+티백)",
+        "quantity": 1
+      },
+      {
+        "name": "청귤쥬스ICED",
+        "quantity": 1
+      }
+    ],
+    "drinkCount": 21,
+    "byMaterial": [
+      {
+        "material": "원두",
+        "slot": null,
+        "units": 21,
+        "from": [
+          "실측 1 × 7잔",
+          "실측 1 × 5잔",
+          "실측 2 × 2잔",
+          "실측 1 × 2잔",
+          "실측 1 × 1잔",
+          "실측 1 × 1잔",
+          "실측 1 × 1잔"
+        ],
+        "unit": "g",
+        "amount": 210
+      },
+      {
+        "material": "종이컵",
+        "slot": "범용 재료 상자3",
+        "units": 12,
+        "from": [
+          "잔당 1개 × 7잔",
+          "잔당 1개 × 2잔",
+          "잔당 1개 × 1잔",
+          "잔당 1개 × 1잔",
+          "잔당 1개 × 1잔"
+        ],
+        "unit": "개",
+        "amount": 12
+      },
+      {
+        "material": "투명컵",
+        "slot": "범용 재료 상자4",
+        "units": 9,
+        "from": [
+          "잔당 1개 × 5잔",
+          "잔당 1개 × 2잔",
+          "잔당 1개 × 1잔",
+          "잔당 1개 × 1잔"
+        ],
+        "unit": "개",
+        "amount": 9
+      },
+      {
+        "material": "우유",
+        "slot": null,
+        "units": 1.05,
+        "from": [
+          "실측 0.55 × 1잔",
+          "실측 0.5 × 1잔"
+        ],
+        "unit": "g",
+        "amount": 10.5
+      },
+      {
+        "material": "녹차",
+        "slot": null,
+        "units": 0.7,
+        "from": [
+          "실측 0.7 × 1잔"
+        ],
+        "unit": "g",
+        "amount": 7
+      },
+      {
+        "material": "복숭아 시럽",
+        "slot": null,
+        "units": 0.5,
+        "from": [
+          "실측 0.5 × 1잔"
+        ],
+        "unit": "g",
+        "amount": 5
+      }
+    ],
+    "covered": [
+      {
+        "name": "연한아메리카노HOT",
+        "quantity": 7,
+        "recipe": "원료 소모 일지(실측)",
+        "basis": "observed"
+      },
+      {
+        "name": "연한아메리카노ICED",
+        "quantity": 5,
+        "recipe": "원료 소모 일지(실측)",
+        "basis": "observed"
+      },
+      {
+        "name": "진한아메리카노HOT",
+        "quantity": 2,
+        "recipe": "원료 소모 일지(실측)",
+        "basis": "observed"
+      },
+      {
+        "name": "진한아메리카노ICED",
+        "quantity": 2,
+        "recipe": "원료 소모 일지(실측)",
+        "basis": "observed"
+      },
+      {
+        "name": "카페라떼HOT",
+        "quantity": 1,
+        "recipe": "원료 소모 일지(실측)",
+        "basis": "observed"
+      },
+      {
+        "name": "카페라떼ICED",
+        "quantity": 1,
+        "recipe": "원료 소모 일지(실측)",
+        "basis": "observed"
+      },
+      {
+        "name": "아샷추(복숭아커피)",
+        "quantity": 1,
+        "recipe": "원료 소모 일지(실측)",
+        "basis": "observed"
+      },
+      {
+        "name": "녹차(따뜻한물+티백)",
+        "quantity": 1,
+        "recipe": "원료 소모 일지(실측)",
+        "basis": "observed"
+      },
+      {
+        "name": "청귤쥬스ICED",
+        "quantity": 1,
+        "recipe": "원료 소모 일지(실측)",
+        "basis": "observed"
+      }
+    ],
+    "uncovered": []
+  },
+  "bean": {
+    "method": "잔당 원두 g = 사용자 확정 계수(아메리카노 9g · 투샷 15g · 카페라떼 7g · 아샷추 7g). 일 소모 = Σ(음료별 판매 수량 × 잔당 g). 기계 로그 역산값(로그×10)과 나란히 표시.",
+    "rows": [
+      {
+        "product": "연한아메리카노HOT",
+        "kind": "americano",
+        "drinks": 7,
+        "gramsPerDrink": 9,
+        "totalGrams": 63,
+        "machineGrams": 10,
+        "deviationPct": 11.1,
+        "source": "사용자 확정 계수"
+      },
+      {
+        "product": "연한아메리카노ICED",
+        "kind": "americano",
+        "drinks": 5,
+        "gramsPerDrink": 9,
+        "totalGrams": 45,
+        "machineGrams": 10,
+        "deviationPct": 11.1,
+        "source": "사용자 확정 계수"
+      },
+      {
+        "product": "진한아메리카노HOT",
+        "kind": "doubleShot",
+        "drinks": 2,
+        "gramsPerDrink": 15,
+        "totalGrams": 30,
+        "machineGrams": 10,
+        "deviationPct": -33.3,
+        "source": "사용자 확정 계수"
+      },
+      {
+        "product": "진한아메리카노ICED",
+        "kind": "doubleShot",
+        "drinks": 2,
+        "gramsPerDrink": 15,
+        "totalGrams": 30,
+        "machineGrams": 10,
+        "deviationPct": -33.3,
+        "source": "사용자 확정 계수"
+      },
+      {
+        "product": "카페라떼HOT",
+        "kind": "latte",
+        "drinks": 1,
+        "gramsPerDrink": 7,
+        "totalGrams": 7,
+        "machineGrams": 10,
+        "deviationPct": 42.9,
+        "source": "사용자 확정 계수"
+      },
+      {
+        "product": "카페라떼ICED",
+        "kind": "latte",
+        "drinks": 1,
+        "gramsPerDrink": 7,
+        "totalGrams": 7,
+        "machineGrams": 10,
+        "deviationPct": 42.9,
+        "source": "사용자 확정 계수"
+      },
+      {
+        "product": "아샷추(복숭아커피)",
+        "kind": "ashotchu",
+        "drinks": 1,
+        "gramsPerDrink": 7,
+        "totalGrams": 7,
+        "machineGrams": 10,
+        "deviationPct": 42.9,
+        "source": "사용자 확정 계수"
+      }
+    ],
+    "coffeeDrinks": 19,
+    "dailyUnits": 19,
+    "dailyGrams": 189,
+    "avgGramsPerDrink": 9.9,
+    "dailyGramsWithBurst": 215.5,
+    "stockPct": 32,
+    "stockGrams": 320,
+    "daysLeftPlain": 1.7,
+    "daysLeftWithBurst": 1.5,
+    "servingsLeft": 32,
+    "unitBasis": {
+      "confirmed": "원두·분말·범용 상자: 1% = 10g (11-08 보충 로그 원두 935g↔93%, 얼그레이 900g↔90%)",
+      "assumed": "연동 펌프: 1% = 10ml (강남구청역점 보충 로그로 확인된 계열)",
+      "logScale": "원료 소모 일지 단위 × 10 = g/ml (얼그레이 0.40 ↔ 레시피 4.0g)"
+    },
+    "refillLog": [
+      {
+        "at": "2026-11-08 12:30:12",
+        "slot": "범용 재료 상자1 원두",
+        "beforePct": 0,
+        "afterPct": 93,
+        "capacity": "935g",
+        "note": "11-08 원두 935g = 93% → 1% = 10.05g 확인"
+      },
+      {
+        "at": "2026-11-08 12:30:32",
+        "slot": "파우더 박스4 얼그레이",
+        "beforePct": 0,
+        "afterPct": 90,
+        "capacity": "900g",
+        "note": "11-08 원두 935g = 93% → 1% = 10.05g 확인"
+      },
+      {
+        "at": "2026-11-08 12:20:26",
+        "slot": "파우더 박스4 얼그레이(청산)",
+        "beforePct": 886,
+        "afterPct": 0,
+        "capacity": "-8860g",
+        "note": "11-08 원두 935g = 93% → 1% = 10.05g 확인"
+      }
+    ],
+    "unresolved": [
+      "원료 소모 일지가 모든 커피 음료의 원두를 10g(1.00)으로 똑같이 기록했습니다 — 로그가 잔당 g이 아니라 '1회' 카운트라서 확정 계수와의 차이(진한아메리카노HOT -33.3% · 진한아메리카노ICED -33.3% · 카페라떼HOT +42.9% · 카페라떼ICED +42.9% · 아샷추(복숭아커피) +42.9%)는 캘리브레이션 판단 근거로 쓰지 않았습니다."
+    ]
+  },
+  "drift": {
+    "orders": 19,
+    "actualTotals": {
+      "원두": 20,
+      "얼그레이": 0,
+      "녹차": 0.7,
+      "복숭아 시럽": 0.5,
+      "우유": 1.05,
+      "바닐라": 0,
+      "사과 시럽": 0.2
+    },
+    "findings": [
+      {
+        "type": "coffee-log-uniform",
+        "severity": "medium",
+        "product": "커피 전체",
+        "material": "원두",
+        "detail": "모든 커피 음료가 원두 10g/잔으로 동일하게 기록",
+        "hint": "기계가 잔당 원두량을 구분해 기록하지 않습니다 — 진한·연한 차이는 커피 추출수량으로만 남고, 잔여일은 확정 계수로 계산합니다"
+      }
+    ],
+    "summary": "드리프트 1건 (high 0건)"
+  },
+  "stock": [
+    {
+      "material": "바닐라",
+      "slot": "파우더 박스1",
+      "pct": 913.67,
+      "unit": "g",
+      "units": 9136.7,
+      "unitsPerDay": 0,
+      "daysLeft": null,
+      "safetyDays": 4,
+      "status": "ok"
+    },
+    {
+      "material": "초코",
+      "slot": "파우더 박스3",
+      "pct": 814.83,
+      "unit": "g",
+      "units": 8148.3,
+      "unitsPerDay": 0,
+      "daysLeft": null,
+      "safetyDays": 3,
+      "status": "ok"
+    },
+    {
+      "material": "얼그레이",
+      "slot": "파우더 박스4",
+      "pct": 88.93,
+      "unit": "g",
+      "units": 889.3,
+      "unitsPerDay": 0,
+      "daysLeft": null,
+      "safetyDays": 3,
+      "status": "ok"
+    },
+    {
+      "material": "레몬",
+      "slot": "파우더 박스6",
+      "pct": 934.24,
+      "unit": "g",
+      "units": 9342.4,
+      "unitsPerDay": 0,
+      "daysLeft": null,
+      "safetyDays": 3,
+      "status": "ok"
+    },
+    {
+      "material": "청포도시럽",
+      "slot": "연동 펌프1",
+      "pct": 962.11,
+      "unit": "g",
+      "units": 9621.1,
+      "unitsPerDay": 0,
+      "daysLeft": null,
+      "safetyDays": 4,
+      "status": "ok"
+    },
+    {
+      "material": "사과시럽",
+      "slot": "연동 펌프2",
+      "pct": 953.12,
+      "unit": "g",
+      "units": 9531.2,
+      "unitsPerDay": 0,
+      "daysLeft": null,
+      "safetyDays": 4,
+      "status": "ok"
+    },
+    {
+      "material": "자몽시럽",
+      "slot": "연동 펌프3",
+      "pct": 925.23,
+      "unit": "g",
+      "units": 9252.3,
+      "unitsPerDay": 0,
+      "daysLeft": null,
+      "safetyDays": 3,
+      "status": "ok"
+    },
+    {
+      "material": "복숭아시럽",
+      "slot": "연동 펌프4",
+      "pct": 792.79,
+      "unit": "g",
+      "units": 7927.9,
+      "unitsPerDay": 0,
+      "daysLeft": null,
+      "safetyDays": 4,
+      "status": "ok"
+    },
+    {
+      "material": "뚜껑",
+      "slot": "범용 재료 상자2",
+      "pct": 0,
+      "unit": "g",
+      "units": 0,
+      "unitsPerDay": 0,
+      "daysLeft": null,
+      "safetyDays": 4,
+      "status": "empty"
+    },
+    {
+      "material": "종이컵",
+      "slot": "범용 재료 상자3",
+      "pct": 0,
+      "unit": "개",
+      "units": 0,
+      "unitsPerDay": 13.7,
+      "daysLeft": 0,
+      "safetyDays": 5,
+      "status": "empty"
+    },
+    {
+      "material": "투명컵",
+      "slot": "범용 재료 상자4",
+      "pct": 0,
+      "unit": "개",
+      "units": 0,
+      "unitsPerDay": 10.3,
+      "daysLeft": 0,
+      "safetyDays": 5,
+      "status": "empty"
+    },
+    {
+      "material": "원두",
+      "slot": "범용 재료 상자1",
+      "pct": 32,
+      "unit": "g",
+      "units": 320,
+      "unitsPerDay": 215.5,
+      "daysLeft": 1.5,
+      "safetyDays": 4,
+      "status": "below-safety"
+    },
+    {
+      "material": "우유",
+      "slot": "파우더 박스2",
+      "pct": 753.87,
+      "unit": "g",
+      "units": 7538.7,
+      "unitsPerDay": 12,
+      "daysLeft": 629.8,
+      "safetyDays": 3,
+      "status": "ok"
+    },
+    {
+      "material": "녹차",
+      "slot": "파우더 박스5",
+      "pct": 864.27,
+      "unit": "g",
+      "units": 8642.7,
+      "unitsPerDay": 8,
+      "daysLeft": 1083,
+      "safetyDays": 3,
+      "status": "ok"
+    }
+  ],
+  "print": {
+    "toner": {
+      "k": 5,
+      "c": 5,
+      "m": 5,
+      "y": 5
+    },
+    "paper": {
+      "tray1": 70,
+      "tray2": 100
+    },
+    "trayAvgPct": 85,
+    "tonerAvgPct": 5,
+    "hasCounterHistory": false,
+    "cumulativePrintCount": 221739,
+    "nextParts": [
+      {
+        "category": "부품",
+        "name": "복합기 급지롤러 (1세트)",
+        "price": 28000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": null,
+        "note": "10만장 당 교체, 트레이 1개당 1세트 — 누적 221,739매 기준 잔여 78,261매",
+        "replaceEvery": 300000
+      }
+    ],
+    "actions": [
+      {
+        "sku": "4색 정품토너 세트 (K+C+M+Y)",
+        "owner": "hq_print",
+        "reason": "토너 K 5% · C 5% · M 5% · Y 5% — 4색 동시 소진(학사 버스트 1.35배)",
+        "options": [
+          {
+            "count": 1,
+            "amount": 577700,
+            "shipping": false
+          },
+          {
+            "count": 2,
+            "amount": 1155400,
+            "shipping": false
+          }
+        ],
+        "recommendCount": 1,
+        "labels": [
+          "[TASKalfa VFM251ci] TK-8360KK K(검정)토너",
+          "[TASKalfa VFM251ci] TK-8360KC C(파랑)토너",
+          "[TASKalfa VFM251ci] TK-8360KM M(빨강)토너",
+          "[TASKalfa VFM251ci] TK-8360KY Y(노랑)토너"
+        ],
+        "priceBasis": "발주 카탈로그 단가(VAT 별도)"
+      }
+    ]
+  },
+  "orders": {
+    "proposals": [
+      {
+        "domain": "cafe",
+        "material": "뚜껑",
+        "owner": "franchisee_cafe",
+        "pct": 0,
+        "daysLeft": null,
+        "quantity": 1,
+        "packLabel": null,
+        "amount": null,
+        "reason": "범용 재료 상자2 뚜껑 0.00% — 이미 판매 불가 상태",
+        "needsQuote": true,
+        "priceBasis": "추정 단가 — 공급사 견적 확인 필요"
+      },
+      {
+        "domain": "cafe",
+        "material": "종이컵",
+        "owner": "franchisee_cafe",
+        "pct": 0,
+        "daysLeft": 0,
+        "quantity": 1,
+        "packLabel": "종이컵 1박스(1,000개)",
+        "amount": 38000,
+        "reason": "범용 재료 상자3 종이컵 0.00% — 이미 판매 불가 상태",
+        "needsQuote": true,
+        "priceBasis": "추정 단가 — 공급사 견적 확인 필요"
+      },
+      {
+        "domain": "cafe",
+        "material": "투명컵",
+        "owner": "franchisee_cafe",
+        "pct": 0,
+        "daysLeft": 0,
+        "quantity": 1,
+        "packLabel": "투명컵 1박스(1,000개)",
+        "amount": 42000,
+        "reason": "범용 재료 상자4 투명컵 0.00% — 이미 판매 불가 상태",
+        "needsQuote": true,
+        "priceBasis": "추정 단가 — 공급사 견적 확인 필요"
+      },
+      {
+        "domain": "cafe",
+        "material": "원두",
+        "owner": "franchisee_cafe",
+        "pct": 32,
+        "daysLeft": 1.5,
+        "quantity": 3,
+        "packLabel": "원두 1박스(1kg)",
+        "amount": 495000,
+        "reason": "원두 32% · 잔여 1.5일 (안전 4일) · 보충 로그 11-08 12:30 청산(0%→93%) — 리필 장입 여부 확인",
+        "needsQuote": true,
+        "priceBasis": "추정 단가 — 공급사 견적 확인 필요"
+      },
+      {
+        "domain": "print",
+        "material": "4색 정품토너 세트 (K+C+M+Y)",
+        "owner": "hq_print",
+        "quantity": 1,
+        "packLabel": "1개",
+        "amount": 577700,
+        "reason": "토너 K 5% · C 5% · M 5% · Y 5% — 4색 동시 소진(학사 버스트 1.35배)",
+        "needsQuote": false,
+        "shippingNote": "무료배송 충족"
+      }
+    ],
+    "byOwner": {
+      "franchisee_cafe": {
+        "count": 4,
+        "amount": 575000,
+        "unknownAmount": 1
+      },
+      "hq_print": {
+        "count": 1,
+        "amount": 577700,
+        "unknownAmount": 0
+      }
+    }
+  },
+  "revenue": {
+    "coffee": {
+      "today": 55600,
+      "yesterday": 143100,
+      "month": 3984400,
+      "cumulativeTotal": 61535100,
+      "dailyRate": 173235,
+      "trendPct": -61.1
+    },
+    "print": {
+      "month": "2026-10",
+      "total": 1963240,
+      "prevMonth": {
+        "month": "2026-09",
+        "total": 1579630,
+        "changePct": 21.3,
+        "yoyPct": 133.1
+      },
+      "refund": 0,
+      "currentMonthPending": true,
+      "history": [
+        {
+          "month": "2026-10",
+          "total": 1963240,
+          "changePct": 24.3,
+          "yoyPct": 66.6
+        },
+        {
+          "month": "2026-09",
+          "total": 1579630,
+          "changePct": 21.3,
+          "yoyPct": 133.1
+        },
+        {
+          "month": "2026-08",
+          "total": 1301930,
+          "changePct": -4,
+          "yoyPct": 457.5
+        },
+        {
+          "month": "2026-07",
+          "total": 1355920,
+          "changePct": -43,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-06",
+          "total": 2380880,
+          "changePct": 32.8,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-05",
+          "total": 1793140,
+          "changePct": -5.7,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-04",
+          "total": 1900650,
+          "changePct": 70.6,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-03",
+          "total": 1113840,
+          "changePct": 35.4,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-02",
+          "total": 822420,
+          "changePct": 3.8,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-01",
+          "total": 792090,
+          "changePct": -50.3,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-12",
+          "total": 1594190,
+          "changePct": 12.2,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-11",
+          "total": 1420240,
+          "changePct": 20.5,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-10",
+          "total": 1178720,
+          "changePct": 73.9,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-09",
+          "total": 677710,
+          "changePct": 190.2,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-08",
+          "total": 233530,
+          "changePct": null,
+          "yoyPct": null
+        }
+      ],
+      "trendPct": 24.3
+    },
+    "blended": {
+      "dailyRate": 224191,
+      "monthlyRunRate": 6725718,
+      "basis": "커피는 당월 누적(1~23일)÷일수, 프린트는 직전 청구월 실매출÷31일로 일평균을 낸 뒤 합산 — 기간이 달라 방향성 지표로만 사용"
+    }
+  },
+  "risk": {
+    "todayRevenue": 55600,
+    "icedRevenue": 25800,
+    "icedShare": 0.46,
+    "items": [
+      {
+        "material": "뚜껑",
+        "slot": "범용 재료 상자2",
+        "pct": 0,
+        "affectedMenus": [],
+        "revenueAtRiskPerDay": null,
+        "icedShare": 0.46,
+        "priority": 1,
+        "action": "매장에서 직접 채우는 슬롯입니다 — 기계 재고 칸을 0%로 두면 주문마다 조기 경보가 쌓이니 '재고 정상'으로 맞춰 두세요"
+      },
+      {
+        "material": "종이컵",
+        "slot": "범용 재료 상자3",
+        "pct": 0,
+        "affectedMenus": [],
+        "revenueAtRiskPerDay": 25800,
+        "icedShare": 0.46,
+        "priority": 1,
+        "action": "매장에서 직접 채우는 슬롯입니다 — 기계 재고 칸을 0%로 두면 주문마다 조기 경보가 쌓이니 '재고 정상'으로 맞춰 두세요"
+      },
+      {
+        "material": "투명컵",
+        "slot": "범용 재료 상자4",
+        "pct": 0,
+        "affectedMenus": [],
+        "revenueAtRiskPerDay": 25800,
+        "icedShare": 0.46,
+        "priority": 1,
+        "action": "매장에서 직접 채우는 슬롯입니다 — 기계 재고 칸을 0%로 두면 주문마다 조기 경보가 쌓이니 '재고 정상'으로 맞춰 두세요"
+      }
+    ]
+  },
+  "assumptions": [
+    "재고 % → 실제 단위: 연동 펌프는 보충 로그로 1% = 10ml 확인(사과시럽 985% ↔ 9,853ml). 분말·원두는 같은 계열로 1% = 10g 가정, 컵은 1% = 1개.",
+    "원두 잔당 g은 사용자 확정 계수(아메리카노 9 · 투샷 15 · 카페라떼 7 · 아샷추 7)를 씁니다. 기계 로그 역산값(로그×10)은 대조용으로만 표시합니다.",
+    "분말 레시피 g → 기계 단위 환산은 10g = 1단위로 역산했습니다(얼그레이 4.0g ↔ 로그 0.40).",
+    "컵 소모는 잔당 1개로 가정했습니다.",
+    "프린트 일일 출력량은 누적 카운터 2점이 필요합니다 — 현재 스냅샷 1점이라 확정하지 않았습니다.",
+    "커피 재료 단가는 사내 추정값이며, 실제 발주 단가는 공급사 견적 확인이 필요합니다(needsQuote 표시)."
+  ]
+}
