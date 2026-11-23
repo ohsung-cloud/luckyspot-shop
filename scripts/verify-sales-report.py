@@ -34,6 +34,8 @@ async def run():
             log[f"{name}.defaultHasGangnamLabel"] = "럭키스팟 강남구청역점" in body
             log[f"{name}.defaultHasSingleStoreChip"] = "지점 단독 · 합산 없음" in body
             log[f"{name}.defaultHasHanyejongNumbers"] = "1,963,240" in body
+            log[f"{name}.defaultGangnamToday"] = "14,600원" in body
+            log[f"{name}.defaultNoCrossStore"] = ("55,600원" not in body) and ("3,984,400" not in body)
             log[f"{name}.defaultDonutCircles"] = await page.locator("section svg circle").count()
             await check(page, f"{name}.default", log)
             await page.screenshot(path=f"{OUT}/{name}-01-gangnam.png", full_page=True)
@@ -50,7 +52,7 @@ async def run():
             log[f"{name}.hanyejongOrderTotal"] = "577,700원" in body
             log[f"{name}.hanyejongUrlHasStore"] = "store=hanyeojong" in page.url
             log[f"{name}.hanyejongAutoOrderHref"] = await page.locator("a", has_text="한예종점 사업자별로 나눠 발주").first.get_attribute("href")
-            log[f"{name}.hanyejongNoGangnamNumbers"] = "500,200" not in body
+            log[f"{name}.hanyejongNoGangnamNumbers"] = "500,200" not in body and "14,600원" not in body
             await check(page, f"{name}.hanyejong", log)
             await page.screenshot(path=f"{OUT}/{name}-02-hanyejong.png", full_page=True)
 
@@ -61,6 +63,7 @@ async def run():
             log[f"{name}.compareHasNoSumLabel"] = "합산하지 않음" in body
             log[f"{name}.compareMentionsNoTotal"] = ("합계 줄을 두지 않았습니다" in body)
             log[f"{name}.compareBothStores"] = ("럭키스팟 강남구청역점" in body and "럭키스팟 한예종점" in body)
+            log[f"{name}.compareDistinctNumbers"] = ("25,390매" in body and "221,739매" in body)
             await check(page, f"{name}.compare", log)
             await page.screenshot(path=f"{OUT}/{name}-03-compare.png", full_page=True)
 
