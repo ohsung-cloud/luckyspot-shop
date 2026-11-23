@@ -1,0 +1,218 @@
+<!doctype html>
+<!--
+  자체 검증용 목(mock) 로얄선즈 포털.
+  실제 사이트에서 확인한 화면 이름만 흉내 낸다: 로그인 폼, 좌측 메뉴(판매수익·재고 관리·
+  기계 로그 정보·레시피관리), 재고정보 다이얼로그(캔버스 + 재고 JSON), 원료 소모 일지.
+  재고 %는 실제 사이트처럼 캔버스로만 그려지고, 같은 화면이 부르는 JSON(/api/loyal/inventory)에
+  숫자가 들어 있다 — 수집기의 JSON 대체 경로를 검증하기 위한 구성이다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>스마트 커피머신 관리 시스템 (mock)</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; color: #111; }
+  #app { display: flex; }
+  .sidebar { width: 200px; border-right: 1px solid #eee; margin: 0; padding: 12px 0; list-style: none; }
+  .sidebar li { padding: 10px 16px; cursor: pointer; }
+  .sidebar li.active { background: #f4f4f4; font-weight: 700; }
+  main { padding: 20px; flex: 1; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #eee; padding: 6px 10px; font-size: 14px; }
+  .hidden { display: none; }
+  .el-dialog { position: fixed; inset: 15% 20% auto 20%; background: #fff; border: 1px solid #ccc; box-shadow: 0 8px 30px rgba(0,0,0,.15); padding: 16px; }
+  .el-dialog__headerbtn { float: right; }
+</style>
+</head>
+<body>
+<div id="login" style="padding:40px">
+  <h2>스마트 커피머신 관리 시스템</h2>
+  <p><input id="loyalId" placeholder="사용자 아이디" /></p>
+  <p><input id="loyalPw" type="password" placeholder="비밀번호" /></p>
+  <p><button id="loyalLogin">로그인</button></p>
+  <div id="loyalError"></div>
+</div>
+
+<div id="app" class="hidden">
+  <ul class="sidebar">
+    <li data-menu="dashboard" class="active">판매수익</li>
+    <li data-menu="inventory">재고 관리</li>
+    <li data-menu="logs">기계 로그 정보</li>
+    <li data-menu="recipes">레시피관리</li>
+  </ul>
+  <main>
+    <section id="menu-dashboard">
+      <p>
+        <button class="salesub" data-sales="summary">매출 요약</button>
+        <button class="salesub" data-sales="orders">판매정보</button>
+      </p>
+      <div id="sales-summary">
+      <div>금일 매출 14,600 원</div>
+      <div>어제 매출 57,800 원</div>
+      <div>이달 매출 1,059,700 원</div>
+      <div>전월 매출 1,214,300 원</div>
+      <div>누적 주문 금액 18,728,900 원</div>
+      <div>누적 주문 건수 6,007 건</div>
+      <div>환불 주문 0 건</div>
+      <div>온라인 기계 1 대</div>
+      <table>
+        <tr><th>수량</th><th>상품명</th><th>금액</th></tr>
+        <tr><td>2</td><td>아메리카노 HOT</td><td>4,800</td></tr>
+        <tr><td>2</td><td>투샷 아메리카노 ICED</td><td>5,600</td></tr>
+        <tr><td>2</td><td>아메리카노 ICED</td><td>4,200</td></tr>
+        <tr><td>1</td><td>바닐라밀크티 ICED</td><td>0</td></tr>
+      </table>
+      <div>재료 부족 기계 1대</div>
+      </div>
+      <div id="sales-orders" class="hidden">
+        <h2>판매정보</h2>
+        <table>
+          <tr><th>시간</th><th>일시</th><th>상품</th><th>결제</th><th>금액</th></tr>
+          <tr><td>09:54</td><td>2026-11-23 09:54:10</td><td>아메리카노 ICED</td><td>카드</td><td>2,100</td></tr>
+          <tr><td>05:11</td><td>2026-11-23 05:11:40</td><td>바닐라밀크티 ICED</td><td>카드</td><td>0</td></tr>
+          <tr><td>00:14</td><td>2026-11-23 00:14:02</td><td>투샷 아메리카노 ICED</td><td>카드</td><td>5,700</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="menu-inventory" class="hidden">
+      <h2>재고 관리</h2>
+      <table>
+        <tr><th>기계</th><th>상태</th><th>관리</th></tr>
+        <tr><td>럭키스팟 강남구청역점 1번</td><td>정상</td><td><button class="view-inventory">보기</button></td></tr>
+      </table>
+    </section>
+
+    <section id="menu-logs" class="hidden">
+      <p>
+        <button class="subtab" data-sub="consumption">원료 소모 일지</button>
+        <button class="subtab" data-sub="refill">보충 로그</button>
+        <button class="subtab" data-sub="shortage">재료부족 기계</button>
+      </p>
+      <div id="sub-consumption">
+        <div>총 소모량 : 12.8</div>
+        <table>
+          <tr><th>번호</th><th>주문번호</th><th>상품</th><th>재료</th><th>소모량</th><th>일시</th></tr>
+          <tr><td>1</td><td>2124749206537687042</td><td>아메리카노 ICED</td><td>원두</td><td>1.20</td><td>2026-11-23 09:54:10</td></tr>
+          <tr><td>2</td><td>2124748070227693569</td><td>아메리카노 HOT</td><td>원두</td><td>2.40</td><td>2026-11-23 05:11:40</td></tr>
+          <tr><td>3</td><td>2124748070227693569</td><td>바닐라밀크티 ICED</td><td>얼그레이</td><td>0.40</td><td>2026-11-23 05:11:40</td></tr>
+        </table>
+      </div>
+      <div id="sub-refill" class="hidden">
+        <table>
+          <tr><th>일시</th><th>슬롯</th><th>재료</th><th>내용</th></tr>
+          <tr><td>2026-11-21 20:23</td><td>연동 펌프3</td><td>사과시럽</td><td>보충 985% → 0% (-9,853ml)</td></tr>
+        </table>
+      </div>
+      <div id="sub-shortage" class="hidden">
+        <div>재료 부족 기계</div>
+        <table>
+          <tr><td>966852628620533</td><td>2024070810</td><td>재료 부족</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="menu-recipes" class="hidden">
+      <h2>레시피관리</h2>
+      <table>
+        <tr><th>상품</th><th>가격</th><th>관리</th></tr>
+        <tr><td>아메리카노 HOT</td><td>2,400</td><td><button class="view-recipe">보기</button></td></tr>
+        <tr><td>카페라떼 HOT</td><td>3,600</td><td><button class="view-recipe">보기</button></td></tr>
+      </table>
+    </section>
+  </main>
+</div>
+
+<script>
+  const RECIPE = {
+    "아메리카노 HOT": [["1", "분말 박스1", "원두", "9", "0", "50"]],
+    "카페라떼 HOT": [["1", "분말 박스2", "우유", "9", "0", "90"]],
+  };
+
+  document.getElementById("loyalLogin").addEventListener("click", () => {
+    const id = document.getElementById("loyalId").value.trim();
+    const pw = document.getElementById("loyalPw").value;
+    if (!id || !pw) {
+      document.getElementById("loyalError").textContent = "아이디 또는 비밀번호를 확인해주세요.";
+      return;
+    }
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+  });
+
+  const menus = ["dashboard", "inventory", "logs", "recipes"];
+  document.querySelectorAll(".sidebar li").forEach((item) => {
+    item.addEventListener("click", () => {
+      document.querySelectorAll(".sidebar li").forEach((other) => other.classList.remove("active"));
+      item.classList.add("active");
+      for (const menu of menus) {
+        document.getElementById("menu-" + menu).classList.toggle("hidden", menu !== item.dataset.menu);
+      }
+    });
+  });
+
+  document.querySelectorAll(".subtab").forEach((button) => {
+    button.addEventListener("click", () => {
+      for (const sub of ["consumption", "refill", "shortage"]) {
+        document.getElementById("sub-" + sub).classList.toggle("hidden", sub !== button.dataset.sub);
+      }
+    });
+  });
+
+  document.querySelectorAll(".salesub").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.getElementById("sales-summary").classList.toggle("hidden", button.dataset.sales !== "summary");
+      document.getElementById("sales-orders").classList.toggle("hidden", button.dataset.sales !== "orders");
+    });
+  });
+
+  document.querySelector(".view-inventory").addEventListener("click", async () => {
+    // 실제 사이트와 같이 재고 값을 JSON 으로 받아 캔버스에 그린다(텍스트 없음).
+    let slots = [];
+    try {
+      const response = await fetch("/api/loyal/inventory");
+      const json = await response.json();
+      slots = json?.data?.slots ?? [];
+    } catch {
+      slots = [];
+    }
+    const dialog = document.createElement("div");
+    dialog.className = "el-dialog";
+    dialog.innerHTML =
+      '<button class="el-dialog__headerbtn">×</button>' +
+      '<p>분말 상자 재료</p><p>연동 펌프 재료</p><p>범용 상자 재료</p>' +
+      '<canvas width="600" height="240"></canvas>';
+    document.body.appendChild(dialog);
+    dialog.querySelector(".el-dialog__headerbtn").addEventListener("click", () => dialog.remove());
+
+    const canvas = dialog.querySelector("canvas");
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#eee";
+    ctx.fillRect(0, 0, 600, 240);
+    slots.forEach((slot, index) => {
+      ctx.fillStyle = "#333";
+      ctx.font = "14px sans-serif";
+      ctx.fillText(slot.material + " " + slot.remainRate + "%", 10, 24 + index * 20);
+    });
+  });
+
+  document.querySelectorAll(".view-recipe").forEach((button) => {
+    button.addEventListener("click", () => {
+      const product = button.closest("tr").cells[0].innerText.trim();
+      const dialog = document.createElement("div");
+      dialog.className = "el-dialog";
+      dialog.innerHTML =
+        '<button class="el-dialog__headerbtn">×</button>' +
+        "<h3>상품 구성</h3>" +
+        "<div>상품 명칭</div><div>" + product + "</div>" +
+        "<div>커피 추출 수량 50</div>" +
+        '<table><tr><th>순서</th><th>슬롯</th><th>재료</th><th>분말(g)</th><th>물(ml)</th><th>출수(ml)</th></tr>' +
+        (RECIPE[product] || []).map((row) => "<tr>" + row.map((cell) => "<td>" + cell + "</td>").join("") + "</tr>").join("") +
+        "</table>";
+      document.body.appendChild(dialog);
+      dialog.querySelector(".el-dialog__headerbtn").addEventListener("click", () => dialog.remove());
+    });
+  });
+</script>
+</body>
+</html>

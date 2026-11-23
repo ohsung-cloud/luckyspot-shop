@@ -1,0 +1,21 @@
+{
+  "name": "pos-collector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "로얄선즈·에스칼프린트 포털 자동 로그인·수집·분석·전송 (GitHub Actions 매일 실행)",
+  "type": "module",
+  "scripts": {
+    "collect": "node bin/collect-and-push.mjs",
+    "collect:dry": "node bin/collect-and-push.mjs --dry-run",
+    "self-test": "node bin/collect-and-push.mjs --mock --dry-run --store all",
+    "test": "node --test tests/",
+    "analyze": "node bin/daily.mjs",
+    "merge": "node bin/merge.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "playwright": "1.65.1"
+  }
+}

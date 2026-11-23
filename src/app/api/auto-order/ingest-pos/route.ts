@@ -54,6 +54,28 @@ export const dynamic = "force-dynamic";
 
 const STORE_CODE = /^[A-Za-z0-9_-]{2,32}$/;
 
+/**
+ * 수집기 전용 공유 비밀(선택).
+ * `INGEST_API_SECRET` 이 설정된 배포에서만 헤더를 요구한다 — 설정하지 않으면 지금과 똑같이 동작한다.
+ * (GitHub Actions 는 같은 값을 Secret 으로 받아 `x-ingest-secret` 헤더로 보낸다.)
+ */
+function ingestAuthorized(request: Request) {
+  const expected = process.env.INGEST_API_SECRET;
+  if (!expected) return true;
+
+  const header = request.headers.get("x-ingest-secret") ?? "";
+  const authorization = request.headers.get("authorization") ?? "";
+  const provided = header || (authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7).trim() : "");
+
+  if (!provided || provided.length !== expected.length) return false;
+
+  let mismatch = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    mismatch |= provided.charCodeAt(index) ^ expected.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
 function number(value: unknown, min: number, max: number, fallback: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, value));
@@ -138,6 +160,10 @@ export async function POST(request: Request) {
     return jsonError("요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.", 429, {
       retryAfter: limited.retryAfter,
     });
+  }
+
+  if (!ingestAuthorized(request)) {
+    return jsonError("수집 인증이 필요합니다.", 401);
   }
 
   const parsed = await readJsonObject(request, 256 * 1024);

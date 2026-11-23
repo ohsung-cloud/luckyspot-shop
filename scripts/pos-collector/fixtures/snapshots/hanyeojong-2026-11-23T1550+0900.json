@@ -1,0 +1,1152 @@
+{
+  "schemaVersion": "two-site/1.0",
+  "storeId": "hanyeojong",
+  "capturedAt": "2026-11-23T15:50:00+09:00",
+  "storeCode": "STORE_HYJ",
+  "storeLabel": "럭키스팟 한예종점",
+  "operator": "권오성",
+  "captureMode": "browser-read-only",
+  "escalprint": {
+    "portal": "https://escalprint-portal.com/",
+    "region": "성북구",
+    "membership": "샵인샵 가맹점",
+    "device": {
+      "name": "럭키스팟 한예종점 [KSPC]",
+      "model": "TASKalfa VFM251ci",
+      "serial": "WB85403268",
+      "cumulativePrintCount": 221739
+    },
+    "telemetryPolicy": "토너·용지 잔량은 1일 3회 갱신 (최종 2026-11-23 13:34)",
+    "toner": {
+      "k": 5,
+      "c": 5,
+      "m": 5,
+      "y": 5
+    },
+    "paper": {
+      "tray1": 70,
+      "tray2": 100
+    },
+    "alerts": [
+      "K토너 10% 미만",
+      "C토너 10% 미만",
+      "M토너 10% 미만",
+      "Y토너 10% 미만"
+    ],
+    "parts": [
+      {
+        "category": "부품",
+        "name": "복합기 급지롤러 (1세트)",
+        "price": 28000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": null,
+        "note": "10만장 당 교체, 트레이 1개당 1세트",
+        "replaceEvery": 300000
+      },
+      {
+        "category": "부품",
+        "name": "복합기 ADF 롤러 세트",
+        "price": 39000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": null,
+        "note": null,
+        "replaceEvery": 400000
+      },
+      {
+        "category": "부품",
+        "name": "복합기 드럼",
+        "price": 300000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": null,
+        "note": null,
+        "replaceEvery": null
+      },
+      {
+        "category": "부품",
+        "name": "복합기 지분스틱",
+        "price": 60000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": null,
+        "note": null,
+        "replaceEvery": null
+      },
+      {
+        "category": "부품",
+        "name": "VFM251ci/351ci 복합기 정착기",
+        "price": 780000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": 60000,
+        "note": null,
+        "replaceEvery": null
+      }
+    ],
+    "partLife": [
+      {
+        "name": "용지 트레이함 급지롤러",
+        "cycle": "10만장마다",
+        "setsPerMachine": 2,
+        "nextReplaceAt": 300000,
+        "remainingPrints": 78261,
+        "status": "정상"
+      },
+      {
+        "name": "ADF 급지롤러",
+        "cycle": "20만장마다",
+        "setsPerMachine": 1,
+        "nextReplaceAt": 400000,
+        "remainingPrints": 178261,
+        "status": "정상"
+      }
+    ],
+    "revenue": {
+      "basis": "로열티 청구 기준(전월 26일~당월 25일): 카드+티머니+키오스크-환불",
+      "currentMonth": null,
+      "month": "2026-10",
+      "total": 1963240,
+      "prevMonth": {
+        "month": "2026-09",
+        "total": 1579630,
+        "changePct": 21.3
+      },
+      "refund": 0,
+      "history": [
+        {
+          "month": "2026-10",
+          "total": 1963240,
+          "changePct": 24.3,
+          "yoyPct": 66.6
+        },
+        {
+          "month": "2026-09",
+          "total": 1579630,
+          "changePct": 21.3,
+          "yoyPct": 133.1
+        },
+        {
+          "month": "2026-08",
+          "total": 1301930,
+          "changePct": -4,
+          "yoyPct": 457.5
+        },
+        {
+          "month": "2026-07",
+          "total": 1355920,
+          "changePct": -43,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-06",
+          "total": 2380880,
+          "changePct": 32.8,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-05",
+          "total": 1793140,
+          "changePct": -5.7,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-04",
+          "total": 1900650,
+          "changePct": 70.6,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-03",
+          "total": 1113840,
+          "changePct": 35.4,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-02",
+          "total": 822420,
+          "changePct": 3.8,
+          "yoyPct": null
+        },
+        {
+          "month": "2026-01",
+          "total": 792090,
+          "changePct": -50.3,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-12",
+          "total": 1594190,
+          "changePct": 12.2,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-11",
+          "total": 1420240,
+          "changePct": 20.5,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-10",
+          "total": 1178720,
+          "changePct": 73.9,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-09",
+          "total": 677710,
+          "changePct": 190.2,
+          "yoyPct": null
+        },
+        {
+          "month": "2025-08",
+          "total": 233530,
+          "changePct": null,
+          "yoyPct": null
+        }
+      ]
+    },
+    "refunds": [
+      {
+        "month": "2026-09",
+        "paidAt": "2026-09-14",
+        "refundedAt": "2026-09-15",
+        "count": 1,
+        "amount": 181670,
+        "partialDeposit": 36000,
+        "reason": "카카오 알림톡 발송기록으로 복구된 건"
+      },
+      {
+        "month": "2026-05",
+        "paidAt": "2026-05-15",
+        "refundedAt": "2026-05-15",
+        "count": 1,
+        "amount": 4600,
+        "partialDeposit": null,
+        "reason": null
+      }
+    ],
+    "spend": {
+      "month": "2026-11",
+      "total": 376200,
+      "includedVat": true,
+      "prevMonth": {
+        "month": "2026-10",
+        "total": 635470
+      },
+      "changePct": -40.8,
+      "byCategory": [
+        {
+          "name": "용지",
+          "amount": 342000,
+          "sharePct": 100,
+          "vatIncluded": false
+        }
+      ],
+      "interpretation": "11월 376,200원 = A4 75g 2500매 15BOX(22,800×15=342,000, VAT 별도) → VAT 포함 376,200원. 10월 635,470원 = VFM251ci 4색 정품토너 세트(105,800+157,300×3=577,700, VAT 별도) → VAT 포함 635,470원. 단가는 같은 화면의 발주 카탈로그로 대조."
+    },
+    "catalog": [
+      {
+        "category": "용지",
+        "name": "한솔제지 A4 75g 2500매",
+        "price": 22800,
+        "unit": "BOX",
+        "minQty": 5,
+        "step": 5
+      },
+      {
+        "category": "용지",
+        "name": "한솔제지 A4 80g 2500매",
+        "price": 24800,
+        "unit": "BOX",
+        "minQty": 5,
+        "step": 5
+      },
+      {
+        "category": "용지",
+        "name": "한국제지 A3 75g 1250매",
+        "price": 36800,
+        "unit": "BOX",
+        "minQty": 2,
+        "step": 2
+      },
+      {
+        "category": "용지",
+        "name": "한국제지 B4 75g 2500매",
+        "price": 43500,
+        "unit": "개",
+        "minQty": 1,
+        "step": 1
+      },
+      {
+        "category": "토너",
+        "name": "[TASKalfa VFM251ci] TK-8360KK K(검정)토너",
+        "sku": "TK-8360KK",
+        "price": 105800,
+        "unit": "개",
+        "minQty": 1
+      },
+      {
+        "category": "토너",
+        "name": "[TASKalfa VFM251ci] TK-8360KC C(파랑)토너",
+        "sku": "TK-8360KC",
+        "price": 157300,
+        "unit": "개",
+        "minQty": 1
+      },
+      {
+        "category": "토너",
+        "name": "[TASKalfa VFM251ci] TK-8360KM M(빨강)토너",
+        "sku": "TK-8360KM",
+        "price": 157300,
+        "unit": "개",
+        "minQty": 1
+      },
+      {
+        "category": "토너",
+        "name": "[TASKalfa VFM251ci] TK-8360KY Y(노랑)토너",
+        "sku": "TK-8360KY",
+        "price": 157300,
+        "unit": "개",
+        "minQty": 1
+      },
+      {
+        "category": "부품",
+        "name": "복합기 급지롤러 (1세트)",
+        "price": 28000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": null,
+        "note": "10만장 당 교체, 트레이 1개당 1세트",
+        "replaceEvery": 300000
+      },
+      {
+        "category": "부품",
+        "name": "복합기 ADF 롤러 세트",
+        "price": 39000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": null,
+        "note": null,
+        "replaceEvery": 400000
+      },
+      {
+        "category": "부품",
+        "name": "복합기 드럼",
+        "price": 300000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": null,
+        "note": null,
+        "replaceEvery": null
+      },
+      {
+        "category": "부품",
+        "name": "복합기 지분스틱",
+        "price": 60000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": null,
+        "note": null,
+        "replaceEvery": null
+      },
+      {
+        "category": "부품",
+        "name": "VFM251ci/351ci 복합기 정착기",
+        "price": 780000,
+        "unit": "개",
+        "minQty": 1,
+        "rentMonthly": 60000,
+        "note": null,
+        "replaceEvery": null
+      }
+    ],
+    "shipping": {
+      "freeThreshold": 200000,
+      "thresholdSince": "2026-10-12",
+      "note": "2026-10-12 발주건부터 20만원 이상 무료배송(기존 10만원). 도서산간배송비 별도."
+    },
+    "calendar": [
+      {
+        "date": "2026-11-21",
+        "end": "2026-11-25",
+        "title": "대학 논술시험기간",
+        "kind": "exam-window",
+        "demandWeight": 1.35
+      },
+      {
+        "date": "2026-12-14",
+        "end": "2026-12-21",
+        "title": "대학 기말고사 기간",
+        "kind": "exam-window",
+        "demandWeight": 1.35
+      }
+    ],
+    "notices": [
+      {
+        "date": "2026-11-10",
+        "title": "관공서 및 토익 전용 프린터 드라이버 업데이트 안내"
+      }
+    ]
+  },
+  "loyalsuns": {
+    "portal": "http://coffee.loyalsuns.com:8090/",
+    "machine": {
+      "serial": "966852628620359",
+      "bodyCode": "2024041910",
+      "template": "XM22BTM-4",
+      "firmware": "V2.3.18",
+      "online": true,
+      "condition": "정상",
+      "licenseUntil": "2025-07-16",
+      "shortage": true,
+      "alerts": [
+        {
+          "type": "material_shortage",
+          "serial": "966852628620359",
+          "bodyCode": "2024041910",
+          "message": "재료 부족 기계"
+        }
+      ],
+      "shortageCause": "세 슬롯이 모두 재고 0%로 등록되어 주문 1건마다 조기 경보가 3줄씩 쌓인다(14:18:42 · 14:16:46 · 14:15:38 · 14:14:27 …). 원두(32%)는 경보 목록에 없다. 컵·뚜껑은 기계가 재어 주지 않고 매장에서 직접 보충하는 슬롯이라 재고 미등록 상태로 남아 있으면 판매가 정상인데도 경보가 계속 뜬다."
+    },
+    "revenue": {
+      "today": 55600,
+      "yesterday": 143100,
+      "month": 3984400,
+      "cumulativeTotal": 61535100
+    },
+    "orders": {
+      "todayCount": 17,
+      "totalCount": 17849,
+      "refundCount": 0,
+      "today": [
+        {
+          "time": "2026-11-23 14:17:00",
+          "product": "연한 아메리카노 ICED",
+          "amount": 2400,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 14:13:00",
+          "product": "연한 아메리카노 HOT",
+          "amount": 6000,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 3
+        },
+        {
+          "time": "2026-11-23 13:42:00",
+          "product": "청귤쥬스 ICED + 연한 아메리카노 ICED",
+          "amount": 6600,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 2
+        },
+        {
+          "time": "2026-11-23 12:53:00",
+          "product": "진한 아메리카노 HOT",
+          "amount": 4800,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 2
+        },
+        {
+          "time": "2026-11-23 12:48:00",
+          "product": "아샷추(복숭아커피)",
+          "amount": 4200,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 12:33:00",
+          "product": "진한 아메리카노 ICED",
+          "amount": 2800,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 12:05:00",
+          "product": "카페라떼 ICED",
+          "amount": 4000,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 10:41:00",
+          "product": "연한 아메리카노 HOT",
+          "amount": 2000,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 10:40:00",
+          "product": "카페라떼 HOT",
+          "amount": 3600,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 09:46:00",
+          "product": "연한 아메리카노 HOT",
+          "amount": 2000,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 09:17:00",
+          "product": "연한 아메리카노 HOT",
+          "amount": 2000,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 07:51:00",
+          "product": "진한 아메리카노 ICED",
+          "amount": 2800,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 07:23:00",
+          "product": "연한 아메리카노 ICED",
+          "amount": 2400,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 07:13:00",
+          "product": "연한 아메리카노 HOT",
+          "amount": 2000,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 06:08:00",
+          "product": "연한 아메리카노 ICED",
+          "amount": 2400,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 03:23:00",
+          "product": "녹차(따뜻한물+티백)",
+          "amount": 3200,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        },
+        {
+          "time": "2026-11-23 00:00:00",
+          "product": "연한 아메리카노 ICED",
+          "amount": 2400,
+          "method": "카카오페이",
+          "status": "결제완료",
+          "quantity": 1
+        }
+      ],
+      "drinkCount": 21,
+      "unitPrices": {
+        "연한 아메리카노 HOT": 2000,
+        "연한 아메리카노 ICED": 2400,
+        "진한 아메리카노 HOT": 2400,
+        "진한 아메리카노 ICED": 2800,
+        "카페라떼 HOT": 3600,
+        "카페라떼 ICED": 4000,
+        "바닐라라떼 HOT": 4000,
+        "바닐라라떼 ICED": 4400,
+        "초코라떼 HOT": 3800,
+        "초코라떼 ICED": 4200,
+        "아샷추(복숭아커피)": 4200,
+        "녹차(따뜻한물+티백)": 3200,
+        "청귤쥬스 ICED": 4200
+      }
+    },
+    "bestsellers": [
+      {
+        "name": "연한 아메리카노 HOT",
+        "quantity": 7
+      },
+      {
+        "name": "연한 아메리카노 ICED",
+        "quantity": 5
+      },
+      {
+        "name": "진한 아메리카노 HOT",
+        "quantity": 2
+      },
+      {
+        "name": "진한 아메리카노 ICED",
+        "quantity": 2
+      },
+      {
+        "name": "카페라떼 HOT",
+        "quantity": 1
+      },
+      {
+        "name": "카페라떼 ICED",
+        "quantity": 1
+      },
+      {
+        "name": "아샷추(복숭아커피)",
+        "quantity": 1
+      },
+      {
+        "name": "녹차(따뜻한물+티백)",
+        "quantity": 1
+      },
+      {
+        "name": "청귤쥬스 ICED",
+        "quantity": 1
+      }
+    ],
+    "bestsellersMonth": [
+      {
+        "name": "연한 아메리카노 ICED",
+        "quantity": 296
+      },
+      {
+        "name": "진한 아메리카노 ICED",
+        "quantity": 208
+      },
+      {
+        "name": "연한 아메리카노 HOT",
+        "quantity": 206
+      },
+      {
+        "name": "진한 아메리카노 HOT",
+        "quantity": 77
+      },
+      {
+        "name": "디카페인 카모마일 (따뜻한물+티백)",
+        "quantity": 51
+      },
+      {
+        "name": "아샷추(복숭아커피)",
+        "quantity": 45
+      },
+      {
+        "name": "아이스 복숭아티",
+        "quantity": 35
+      },
+      {
+        "name": "초코라떼 ICED",
+        "quantity": 27
+      },
+      {
+        "name": "호지차(따뜻한물+티백)",
+        "quantity": 27
+      },
+      {
+        "name": "초코라떼 HOT",
+        "quantity": 23
+      }
+    ],
+    "bestsellersDashboard": [
+      {
+        "name": "연한 아메리카노 HOT",
+        "quantity": 7
+      },
+      {
+        "name": "연한 아메리카노 ICED",
+        "quantity": 4
+      },
+      {
+        "name": "진한 아메리카노 ICED",
+        "quantity": 2
+      },
+      {
+        "name": "진한 아메리카노 HOT",
+        "quantity": 2
+      },
+      {
+        "name": "녹차(따뜻한물+티백)",
+        "quantity": 1
+      },
+      {
+        "name": "카페라떼 HOT",
+        "quantity": 1
+      },
+      {
+        "name": "카페라떼 ICED",
+        "quantity": 1
+      },
+      {
+        "name": "아샷추(복숭아커피)",
+        "quantity": 1
+      },
+      {
+        "name": "청귤쥬스 ICED",
+        "quantity": 1
+      }
+    ],
+    "inventory": [
+      {
+        "group": "분말 상자 재료",
+        "slot": "파우더 박스1",
+        "material": "바닐라",
+        "pct": 913.67
+      },
+      {
+        "group": "분말 상자 재료",
+        "slot": "파우더 박스2",
+        "material": "우유",
+        "pct": 753.87
+      },
+      {
+        "group": "분말 상자 재료",
+        "slot": "파우더 박스3",
+        "material": "초코",
+        "pct": 814.83
+      },
+      {
+        "group": "분말 상자 재료",
+        "slot": "파우더 박스4",
+        "material": "얼그레이",
+        "pct": 88.93
+      },
+      {
+        "group": "분말 상자 재료",
+        "slot": "파우더 박스5",
+        "material": "녹차",
+        "pct": 864.27
+      },
+      {
+        "group": "분말 상자 재료",
+        "slot": "파우더 박스6",
+        "material": "레몬",
+        "pct": 934.24
+      },
+      {
+        "group": "연동 펌프 재료",
+        "slot": "연동 펌프1",
+        "material": "청포도시럽",
+        "pct": 962.11
+      },
+      {
+        "group": "연동 펌프 재료",
+        "slot": "연동 펌프2",
+        "material": "사과시럽",
+        "pct": 953.12
+      },
+      {
+        "group": "연동 펌프 재료",
+        "slot": "연동 펌프3",
+        "material": "자몽시럽",
+        "pct": 925.23
+      },
+      {
+        "group": "연동 펌프 재료",
+        "slot": "연동 펌프4",
+        "material": "복숭아시럽",
+        "pct": 792.79
+      },
+      {
+        "group": "범용 상자 재료",
+        "slot": "범용 재료 상자1",
+        "material": "원두",
+        "pct": 32
+      },
+      {
+        "group": "범용 상자 재료",
+        "slot": "범용 재료 상자2",
+        "material": "뚜껑",
+        "pct": 0
+      },
+      {
+        "group": "범용 상자 재료",
+        "slot": "범용 재료 상자3",
+        "material": "종이컵",
+        "pct": 0
+      },
+      {
+        "group": "범용 상자 재료",
+        "slot": "범용 재료 상자4",
+        "material": "투명컵",
+        "pct": 0
+      }
+    ],
+    "shortages": [
+      {
+        "material": "뚜껑",
+        "slot": "범용 재료 상자2",
+        "pct": 0
+      },
+      {
+        "material": "종이컵",
+        "slot": "범용 재료 상자3",
+        "pct": 0
+      },
+      {
+        "material": "투명컵",
+        "slot": "범용 재료 상자4",
+        "pct": 0
+      }
+    ],
+    "lowStock": [
+      {
+        "material": "원두",
+        "pct": 32
+      }
+    ],
+    "products": [
+      {
+        "name": "연한 아메리카노 HOT",
+        "price": 2000,
+        "category": "coffee"
+      },
+      {
+        "name": "진한 아메리카노 HOT",
+        "price": 2400,
+        "category": "coffee"
+      },
+      {
+        "name": "카페라떼 HOT",
+        "price": 3600,
+        "category": "coffee"
+      }
+    ],
+    "recipes": [
+      {
+        "product": "연한 아메리카노 HOT",
+        "coffeeMl": 65,
+        "doubleShot": false,
+        "rows": [
+          {
+            "slot": "분말 상자4",
+            "material": "얼그레이",
+            "powderG": 0,
+            "waterMl": 10,
+            "waterType": "뜨거운 물"
+          }
+        ]
+      },
+      {
+        "product": "진한 아메리카노 HOT",
+        "coffeeMl": 110,
+        "doubleShot": false,
+        "rows": [
+          {
+            "slot": "분말 상자4",
+            "material": "얼그레이",
+            "powderG": 0,
+            "waterMl": 10,
+            "waterType": "뜨거운 물"
+          }
+        ]
+      },
+      {
+        "product": "카페라떼 HOT",
+        "coffeeMl": 100,
+        "doubleShot": false,
+        "rows": [
+          {
+            "slot": "분말 상자2",
+            "material": "우유",
+            "powderG": 5.5,
+            "waterMl": 6.5,
+            "waterType": "뜨거운 물"
+          }
+        ]
+      }
+    ],
+    "recipeAnomalies": [
+      "연한·진한 아메리카노 HOT 레시피에 얼그레이 0.00 행이 남아 있음(파우더 0g → 실제 소모 없음)",
+      "원료 소모 일지의 원두 소모량이 모든 커피 음료에서 1.00으로 같다 — 진한(110ml)과 연한(65ml)의 원두량 차이가 로그에 남지 않는다",
+      "녹차(따뜻한물+티백)은 바닐라 0.00 행만 기록 — 티백·온수만 사용"
+    ],
+    "consumptionLog": [
+      {
+        "at": "2026-11-23 14:18:42",
+        "orderId": "2124749206537687042",
+        "product": "연한 아메리카노 ICED",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 14:16:46",
+        "orderId": "2124748070227693569",
+        "product": "연한 아메리카노 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 14:16:46",
+        "orderId": "2124748070227693569",
+        "product": "연한 아메리카노 HOT",
+        "material": "얼그레이",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 14:15:38",
+        "orderId": "2124748070227693569",
+        "product": "연한 아메리카노 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 14:15:38",
+        "orderId": "2124748070227693569",
+        "product": "연한 아메리카노 HOT",
+        "material": "얼그레이",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 14:14:27",
+        "orderId": "2124748070227693569",
+        "product": "연한 아메리카노 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 14:14:27",
+        "orderId": "2124748070227693569",
+        "product": "연한 아메리카노 HOT",
+        "material": "얼그레이",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 13:44:47",
+        "orderId": "2124740438205026305",
+        "product": "청귤쥬스 ICED",
+        "material": "녹차",
+        "amount": 0.7
+      },
+      {
+        "at": "2026-11-23 13:43:50",
+        "orderId": "2124740438205026305",
+        "product": "연한 아메리카노 ICED",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 12:55:32",
+        "orderId": "2124727987620859906",
+        "product": "진한 아메리카노 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 12:55:32",
+        "orderId": "2124727987620859906",
+        "product": "진한 아메리카노 HOT",
+        "material": "얼그레이",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 12:54:19",
+        "orderId": "2124727987620859906",
+        "product": "진한 아메리카노 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 12:54:19",
+        "orderId": "2124727987620859906",
+        "product": "진한 아메리카노 HOT",
+        "material": "얼그레이",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 12:49:47",
+        "orderId": "2124726835734958082",
+        "product": "아샷추(복숭아커피)",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 12:49:47",
+        "orderId": "2124726835734958082",
+        "product": "아샷추(복숭아커피)",
+        "material": "복숭아 시럽",
+        "amount": 0.5
+      },
+      {
+        "at": "2026-11-23 12:34:25",
+        "orderId": "2124722912861147137",
+        "product": "진한 아메리카노 ICED",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 12:06:54",
+        "orderId": "2124715982589939714",
+        "product": "카페라떼 ICED",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 12:06:54",
+        "orderId": "2124715982589939714",
+        "product": "카페라떼 ICED",
+        "material": "우유",
+        "amount": 0.5
+      },
+      {
+        "at": "2026-11-23 10:42:21",
+        "orderId": "2124694794719350785",
+        "product": "연한 아메리카노 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 10:42:21",
+        "orderId": "2124694794719350785",
+        "product": "연한 아메리카노 HOT",
+        "material": "얼그레이",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 10:41:01",
+        "orderId": "2124694430871867393",
+        "product": "카페라떼 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 10:41:01",
+        "orderId": "2124694430871867393",
+        "product": "카페라떼 HOT",
+        "material": "우유",
+        "amount": 0.55
+      },
+      {
+        "at": "2026-11-23 09:47:15",
+        "orderId": "2124680926611427330",
+        "product": "연한 아메리카노 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 09:47:15",
+        "orderId": "2124680926611427330",
+        "product": "연한 아메리카노 HOT",
+        "material": "얼그레이",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 09:18:44",
+        "orderId": "2124673719694053377",
+        "product": "연한 아메리카노 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 09:18:44",
+        "orderId": "2124673719694053377",
+        "product": "연한 아메리카노 HOT",
+        "material": "얼그레이",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 07:52:42",
+        "orderId": "2124651999650172929",
+        "product": "진한 아메리카노 ICED",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 07:24:12",
+        "orderId": "2124644900541452290",
+        "product": "연한 아메리카노 ICED",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 07:14:33",
+        "orderId": "2124642498547437570",
+        "product": "연한 아메리카노 HOT",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 07:14:33",
+        "orderId": "2124642498547437570",
+        "product": "연한 아메리카노 HOT",
+        "material": "얼그레이",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 06:10:34",
+        "orderId": "2124626158763790337",
+        "product": "연한 아메리카노 ICED",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 03:24:42",
+        "orderId": "2124584696793681922",
+        "product": "녹차(따뜻한물+티백)",
+        "material": "바닐라",
+        "amount": 0
+      },
+      {
+        "at": "2026-11-23 00:01:57",
+        "orderId": "2124533600696029186",
+        "product": "연한 아메리카노 ICED",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 00:00:03",
+        "orderId": "2124532829447409666",
+        "product": "사과메리카노",
+        "material": "원두",
+        "amount": 1
+      },
+      {
+        "at": "2026-11-23 00:00:03",
+        "orderId": "2124532829447409666",
+        "product": "사과메리카노",
+        "material": "사과 시럽",
+        "amount": 0.2
+      }
+    ],
+    "consumptionTotal": 22.45,
+    "refillLog": [
+      {
+        "at": "2026-11-08 12:30:12",
+        "slot": "범용 재료 상자1 원두",
+        "beforePct": 0,
+        "afterPct": 93,
+        "capacity": "935g",
+        "note": "11-08 원두 935g = 93% → 1% = 10.05g 확인"
+      },
+      {
+        "at": "2026-11-08 12:30:32",
+        "slot": "파우더 박스4 얼그레이",
+        "beforePct": 0,
+        "afterPct": 90,
+        "capacity": "900g",
+        "note": "11-08 원두 935g = 93% → 1% = 10.05g 확인"
+      },
+      {
+        "at": "2026-11-08 12:20:26",
+        "slot": "파우더 박스4 얼그레이(청산)",
+        "beforePct": 886,
+        "afterPct": 0,
+        "capacity": "-8860g",
+        "note": "11-08 원두 935g = 93% → 1% = 10.05g 확인"
+      }
+    ],
+    "unitBasis": {
+      "confirmed": "원두·분말·범용 상자: 1% = 10g (11-08 보충 로그 원두 935g↔93%, 얼그레이 900g↔90%)",
+      "assumed": "연동 펌프: 1% = 10ml (강남구청역점 보충 로그로 확인된 계열)",
+      "logScale": "원료 소모 일지 단위 × 10 = g/ml (얼그레이 0.40 ↔ 레시피 4.0g)"
+    }
+  }
+}

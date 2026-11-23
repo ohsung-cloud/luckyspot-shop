@@ -1,0 +1,174 @@
+<!doctype html>
+<!--
+  자체 검증용 목(mock) 에스칼프린트 포털.
+  실제 사이트에서 확인한 구조(2026-11-23)만 흉내 낸다: 로그인 폼 1개, 상단 탭 버튼(.tab),
+  청구·정산 → [매출 분석]/[발주 지출 분석] 하위 탭, 발주하기 카탈로그 카드, 일정.
+  실제 사이트로 나가는 요청·로그인은 없다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>에스칼프린트 가맹점 통합 관리 시스템 (mock)</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; color: #111; }
+  .tab { margin-right: 8px; padding: 8px 12px; border: 1px solid #ddd; background: #fff; border-radius: 8px; }
+  .tab.active { border-color: #333; font-weight: 700; }
+  .card { border: 1px solid #eee; border-radius: 12px; padding: 16px; margin: 12px 0; }
+  .muted { color: #666; font-size: 13px; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #eee; padding: 6px 10px; font-size: 14px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div id="login">
+  <h2>로그인</h2>
+  <div class="muted">아이디에 따라 화면이 자동으로 이동합니다.</div>
+  <p><input id="loginId" placeholder="매장 ID 또는 관리자 아이디" /></p>
+  <p><input id="loginPw" type="password" /></p>
+  <p><button id="loginBtn">로그인</button></p>
+  <div id="loginError" class="muted"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div><strong>럭키스팟 강남구청역점</strong> <span class="muted">샵인샵 가맹점</span> <button>로그아웃</button></div>
+  <p>
+    <button class="tab active" data-tab="home">🏠 홈</button>
+    <button class="tab" data-tab="billing">💰 청구·정산</button>
+    <button class="tab" data-tab="order">📦 발주하기</button>
+    <button class="tab" data-tab="calendar">📅 일정</button>
+  </p>
+
+  <!-- 홈 / 잔량 확인 -->
+  <section id="view-home">
+    <h1>럭키스팟 강남구청역점</h1>
+    <div class="muted">강남구 · 최종 업데이트 2026-11-23 16:59 · 장비 1대</div>
+    <div>⚠️ 잔량이 얼마 남지 않은 소모품이 있습니다. 미리 소모품을 보충/교환 해주시기 바랍니다.</div>
+    <div>에스칼_럭키스팟_강남구청역점_1번 [KSPC]</div>
+    <div>TASKalfa MZ3501ci · S/N 1P26300591 · 누적 25,394매</div>
+    <div>K</div><div>46%</div>
+    <div>C</div><div>27%</div>
+    <div>M</div><div>38%</div>
+    <div>Y</div><div>40%</div>
+    <div>Tray1</div><div>30%</div>
+    <div>Tray2</div><div>70%</div>
+    <div>재입고 추천</div>
+    <div>Tray1 용지 30% 남음</div>
+  </section>
+
+  <!-- 청구·정산 -->
+  <section id="view-billing" class="hidden">
+    <p>
+      <button class="tab" data-bill="refund">💰 환불 내역</button>
+      <button class="tab active" data-bill="revenue">📈 매출 분석</button>
+      <button class="tab" data-bill="spend">🧾 발주 지출 분석</button>
+    </p>
+    <div id="bill-revenue">
+      <h1>매출·지출 분석</h1>
+      <div>26년 10월 매출 현황</div>
+      <div>500,200원</div>
+      <div>전월 대비 (26년 09월 901,360원)</div>
+      <div>▼ -44.5%</div>
+      <table>
+        <tr><th>대상월</th><th>매출액</th><th>전월 대비</th></tr>
+        <tr><td>26년 10월</td><td>500,200원</td><td>▼ -44.5%</td></tr>
+        <tr><td>26년 09월</td><td>901,360원</td><td>▼ -14.4%</td></tr>
+        <tr><td>26년 08월</td><td>1,053,500원</td><td>▲ +80.1%</td></tr>
+        <tr><td>26년 07월</td><td>585,040원</td><td>▼ -11%</td></tr>
+      </table>
+    </div>
+    <div id="bill-spend" class="hidden">
+      <h1>매출·지출 분석</h1>
+      <div>26년 08월 발주 지출 현황</div>
+      <div>125,400원</div>
+      <table>
+        <tr><th>항목</th><th>지출액</th></tr>
+        <tr><td>용지</td><td>114,000원</td></tr>
+        <tr><td>소모품</td><td>11,400원</td></tr>
+      </table>
+    </div>
+    <div id="bill-refund" class="hidden">
+      <h1>환불 내역</h1>
+      <div>2026-10 (1건, 환불 1건 · 환불 합계 250원)</div>
+    </div>
+  </section>
+
+  <!-- 발주하기 -->
+  <section id="view-order" class="hidden">
+    <h1>본사 물품 발주</h1>
+    <div>[안내] 무료배송 기준 금액 변경 안내 — 변경 후 : 20만원 이상 무료배송</div>
+    <div class="card product">
+      <div class="muted">용지 · A4 용지</div>
+      <div>🔥 추천</div>
+      <div>한솔제지 A4 75g 2500매</div>
+      <div>최소 5BOX · 5BOX 단위로 주문</div>
+      <div>22,800원 (VAT 별도) / BOX</div>
+    </div>
+    <div class="card product">
+      <div class="muted">용지 · A3 용지</div>
+      <div>한국제지 A3 75g 1250매</div>
+      <div>최소 2BOX · 2BOX 단위로 주문</div>
+      <div>36,800원 (VAT 별도) / BOX</div>
+    </div>
+    <div class="card product">
+      <div class="muted">토너/소모품 · VFM 2501ci/3501ci 복합기</div>
+      <div>[VFM 2501ci/3501ci 복합기] TK-8460KK 검정토너</div>
+      <div>127,000원 (VAT 별도) / 개</div>
+    </div>
+    <div class="card product">
+      <div class="muted">복합기 부품/소모품 · 급지롤러/ADF롤러</div>
+      <div>복합기 급지롤러 (1세트)</div>
+      <div>10만장 당 교체가 필요하며, 트레이 1개당 1세트 씩 필요합니다.</div>
+      <div>28,000원 (VAT 별도) / 개</div>
+    </div>
+  </section>
+
+  <!-- 일정 -->
+  <section id="view-calendar" class="hidden">
+    <h1>2026년 11월</h1>
+    <table>
+      <tr><td>19</td><td>수능</td></tr>
+      <tr><td>21</td><td>대학 논술시험기간</td></tr>
+      <tr><td>25</td><td>대학 논술시험기간 종료</td></tr>
+    </table>
+  </section>
+</div>
+
+<script>
+  const show = (id) => {
+    for (const section of ["home", "billing", "order", "calendar"]) {
+      document.getElementById("view-" + section).classList.toggle("hidden", section !== id);
+    }
+  };
+
+  document.getElementById("loginBtn").addEventListener("click", () => {
+    const id = document.getElementById("loginId").value.trim();
+    const pw = document.getElementById("loginPw").value;
+    if (!id || !pw) {
+      document.getElementById("loginError").textContent = "아이디 또는 비밀번호를 입력해 주세요.";
+      return;
+    }
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+  });
+
+  document.querySelectorAll(".tab[data-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".tab[data-tab]").forEach((other) => other.classList.remove("active"));
+      button.classList.add("active");
+      show(button.dataset.tab);
+    });
+  });
+
+  document.querySelectorAll(".tab[data-bill]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".tab[data-bill]").forEach((other) => other.classList.remove("active"));
+      button.classList.add("active");
+      for (const name of ["revenue", "spend", "refund"]) {
+        document.getElementById("bill-" + name).classList.toggle("hidden", name !== button.dataset.bill);
+      }
+    });
+  });
+</script>
+</body>
+</html>

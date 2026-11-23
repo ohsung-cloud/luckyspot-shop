@@ -1,0 +1,79 @@
+name: 매일 POS 자동 수집 (로얄선즈 · 에스칼프린트)
+
+# 매일 08:30 KST(= 23:30 UTC 전날)에 두 포털에 로그인해 지점별 실데이터를 수집하고
+# luckyspot-shop /api/auto-order/ingest-pos 로 보낸다.
+# 수동 실행: Actions → 이 워크플로우 → Run workflow (지점 선택 all / STORE_GNM / STORE_HYJ)
+
+on:
+  schedule:
+    - cron: "30 23 * * *"
+  workflow_dispatch:
+    inputs:
+      store:
+        description: "수집할 지점"
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - STORE_GNM
+          - STORE_HYJ
+      portals:
+        description: "수집할 포털(쉼표 구분)"
+        type: string
+        required: false
+        default: "loyalsuns,escalprint"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-pos-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 저장소 받기
+        uses: actions/checkout@v4
+
+      - name: Node 22 준비
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: scripts/pos-collector/package-lock.json
+
+      # 수집기는 Next 앱과 의존성을 공유하지 않는다(사내 @wanteddev 레지스트리 토큰 불필요).
+      - name: 수집기 의존성 설치
+        working-directory: scripts/pos-collector
+        run: npm ci --no-audit --no-fund
+
+      - name: Chromium 설치
+        working-directory: scripts/pos-collector
+        run: npx playwright install --with-deps chromium
+
+      - name: 포털 수집 → 분석 → 전송
+        env:
+          # --- 로얄선즈(커피) 지점 계정 ---
+          LOYALSUNS_GNM_ID: ${{ secrets.LOYALSUNS_GNM_ID }}
+          LOYALSUNS_GNM_PW: ${{ secrets.LOYALSUNS_GNM_PW }}
+          LOYALSUNS_HYJ_ID: ${{ secrets.LOYALSUNS_HYJ_ID }}
+          LOYALSUNS_HYJ_PW: ${{ secrets.LOYALSUNS_HYJ_PW }}
+          # --- 에스칼프린트(프린트) 지점 계정 ---
+          ESCAL_GNM_ID: ${{ secrets.ESCAL_GNM_ID }}
+          ESCAL_GNM_PW: ${{ secrets.ESCAL_GNM_PW }}
+          ESCAL_HYJ_ID: ${{ secrets.ESCAL_HYJ_ID }}
+          ESCAL_HYJ_PW: ${{ secrets.ESCAL_HYJ_PW }}
+          # --- 전송 ---
+          INGEST_API_URL: ${{ vars.INGEST_API_URL || 'https://luckyspot-shop.vercel.app' }}
+          INGEST_API_SECRET: ${{ secrets.INGEST_API_SECRET }}
+          # 수집 산출물은 러너 임시 폴더에만 쓴다(저장소·아티팩트 업로드 없음).
+          POS_OUT_DIR: ${{ runner.temp }}/pos-collector
+        run: |
+          node scripts/pos-collector/bin/collect-and-push.mjs \
+            --store "${{ inputs.store || 'all' }}" \
+            --portals "${{ inputs.portals || 'loyalsuns,escalprint' }}"

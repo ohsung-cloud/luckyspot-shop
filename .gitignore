@@ -45,3 +45,8 @@ output/consultation-submissions.dev.jsonl
 
 # local verification build (verify:auto-order)
 /.tmp/
+
+# POS 수집기(scripts/pos-collector) — 의존성과 실행 산출물은 커밋하지 않는다
+scripts/pos-collector/node_modules/
+scripts/pos-collector/**/.tmp/
+
