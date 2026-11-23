@@ -286,6 +286,12 @@ export default function OverviewView({ state, loading, error, onGoOrder, onGoHq,
         >
           사업자별 분기·예측 근거 보기
         </button>
+        <a
+          className="mt-2 flex h-11 w-full items-center justify-center rounded-[14px] text-[12.5px] font-semibold text-[#007A36] underline underline-offset-2"
+          href="/sales-report"
+        >
+          수집된 전체 매출 리포트 보기
+        </a>
       </section>
     </div>
   );
