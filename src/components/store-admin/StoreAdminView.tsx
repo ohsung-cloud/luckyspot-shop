@@ -384,7 +384,13 @@ export default function StoreAdminView({ store, monthly, snapshot, history }: Pr
         <div className="flex items-center justify-between">
           <h2 className="text-[13px] font-bold text-[#0F1412]">지금 채울 3가지</h2>
           <span className="text-[10px] text-[#6B746D]">
-            {state?.run.asOfDate ? `${state.run.asOfDate.slice(5).replace("-", "/")} 마감` : snapshot ? "실측" : "수집 전"}
+            {state
+              ? state.dataSource === "demo"
+                ? "데모 예측 · 실측 마감 0일"
+                : `${state.run.asOfDate.slice(5).replace("-", "/")} 마감`
+              : snapshot
+                ? "실측"
+                : "수집 전"}
           </span>
         </div>
 
@@ -392,21 +398,33 @@ export default function StoreAdminView({ store, monthly, snapshot, history }: Pr
           <CoreCard
             badge={bean?.due ? "발주" : undefined}
             label="원두"
-            sub={bean ? `${Math.round(bean.stockOnHand).toLocaleString("ko-KR")}g · ${bean.predictedDailyConsumption.toFixed(0)}g/일` : snapshot?.beanPct ? `잔량 ${Math.round(snapshot.beanPct)}%` : "수집 전"}
+            sub={bean ? `${Math.round(bean.stockOnHand).toLocaleString("ko-KR")}g · ${bean.predictedDailyConsumption.toFixed(0)}g/일` : snapshot?.beanDaysLeft ? `실측 ${snapshot.beanDaysLeft.toFixed(1)}일` : "수집 전"}
             tone={toneFor(bean?.remainingDays ?? snapshot?.beanDaysLeft ?? null, store.thresholds.beanDays)}
             value={daysShort(bean?.remainingDays ?? snapshot?.beanDaysLeft ?? null)}
           />
           <CoreCard
             badge={toner?.due ? "발주" : undefined}
             label="토너"
-            sub={state?.telemetry ? `K ${state.telemetry.toner.k ?? "—"}%` : tonerPct !== null ? `잔량 ${Math.round(tonerPct)}%` : "수집 전"}
+            sub={
+              toner
+                ? `${Math.round(toner.stockOnHand).toLocaleString("ko-KR")}g · ${toner.predictedDailyConsumption.toFixed(1)}g/일`
+                : tonerPct !== null
+                  ? `잔량 ${Math.round(tonerPct)}%`
+                  : "수집 전"
+            }
             tone={toner?.remainingDays != null ? toneFor(toner.remainingDays, store.thresholds.tonerDays) : pctTone(tonerPct)}
             value={toner?.remainingDays != null ? daysShort(toner.remainingDays) : tonerPct !== null ? `${Math.round(tonerPct)}%` : "—"}
           />
           <CoreCard
             badge={paper?.due ? "발주" : undefined}
             label="용지"
-            sub={state?.telemetry ? `Tray ${state.telemetry.paper.tray1 ?? "—"}%` : paperPct !== null ? `잔량 ${Math.round(paperPct)}%` : "수집 전"}
+            sub={
+              paper
+                ? `${Math.round(paper.stockOnHand).toLocaleString("ko-KR")}매 · ${paper.predictedDailyConsumption.toFixed(0)}매/일`
+                : paperPct !== null
+                  ? `잔량 ${Math.round(paperPct)}%`
+                  : "수집 전"
+            }
             tone={paper?.remainingDays != null ? toneFor(paper.remainingDays, store.thresholds.paperDays) : pctTone(paperPct)}
             value={paper?.remainingDays != null ? daysShort(paper.remainingDays) : paperPct !== null ? `${Math.round(paperPct)}%` : "—"}
           />
