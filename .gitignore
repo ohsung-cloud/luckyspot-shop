@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 .playwright-cli
 output/consultation-submissions.dev.jsonl
+
+# local verification build (verify:auto-order)
+/.tmp/

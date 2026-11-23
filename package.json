@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "verify:auto-order": "tsc --module commonjs --moduleResolution node --target ES2022 --lib ES2022 --esModuleInterop --skipLibCheck --outDir .tmp/auto-order-test --rootDir . scripts/verify-auto-order.ts && node .tmp/auto-order-test/scripts/verify-auto-order.js"
   },
   "dependencies": {
     "@wanteddev/wds": "^3.4.1",
