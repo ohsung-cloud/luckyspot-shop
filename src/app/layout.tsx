@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import "swiper/css";
 import "./globals.css";
 import GlobalFonts, { fontVariables } from "@/components/font/GlobalFonts";
 import AppProviders from "@/components/providers/AppProviders";
+import PwaBoot from "@/components/pwa/PwaBoot";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://luckyspot-shop.vercel.app";
@@ -27,7 +28,14 @@ export const metadata: Metadata = {
     template: "%s | 럭키스팟 발주",
   },
   description,
-  manifest: "/site.webmanifest",
+  manifest: "/manifest.webmanifest",
+  applicationName: siteName,
+  appleWebApp: {
+    capable: true,
+    title: "럭키스팟 점주",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: { telephone: false },
   openGraph: {
     type: "website",
     siteName,
@@ -48,10 +56,19 @@ export const metadata: Metadata = {
       { url: "/favicon.ico" },
       { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      { url: "/web-app-manifest-192x192.png", sizes: "192x192", type: "image/png" },
     ],
     shortcut: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
+};
+
+/** PWA — 주소창 없는 standalone 앱의 상태바 색(점주 화면 히어로와 같은 잉크색). */
+export const viewport: Viewport = {
+  themeColor: "#0F1412",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -64,6 +81,7 @@ export default function RootLayout({
         <div id="app-root">
           <AppProviders>{children}</AppProviders>
         </div>
+        <PwaBoot />
       </body>
     </html>
   );

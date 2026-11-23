@@ -7,6 +7,7 @@ import {
   resolveRules,
 } from "./rules";
 import { beanGramsForDrinks } from "./menu";
+import { type CalibrationEntry, fullCapacityOf, isFreshlyReplaced } from "./calibration";
 import type {
   AnomalyFlag,
   DataSource,
@@ -179,6 +180,13 @@ export type ForecastInput = {
    * 키는 SKU, 값은 소모 단위(g·매·개).
    */
   stockOverrides?: Record<string, number>;
+  /**
+   * 교체완료 피드백 루프 — SKU별 학습 계수와 마지막 교체 시각.
+   * 교체 직후 24시간이면 현재고를 '가득'으로 되돌리고, 계수는 일 소진량에 곲한다.
+   */
+  calibration?: Record<string, CalibrationEntry>;
+  /** 학습 판정 기준 시각(테스트 주입용). 기본은 지금. */
+  now?: Date;
 };
 
 /** 한 지점의 예측 1회 실행. */
@@ -236,11 +244,27 @@ export function forecastStore(input: ForecastInput): ForecastRun {
 
     const override = input.stockOverrides?.[rule.sku];
     const hasOverride = typeof override === "number" && Number.isFinite(override);
-    const stockOnHand = hasOverride ? Math.max(0, override as number) : rule.stockOnHand;
-    const stockSource: "manual" | "telemetry" = hasOverride ? "telemetry" : "manual";
+    const calibration = input.calibration?.[rule.sku] ?? null;
+    const calibrationFactor =
+      calibration && Number.isFinite(calibration.factor) && calibration.factor > 0
+        ? calibration.factor
+        : 1;
+
+    // 교체 직후에는 포털 실측(%)이 낡은 값이다. 가득으로 되돌린 값을 우선한다.
+    const freshlyReplaced = isFreshlyReplaced(calibration, input.now);
+    const stockOnHand = freshlyReplaced
+      ? fullCapacityOf(calibration, rule.sku)
+      : hasOverride
+        ? Math.max(0, override as number)
+        : rule.stockOnHand;
+    const stockSource: "manual" | "telemetry" = freshlyReplaced
+      ? "manual"
+      : hasOverride
+        ? "telemetry"
+        : "manual";
 
     const baseDailyConsumption = round(baseDriver * rule.consumptionPerDriverUnit, 3);
-    const predictedDailyConsumption = round(baseDailyConsumption * crossFactor, 3);
+    const predictedDailyConsumption = round(baseDailyConsumption * crossFactor * calibrationFactor, 3);
     const remainingDays =
       predictedDailyConsumption > 0 ? round(stockOnHand / predictedDailyConsumption, 1) : 999;
     const reorderPointDays = rule.leadTimeDays + rule.safetyStockDays;
@@ -281,9 +305,11 @@ export function forecastStore(input: ForecastInput): ForecastRun {
       amount: suggestedQty * rule.unitPrice,
       confidence,
       stockSource,
-      stockNote: hasOverride
-        ? `실측 ${Math.round(stockOnHand).toLocaleString("ko-KR")}${rule.stockUnit} (포털 ${rule.stockSignal ?? "신호"})`
-        : undefined,
+      stockNote: freshlyReplaced
+        ? `교체완료 ${new Date(calibration?.lastReplacedAt ?? Date.now()).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" })} · 가득 ${Math.round(stockOnHand).toLocaleString("ko-KR")}${rule.stockUnit}`
+        : hasOverride
+          ? `실측 ${Math.round(stockOnHand).toLocaleString("ko-KR")}${rule.stockUnit} (포털 ${rule.stockSignal ?? "신호"})`
+          : undefined,
       evidenceLine: evidenceLine({
         crossDomain: rule.crossDomain,
         crossRatio,
@@ -292,6 +318,8 @@ export function forecastStore(input: ForecastInput): ForecastRun {
         perUnit: rule.consumptionPerDriverUnit,
         stockUnit: rule.stockUnit,
       }),
+      calibrationFactor,
+      lastReplacedAt: calibration?.lastReplacedAt ?? null,
     };
   });
 

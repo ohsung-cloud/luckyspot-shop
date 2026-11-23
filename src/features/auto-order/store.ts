@@ -47,6 +47,11 @@ type MemoryDb = {
   machine: Map<string, MachineStatusSummary>;
 };
 
+/** 장비 스냅샷 출처 — 벤더 3종 + 수동. 그 밖의 값은 에스칼프린트로 본다(기존 데이터 호환). */
+function isPrintVendorSource(value: unknown): value is "escalprint" | "yupisoft" | "generic_webhook" {
+  return value === "escalprint" || value === "yupisoft" || value === "generic_webhook";
+}
+
 const MEMORY_KEY = "__luckyspotAutoOrderMemoryV1";
 const MAX_DAYS = 60;
 
@@ -347,7 +352,7 @@ function rowToTelemetry(row: Record<string, unknown>): DeviceTelemetry | null {
 
   return {
     storeCode,
-    source: row.source === "manual" ? "manual" : "escalprint",
+    source: row.source === "manual" ? "manual" : isPrintVendorSource(row.source) ? row.source : "escalprint",
     capturedAt,
     deviceModel: typeof row.device_model === "string" ? row.device_model : null,
     deviceSerial: typeof row.device_serial === "string" ? row.device_serial : null,
@@ -532,7 +537,10 @@ function kstYesterday() {
 }
 
 function rowToRevenue(row: Record<string, unknown>): RevenueSnapshot | null {
-  const source = row.source === "loyalsuns" || row.source === "escalprint" ? row.source : "manual";
+  const source =
+    row.source === "loyalsuns" || row.source === "escalprint" || row.source === "yupisoft" || row.source === "generic_webhook"
+      ? row.source
+      : "manual";
   const scope = row.scope === "month" ? "month" : "day";
   const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
   if (typeof row.captured_at !== "string") return null;

@@ -3,11 +3,14 @@
 import { useCallback, useMemo, useState } from "react";
 
 import HqTabs from "@/components/internal/HqTabs";
+import StoreSettingsEditor from "@/components/admin/StoreSettingsEditor";
 import type {
+  PrintVendorType,
   StoreAdminListItem,
   StoreThresholds,
   StoreType,
 } from "@/features/stores/registry-types";
+import { PRINT_VENDORS, PRINT_VENDOR_LABELS } from "@/features/stores/registry-types";
 
 /**
  * 본사 매장·점주 어드민 생성 콘솔.
@@ -22,6 +25,7 @@ type CreateResponse = {
   store?: StoreAdminListItem;
   adminCode?: string;
   adminUrl?: string;
+  pin?: string;
   secrets?: StoreAdminListItem["secrets"];
   message?: string;
   error?: string;
@@ -43,6 +47,12 @@ type FormState = {
   storeType: StoreType;
   code: string;
   region: string;
+  printVendor: PrintVendorType;
+  rent: string;
+  maintenance: string;
+  internet: string;
+  solution: string;
+  pin: string;
   coffeeEntityName: string;
   coffeeBusinessNo: string;
   printEntityName: string;
@@ -61,6 +71,12 @@ const EMPTY_FORM: FormState = {
   storeType: "6평",
   code: "",
   region: "",
+  printVendor: "escalprint",
+  rent: "800000",
+  maintenance: "150000",
+  internet: "33000",
+  solution: "55000",
+  pin: "",
   coffeeEntityName: "",
   coffeeBusinessNo: "",
   printEntityName: "",
@@ -91,7 +107,7 @@ function Field({
 }
 
 const inputClass =
-  "mt-1 h-12 w-full rounded-[12px] border border-[#E0E4E2] bg-white px-3 text-[16px] font-medium text-[#0F1412] outline-none focus:border-[#0F1412]";
+  "mt-1 h-12 w-full rounded-[12px] border border-[#E0E4E2] bg-white px-3 text-[15px] font-medium text-[#0F1412] outline-none focus:border-[#0F1412]";
 
 export default function StoreAdminConsole({ initialStores }: { initialStores: StoreAdminListItem[] }) {
   const [stores, setStores] = useState<StoreAdminListItem[]>(initialStores);
@@ -101,7 +117,13 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<{ field: string; message: string }[]>([]);
   const [toast, setToast] = useState<string | null>(null);
-  const [issued, setIssued] = useState<{ code: string; adminUrl: string; adminCode: string; label: string } | null>(null);
+  const [issued, setIssued] = useState<{
+    code: string;
+    adminUrl: string;
+    adminCode: string;
+    label: string;
+    pin?: string;
+  } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const activeCount = useMemo(() => stores.filter((store) => store.status === "active").length, [stores]);
@@ -146,6 +168,14 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
           printBusinessNo: form.printBusinessNo,
           loyalsunsStoreId: form.loyalsunsStoreId,
           escalprintBranch: form.escalprintBranch,
+          printVendor: form.printVendor,
+          monthlyFixedCost: {
+            rent: Number(form.rent.replace(/\D/g, "")) || 0,
+            maintenance: Number(form.maintenance.replace(/\D/g, "")) || 0,
+            internet: Number(form.internet.replace(/\D/g, "")) || 0,
+            solution: Number(form.solution.replace(/\D/g, "")) || 0,
+          },
+          pin: form.pin.replace(/\D/g, "").slice(0, 4) || undefined,
           thresholds: {
             beanDays: Number(form.beanDays) || 4,
             tonerDays: Number(form.tonerDays) || 5,
@@ -166,8 +196,10 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
         adminUrl: payload.adminUrl ?? payload.store.adminPath,
         adminCode: payload.adminCode,
         label: payload.store.label,
+        pin: payload.pin,
       });
       setForm(EMPTY_FORM);
+      setOpen(false);
       await reload();
     } catch {
       setErrors([{ field: "form", message: "네트워크 오류로 만들지 못했습니다. 다시 시도해 주세요." }]);
@@ -280,6 +312,12 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
               <dt className="text-[11px] text-[#8A5A00]">점주 접근 코드</dt>
               <dd className="mt-0.5 font-mono text-[18px] font-bold tracking-[0.08em] text-[#0F1412]">{issued.adminCode}</dd>
             </div>
+            {issued.pin ? (
+              <div className="rounded-[12px] bg-[#EDFBEF] px-3 py-2.5">
+                <dt className="text-[11px] text-[#0B5C2A]">4자리 간편 PIN(PWA 재접속)</dt>
+                <dd className="mt-0.5 font-mono text-[20px] font-bold tracking-[0.3em] text-[#0F1412]">{issued.pin}</dd>
+              </div>
+            ) : null}
           </dl>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -333,9 +371,14 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
               </div>
 
               <p className="mt-1.5 text-[12px] text-[#6B746D]">
-                {store.storeType} · {store.region || "지역 미입력"} · 점주 {store.ownerName || "미등록"}
+                {store.storeType} · {store.region || "지역 미입력"} · 점주 {store.ownerName || "미등록"} ·{" "}
+                {store.phoneMasked}
               </p>
-              <p className="text-[12px] tabular-nums text-[#98A29B]">{store.phoneMasked}</p>
+              <p className="text-[11px] text-[#98A29B]">
+                {PRINT_VENDOR_LABELS[store.printVendor]} · 고정비{" "}
+                {(store.monthlyFixedCost.rent + store.monthlyFixedCost.maintenance + store.monthlyFixedCost.internet + store.monthlyFixedCost.solution).toLocaleString("ko-KR")}원/월 · PIN{" "}
+                {store.hasPin ? "설정됨" : "없음"}
+              </p>
 
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <a
@@ -386,6 +429,10 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                     <dt className="text-[#6B746D]">점주 접근 코드</dt>
                     <dd className="text-right">{store.hasAdminCode ? "설정됨(원문 미보관)" : "없음 — 열람 개방"}</dd>
                   </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-[#6B746D]">프린트 벤더</dt>
+                    <dd className="text-right">{PRINT_VENDOR_LABELS[store.printVendor]}</dd>
+                  </div>
                 </dl>
 
                 <ThresholdEditor
@@ -394,13 +441,16 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                   onSave={(next) => void saveThresholds(store.code, next)}
                 />
 
-                <p className="mt-2 rounded-[10px] bg-white px-2.5 py-2 text-[10.5px] leading-[1.6] text-[#6B746D]">
-                  포털 비밀번호는 이 앱에 저장하지 않습니다. GitHub → Settings → Secrets 에{" "}
-                  <span className="font-mono">{store.secrets.loyalsunsId}</span> ·{" "}
-                  <span className="font-mono">{store.secrets.loyalsunsPassword}</span> ·{" "}
-                  <span className="font-mono">{store.secrets.escalprintId}</span> ·{" "}
-                  <span className="font-mono">{store.secrets.escalprintPassword}</span> 를 넣으면 수집기가 이 지점을 읽습니다.
-                </p>
+                <StoreSettingsEditor
+                  busy={busy}
+                  onBusy={setBusy}
+                  onNotice={(message) => {
+                    setToast(message);
+                    window.setTimeout(() => setToast(null), 2600);
+                  }}
+                  onReload={reload}
+                  store={store}
+                />
 
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <button
@@ -582,12 +632,80 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                     />
                   </Field>
 
-                  <Field label="에스칼프린트 지점명" hint="아이디만. 비밀번호는 GitHub Secrets에만.">
+                  <Field label="프린트 복합기 벤더" hint="수집기가 어느 포털을 읽을지 정합니다.">
+                    <div className="mt-1 grid grid-cols-3 gap-1.5">
+                      {PRINT_VENDORS.map((option) => (
+                        <button
+                          key={option}
+                          className={`h-10 rounded-[10px] border text-[11px] font-bold ${
+                            form.printVendor === option
+                              ? "border-[#0F1412] bg-[#0F1412] text-white"
+                              : "border-[#E0E4E2] bg-white text-[#3B4740]"
+                          }`}
+                          onClick={() => update("printVendor", option)}
+                          type="button"
+                        >
+                          {PRINT_VENDOR_LABELS[option]}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+
+                  <Field label="프린트 포털 지점명" hint="벤더 포털의 지점 ID. 비밀번호는 GitHub Secrets에만.">
                     <input
                       className={inputClass}
                       onChange={(event) => update("escalprintBranch", event.target.value)}
                       placeholder="예: ESCAL_1011"
                       value={form.escalprintBranch}
+                    />
+                  </Field>
+
+                  <div>
+                    <span className="text-[12.5px] font-semibold text-[#3B4740]">월 고정비(원)</span>
+                    <div className="mt-1 grid grid-cols-2 gap-2">
+                      <Field label="임대료">
+                        <input
+                          className={`${inputClass} text-center`}
+                          inputMode="numeric"
+                          onChange={(event) => update("rent", event.target.value)}
+                          value={form.rent}
+                        />
+                      </Field>
+                      <Field label="관리비">
+                        <input
+                          className={`${inputClass} text-center`}
+                          inputMode="numeric"
+                          onChange={(event) => update("maintenance", event.target.value)}
+                          value={form.maintenance}
+                        />
+                      </Field>
+                      <Field label="인터넷">
+                        <input
+                          className={`${inputClass} text-center`}
+                          inputMode="numeric"
+                          onChange={(event) => update("internet", event.target.value)}
+                          value={form.internet}
+                        />
+                      </Field>
+                      <Field label="솔루션">
+                        <input
+                          className={`${inputClass} text-center`}
+                          inputMode="numeric"
+                          onChange={(event) => update("solution", event.target.value)}
+                          value={form.solution}
+                        />
+                      </Field>
+                    </div>
+                  </div>
+
+                  <Field label="4자리 PIN (선택)" hint="비우면 자동 발급. 발급값은 저장 후 한 번만 보입니다.">
+                    <input
+                      className={`${inputClass} text-center font-mono tracking-[0.3em]`}
+                      inputMode="numeric"
+                      maxLength={4}
+                      onChange={(event) => update("pin", event.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="0000"
+                      value={form.pin}
                     />
                   </Field>
 

@@ -32,10 +32,18 @@ export default function CoreStockCards({
   forecasts,
   telemetry,
   thresholds,
+  onCalibrate,
+  calibrating,
+  replacementNotes,
 }: {
   forecasts: SkuForecast[];
   telemetry: TelemetrySummary | null;
   thresholds: { beanDays: number; tonerDays: number; paperDays: number };
+  /** 교체완료 — 누르면 잔량 100% + 소진 속도 학습(POST /api/stores/[code]/calibrate) */
+  onCalibrate?: (sku: string) => void;
+  calibrating?: string | null;
+  /** "오늘 교체 · 학습 0.96x" 같은 한 줄(있으면 잔량 설명 대신 보여 준다) */
+  replacementNotes?: Record<string, string>;
 }) {
   return (
     <div className="grid grid-cols-3 gap-1.5">
@@ -77,7 +85,17 @@ export default function CoreStockCards({
             <p className="mt-1.5 text-[19px] font-bold leading-none tabular-nums tracking-[-0.02em]">
               {daysLabel(forecast?.remainingDays)}
             </p>
-            <p className="mt-1 truncate text-[10px] text-[#6B746D]">{sub}</p>
+            <p className="mt-1 truncate text-[10px] text-[#6B746D]">{replacementNotes?.[item.sku] ?? sub}</p>
+            {onCalibrate && item.sku !== "toner-color" ? (
+              <button
+                className="mt-1.5 h-[22px] w-full rounded-full border border-[#C9CFCB] bg-white/70 text-[9px] font-bold text-[#3B4740] disabled:opacity-50"
+                disabled={calibrating === item.sku}
+                onClick={() => onCalibrate(item.sku)}
+                type="button"
+              >
+                {calibrating === item.sku ? "기록 중…" : "교체완료"}
+              </button>
+            ) : null}
           </div>
         );
       })}

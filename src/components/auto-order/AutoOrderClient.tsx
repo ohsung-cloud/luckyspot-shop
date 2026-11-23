@@ -47,6 +47,8 @@ export default function AutoOrderClient() {
   const [storeCode, setStoreCode] = useState<string | null>(null);
   const [storeLabel, setStoreLabel] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [calibrating, setCalibrating] = useState<string | null>(null);
+  const [replacementNotes, setReplacementNotes] = useState<Record<string, string>>({});
 
   const resolving = useRef(false);
 
@@ -303,6 +305,39 @@ export default function AutoOrderClient() {
     }
   };
 
+  /** 교체완료 — 잔량 100%로 되돌리고 소진 속도를 학습한다(점주 어드민과 같은 API). */
+  const calibrate = async (sku: string) => {
+    const code = state?.storeCode ?? storeCode;
+    if (!code) return;
+
+    setCalibrating(sku);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/stores/${encodeURIComponent(code)}/calibrate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sku }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { ok?: boolean; message?: string; error?: string; calibration?: { factor: number } }
+        | null;
+
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "교체완료를 기록하지 못했습니다.");
+
+      setNotice(payload.message ?? "교체완료 — 잔량 100%로 되돌렸습니다.");
+      setReplacementNotes((prev) => ({
+        ...prev,
+        [sku]: `오늘 교체 · 학습 ${(payload.calibration?.factor ?? 1).toFixed(2)}x`,
+      }));
+      await load({ storeCode: code });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "교체완료를 기록하지 못했습니다.");
+    } finally {
+      setCalibrating(null);
+    }
+  };
+
   const remainingSeconds = approval
     ? Math.max(0, Math.ceil((new Date(approval.expiresAt).getTime() - now) / 1000))
     : 0;
@@ -348,11 +383,14 @@ export default function AutoOrderClient() {
         <OwnerView
           approval={approval}
           busy={busy}
+          calibrating={calibrating}
           error={error}
           loading={loading}
           notice={notice}
           onApprove={approve}
+          onCalibrate={(sku) => void calibrate(sku)}
           onCancel={cancel}
+          replacementNotes={replacementNotes}
           onRefresh={() => {
             setApproval(null);
             setNotice(null);

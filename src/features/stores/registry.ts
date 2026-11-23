@@ -1,10 +1,16 @@
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 
 import { readSupabaseConfig, SUPABASE_TIMEOUT_MS, supabaseHeaders } from "../supabase/config";
+import { type CalibrationEntry, type CalibrationStore } from "../auto-order/calibration";
+import { defaultFixedCost, normalizeFixedCost } from "../sales-report/profit";
+import { DEMO_PIN, generatePin, hashStorePin, isValidPin, matchesStorePin, normalizePin } from "./pin";
 import {
+  PRINT_VENDORS,
   STORE_TYPES,
   type CreateStoreInput,
   type CreatedStore,
+  type PrintVendorType,
+  type StoreFixedCost,
   type StoreEntityProfile,
   type StoreRegistryRecord,
   type StoreStatus,
@@ -40,18 +46,35 @@ type AdminCredential = {
   lastUsedAt: string | null;
 };
 
+type PinCredential = {
+  storeCode: string;
+  /** SHA-256(고정 접두어 + 지점코드 + PIN) — 원문은 어디에도 없다. */
+  pinHash: string;
+  setAt: string;
+  enabled: boolean;
+};
+
 type RegistryMemory = {
   stores: Map<string, StoreRegistryRecord>;
   admins: Map<string, AdminCredential>;
+  pins: Map<string, PinCredential>;
   /** Supabase에서 한 번이라도 읽은 매장 (시드 덮어쓰기 방지) */
   hydrated: boolean;
+  /** 확장 컬럼(벤더·고정비·PIN·교체학습)을 쓸 수 있는가 — 한 번 실패하면 이 프로세스에서는 끈다. */
+  extendedColumns: boolean;
 };
 
 function memory(): RegistryMemory {
   const holder = globalThis as unknown as Record<string, RegistryMemory | undefined>;
 
   if (!holder[MEMORY_KEY]) {
-    holder[MEMORY_KEY] = { stores: new Map(), admins: new Map(), hydrated: false };
+    holder[MEMORY_KEY] = {
+      stores: new Map(),
+      admins: new Map(),
+      pins: new Map(),
+      hydrated: false,
+      extendedColumns: true,
+    };
   }
 
   return holder[MEMORY_KEY];
@@ -94,13 +117,47 @@ function seed(input: {
     printEntity: { name: "", businessNo: "" },
     portals: { loyalsunsStoreId: "", escalprintBranch: "" },
     thresholds: { beanDays: 4, tonerDays: 5, paperDays: 4 },
+    printVendor: "escalprint",
+    monthlyFixedCost: defaultFixedCost(input.code),
+    calibrations: SEED_CALIBRATIONS[input.code] ?? {},
     hasAdminCode: false,
     adminCodeSetAt: null,
+    // 시드 지점은 열람 개방 — PIN은 '빠른 재접속'용으로만 두고 잠그지 않는다.
+    hasPin: true,
+    pinSetAt: now,
+    pinEnabled: false,
     createdAt: now,
     updatedAt: now,
     adminPath: `/store/${input.code}`,
   };
 }
+
+/**
+ * 교체완료 학습 예시값 — 시드 지점은 아직 '교체완료' 버튼을 누른 적이 없어,
+ * 화면이 빈 상태로 보이지 않도록 지난 교체 2회를 예시로 둔다(화면에 '예시'라고 적는다).
+ */
+const SEED_CALIBRATIONS: Record<string, CalibrationStore> = {
+  STORE_GNM: {
+    "bean-10kg": {
+      sku: "bean-10kg",
+      lastReplacedAt: "2026-11-16T09:10:00+09:00",
+      previousReplacedAt: "2026-11-04T08:40:00+09:00",
+      factor: 0.96,
+      samples: 2,
+      fullCapacity: 10_000,
+      note: "실제 11.9일 · 예측 12.4일 → 0.96x (예시)",
+    },
+    "a4-paper": {
+      sku: "a4-paper",
+      lastReplacedAt: "2026-11-19T10:30:00+09:00",
+      previousReplacedAt: "2026-11-09T09:00:00+09:00",
+      factor: 1.04,
+      samples: 1,
+      fullCapacity: 1_100,
+      note: "실제 10.1일 · 예측 9.7일 → 1.04x (예시)",
+    },
+  },
+};
 
 const SEED_STORES: StoreRegistryRecord[] = [
   seed({
@@ -252,6 +309,40 @@ async function supabaseRequest(path: string, init?: RequestInit): Promise<Respon
   }
 }
 
+/**
+ * stores 테이블에서 읽는 컬럼.
+ *
+ * 확장 컬럼(print_vendor·monthly_fixed_cost·calibration·pin_*)은 마이그레이션을 실행해야 생긴다.
+ * 아직 없으면 400이 오므로, 한 번 실패하면 이 프로세스에서는 기본 컬럼만 읽는다
+ * (화면은 인메모리 값으로 계속 동작한다).
+ */
+const STORE_COLUMNS_BASE =
+  "store_code,label,short_label,region,owner_name,phone,store_type,status,coffee_entity_name,coffee_business_no,print_entity_name,print_business_no,loyalsuns_store_id,escalprint_branch,bean_alert_days,toner_alert_days,paper_alert_days,admin_code_set_at,created_at,updated_at";
+
+const STORE_COLUMNS_EXTENDED = `${STORE_COLUMNS_BASE},print_vendor,monthly_fixed_cost,calibration,pin_hash,pin_set_at,pin_enabled`;
+
+async function fetchStoreRows(suffix: string): Promise<Record<string, unknown>[] | null> {
+  const build = (columns: string) => `stores?select=${columns}&${suffix}`;
+  const extended = memory().extendedColumns;
+
+  let response = await supabaseRequest(build(extended ? STORE_COLUMNS_EXTENDED : STORE_COLUMNS_BASE));
+
+  if (response && response.status >= 400 && memory().extendedColumns) {
+    memory().extendedColumns = false;
+    response = await supabaseRequest(build(STORE_COLUMNS_BASE));
+  }
+
+  if (!response || !response.ok) {
+    if (response && response.status >= 400) {
+      warnOnce("stores 테이블을 읽지 못했습니다 — SQL 미적용으로 보고 인메모리 레지스트리를 씁니다.");
+    }
+    return null;
+  }
+
+  const payload = (await response.json().catch(() => null)) as Record<string, unknown>[] | null;
+  return Array.isArray(payload) ? payload : null;
+}
+
 function rowToRecord(row: Record<string, unknown>): StoreRegistryRecord | null {
   const code = typeof row.store_code === "string" ? row.store_code.trim().toUpperCase() : "";
   const label = typeof row.label === "string" ? row.label.trim() : "";
@@ -267,6 +358,20 @@ function rowToRecord(row: Record<string, unknown>): StoreRegistryRecord | null {
     row.status === "paused" || row.status === "deleted" ? row.status : "active";
   const phone = text(row.phone);
   const adminCodeSetAt = text(row.admin_code_set_at) || null;
+  const vendor = text(row.print_vendor);
+  const fixedCost = readJsonObject<StoreFixedCost>(row.monthly_fixed_cost);
+  const calibrations = readJsonObject<CalibrationStore>(row.calibration);
+  const pinSetAt = text(row.pin_set_at) || null;
+  const pinHash = text(row.pin_hash);
+
+  if (pinHash) {
+    memory().pins.set(code, {
+      storeCode: code,
+      pinHash,
+      setAt: pinSetAt ?? new Date().toISOString(),
+      enabled: readBoolean(row.pin_enabled, false),
+    });
+  }
 
   return {
     code,
@@ -289,12 +394,27 @@ function rowToRecord(row: Record<string, unknown>): StoreRegistryRecord | null {
       tonerDays: number(row.toner_alert_days, 5),
       paperDays: number(row.paper_alert_days, 4),
     },
+    printVendor: (PRINT_VENDORS as readonly string[]).includes(vendor) ? (vendor as PrintVendorType) : "escalprint",
+    monthlyFixedCost: fixedCost ? normalizeFixedCost(fixedCost) : defaultFixedCost(code),
+    calibrations: calibrations ?? {},
     hasAdminCode: Boolean(adminCodeSetAt),
     adminCodeSetAt,
+    hasPin: Boolean(pinHash),
+    pinSetAt,
+    pinEnabled: readBoolean(row.pin_enabled, false),
     createdAt: text(row.created_at) || new Date().toISOString(),
     updatedAt: text(row.updated_at) || new Date().toISOString(),
     adminPath: `/store/${code}`,
   };
+}
+
+function readBoolean(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function readJsonObject<T>(value: unknown): T | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as T;
 }
 
 function recordToRow(record: StoreRegistryRecord) {
@@ -318,6 +438,11 @@ function recordToRow(record: StoreRegistryRecord) {
     toner_alert_days: record.thresholds.tonerDays,
     paper_alert_days: record.thresholds.paperDays,
     admin_code_set_at: record.adminCodeSetAt,
+    print_vendor: record.printVendor,
+    monthly_fixed_cost: record.monthlyFixedCost,
+    calibration: record.calibrations,
+    pin_enabled: record.pinEnabled,
+    pin_set_at: record.pinSetAt,
     updated_at: new Date().toISOString(),
   };
 }
@@ -325,19 +450,8 @@ function recordToRow(record: StoreRegistryRecord) {
 async function loadFromSupabase(): Promise<StoreRegistryRecord[] | null> {
   if (!readSupabaseConfig()) return null;
 
-  const response = await supabaseRequest(
-    "stores?select=store_code,label,short_label,region,owner_name,phone,store_type,status,coffee_entity_name,coffee_business_no,print_entity_name,print_business_no,loyalsuns_store_id,escalprint_branch,bean_alert_days,toner_alert_days,paper_alert_days,admin_code_set_at,created_at,updated_at&order=label.asc&limit=200",
-  );
-
-  if (!response || !response.ok) {
-    if (response && response.status >= 400) {
-      warnOnce("stores 테이블을 읽지 못했습니다 — SQL 미적용으로 보고 인메모리 레지스트리를 씁니다.");
-    }
-    return null;
-  }
-
-  const payload = (await response.json().catch(() => null)) as Record<string, unknown>[] | null;
-  if (!Array.isArray(payload)) return null;
+  const payload = await fetchStoreRows("order=label.asc&limit=200");
+  if (!payload) return null;
 
   return payload
     .map(rowToRecord)
@@ -372,14 +486,8 @@ export async function findStoreRecord(code: string): Promise<StoreRegistryRecord
   const cached = memory().stores.get(key) ?? SEED_STORES.find((record) => record.code === key);
   if (cached) return cached;
 
-  const response = await supabaseRequest(
-    `stores?select=store_code,label,short_label,region,owner_name,phone,store_type,status,coffee_entity_name,coffee_business_no,print_entity_name,print_business_no,loyalsuns_store_id,escalprint_branch,bean_alert_days,toner_alert_days,paper_alert_days,admin_code_set_at,created_at,updated_at&store_code=eq.${encodeURIComponent(key)}&limit=1`,
-  );
-
-  if (!response || !response.ok) return null;
-
-  const payload = (await response.json().catch(() => null)) as Record<string, unknown>[] | null;
-  const row = Array.isArray(payload) ? payload[0] : null;
+  const payload = await fetchStoreRows(`store_code=eq.${encodeURIComponent(key)}&limit=1`);
+  const row = payload?.[0] ?? null;
   const record = row ? rowToRecord(row) : null;
   if (record) memory().stores.set(record.code, record);
 
@@ -451,6 +559,8 @@ export async function createStore(
   const now = new Date().toISOString();
   const adminCode = generateAdminCode();
   const admitAt = now;
+  const pin = isValidPin(input.pin) ? normalizePin(input.pin) : generatePin();
+  const pinHash = hashStorePin(code, pin);
 
   const record: StoreRegistryRecord = {
     code,
@@ -479,8 +589,18 @@ export async function createStore(
       tonerDays: clampDays(input.thresholds?.tonerDays, 5),
       paperDays: clampDays(input.thresholds?.paperDays, 4),
     },
+    printVendor: (PRINT_VENDORS as readonly string[]).includes(input.printVendor ?? "")
+      ? (input.printVendor as PrintVendorType)
+      : "escalprint",
+    monthlyFixedCost: input.monthlyFixedCost
+      ? normalizeFixedCost({ ...defaultFixedCost(code), ...input.monthlyFixedCost })
+      : defaultFixedCost(code),
+    calibrations: {},
     hasAdminCode: true,
     adminCodeSetAt: admitAt,
+    hasPin: true,
+    pinSetAt: now,
+    pinEnabled: true,
     createdAt: now,
     updatedAt: now,
     adminPath: `/store/${code}`,
@@ -493,17 +613,10 @@ export async function createStore(
     createdAt: now,
     lastUsedAt: null,
   });
+  memory().pins.set(code, { storeCode: code, pinHash, setAt: now, enabled: true });
 
   // Supabase에는 매장 → 어드민 순으로 쓴다(외래키). 실패해도 화면은 그대로 동작한다.
-  const storeResponse = await supabaseRequest("stores?on_conflict=store_code", {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify([recordToRow(record)]),
-  });
-
-  if (storeResponse && !storeResponse.ok && storeResponse.status >= 400) {
-    warnOnce("stores 테이블에 쓰지 못했습니다 — SQL 미적용일 수 있습니다(인메모리로 계속).");
-  }
+  await writeStoreRow(record, { pinHash });
 
   await supabaseRequest("store_admins?on_conflict=store_code,role", {
     method: "POST",
@@ -526,8 +639,39 @@ export async function createStore(
       store: record,
       adminCode,
       adminUrl: `/store/${code}?key=${encodeURIComponent(adminCode)}`,
+      pin,
     },
   };
+}
+
+/**
+ * stores 행 쓰기 — 확장 컬럼이 아직 없으면(마이그레이션 전) 기본 컬럼만 다시 쓴다.
+ * 새 설정은 인메모리에 남아 화면은 그대로 동작하고, SQL을 실행하면 영구 저장된다.
+ */
+async function writeStoreRow(record: StoreRegistryRecord, extra: { pinHash?: string | null } = {}) {
+  const row = { ...recordToRow(record), ...(extra.pinHash ? { pin_hash: extra.pinHash } : {}) };
+
+  const write = (body: Record<string, unknown>) =>
+    supabaseRequest("stores?on_conflict=store_code", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify([body]),
+    });
+
+  const response = await write(row);
+  if (response && response.ok) return;
+
+  if (response && response.status >= 400) {
+    memory().extendedColumns = false;
+    const legacyKeys = new Set(STORE_COLUMNS_BASE.split(","));
+    const legacyRow: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) if (legacyKeys.has(key)) legacyRow[key] = value;
+
+    const retry = await write(legacyRow);
+    if (!retry || !retry.ok) {
+      warnOnce("stores 테이블에 쓰지 못했습니다 — SQL 미적용일 수 있습니다(인메모리로 계속).");
+    }
+  }
 }
 
 function clampDays(value: unknown, fallback: number) {
@@ -667,6 +811,175 @@ export function portalSecretKeys(code: string) {
     escalprintId: `ESCALPRINT_${suffix}_ID`,
     escalprintPassword: `ESCALPRINT_${suffix}_PW`,
   };
+}
+
+/* ------------------------------------------------------------------------- */
+/* 설정 — 프린트 벤더 · 월 고정비 · PIN · 교체완료 학습                          */
+/* ------------------------------------------------------------------------- */
+
+/** 매장 설정(프린트 벤더·월 고정비·PIN 잠금) 변경. */
+export async function updateStoreSettings(
+  code: string,
+  input: {
+    printVendor?: string;
+    monthlyFixedCost?: Partial<StoreFixedCost>;
+    pinEnabled?: boolean;
+  },
+): Promise<StoreRegistryRecord | null> {
+  const record = await findStoreRecord(code);
+  if (!record) return null;
+
+  const next: StoreRegistryRecord = {
+    ...record,
+    printVendor: (PRINT_VENDORS as readonly string[]).includes(input.printVendor ?? "")
+      ? (input.printVendor as PrintVendorType)
+      : record.printVendor,
+    monthlyFixedCost: input.monthlyFixedCost
+      ? normalizeFixedCost({ ...record.monthlyFixedCost, ...input.monthlyFixedCost })
+      : record.monthlyFixedCost,
+    pinEnabled: typeof input.pinEnabled === "boolean" ? input.pinEnabled : record.pinEnabled,
+    updatedAt: new Date().toISOString(),
+  };
+
+  memory().stores.set(next.code, next);
+
+  const cached = memory().pins.get(next.code);
+  if (cached) memory().pins.set(next.code, { ...cached, enabled: next.pinEnabled });
+
+  await supabaseRequest(`stores?store_code=eq.${encodeURIComponent(next.code)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      print_vendor: next.printVendor,
+      monthly_fixed_cost: next.monthlyFixedCost,
+      pin_enabled: next.pinEnabled,
+      updated_at: next.updatedAt,
+    }),
+  });
+
+  return next;
+}
+
+/** 점주 4자리 PIN 재발급 — 새 PIN은 이 응답에 한 번만 실린다. */
+export async function regeneratePin(code: string): Promise<{ store: StoreRegistryRecord; pin: string } | null> {
+  const record = await findStoreRecord(code);
+  if (!record) return null;
+
+  const pin = generatePin();
+  const pinHash = hashStorePin(record.code, pin);
+  const now = new Date().toISOString();
+
+  const next: StoreRegistryRecord = {
+    ...record,
+    hasPin: true,
+    pinSetAt: now,
+    pinEnabled: true,
+    updatedAt: now,
+  };
+
+  memory().stores.set(next.code, next);
+  memory().pins.set(next.code, { storeCode: next.code, pinHash, setAt: now, enabled: true });
+
+  await supabaseRequest(`stores?store_code=eq.${encodeURIComponent(next.code)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ pin_hash: pinHash, pin_set_at: now, pin_enabled: true, updated_at: now }),
+  });
+
+  return { store: next, pin };
+}
+
+/**
+ * 점주 PIN 검증.
+ *  - 메모리(이 프로세스에서 발급·검증한 것) → Supabase(pin_hash) 순.
+ *  - 시드 지점은 아직 pin_hash가 DB에 없어서 데모 PIN(0000)으로 연다.
+ *  - 컬럼이 아직 없으면(SQL 미적용) 시드만 데모 PIN으로 통과한다.
+ */
+export async function verifyStorePin(record: StoreRegistryRecord, given: string | null | undefined) {
+  if (!isValidPin(given)) return false;
+
+  const cached = memory().pins.get(record.code);
+  if (cached) return matchesStorePin(cached.pinHash, record.code, given);
+
+  if (readSupabaseConfig()) {
+    const response = await supabaseRequest(
+      `stores?select=pin_hash,pin_enabled&store_code=eq.${encodeURIComponent(record.code)}&limit=1`,
+    );
+
+    if (response && response.ok) {
+      const payload = (await response.json().catch(() => null)) as Record<string, unknown>[] | null;
+      const hash = payload?.[0] && typeof payload[0].pin_hash === "string" ? payload[0].pin_hash : null;
+
+      if (hash) {
+        memory().pins.set(record.code, {
+          storeCode: record.code,
+          pinHash: hash,
+          setAt: record.pinSetAt ?? new Date().toISOString(),
+          enabled: readBoolean(payload?.[0]?.pin_enabled, record.pinEnabled),
+        });
+
+        return matchesStorePin(hash, record.code, given);
+      }
+    }
+  }
+
+  // 시드 지점 — 본사가 PIN을 따로 발급하기 전까지 데모 PIN.
+  if (!record.hasAdminCode) return normalizePin(given) === DEMO_PIN;
+
+  return false;
+}
+
+/** 교체완료 학습 기록 저장(지점 레코드의 calibrations에 SKU별로 덮어쓴다). */
+export async function saveCalibration(
+  code: string,
+  entry: CalibrationEntry,
+): Promise<StoreRegistryRecord | null> {
+  const record = await findStoreRecord(code);
+  if (!record) return null;
+
+  const next: StoreRegistryRecord = {
+    ...record,
+    calibrations: { ...record.calibrations, [entry.sku]: entry },
+    updatedAt: new Date().toISOString(),
+  };
+
+  memory().stores.set(next.code, next);
+
+  await supabaseRequest(`stores?store_code=eq.${encodeURIComponent(next.code)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ calibration: next.calibrations, updated_at: next.updatedAt }),
+  });
+
+  return next;
+}
+
+/** 교체완료 1회를 이력표(`calibration_logs`)에 남긴다 — 실패해도 화면 동작에는 영향 없음. */
+export async function logCalibration(input: {
+  storeCode: string;
+  sku: string;
+  entry: CalibrationEntry;
+  actualDays: number | null;
+  expectedDays: number | null;
+}): Promise<void> {
+  await supabaseRequest("calibration_logs", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify([
+      {
+        store_code: input.storeCode,
+        sku: input.sku,
+        replaced_at: input.entry.lastReplacedAt,
+        previous_replaced_at: input.entry.previousReplacedAt,
+        actual_days: input.actualDays,
+        expected_days: input.expectedDays,
+        factor: input.entry.factor,
+        samples: input.entry.samples,
+        full_capacity: input.entry.fullCapacity,
+        note: input.entry.note,
+      },
+    ]),
+  });
 }
 
 export function publicEntity(entity: StoreEntityProfile) {

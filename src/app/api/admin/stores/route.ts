@@ -5,8 +5,8 @@ import {
   listStoreRecords,
   portalSecretKeys,
 } from "@/features/stores/registry";
-import type { CreateStoreInput, StoreType } from "@/features/stores/registry-types";
-import { STORE_TYPES } from "@/features/stores/registry-types";
+import type { CreateStoreInput, PrintVendorType, StoreType } from "@/features/stores/registry-types";
+import { PRINT_VENDORS, STORE_TYPES } from "@/features/stores/registry-types";
 import { jsonError, readJsonObject, takeRateLimit } from "@/features/http/guard";
 
 /**
@@ -62,6 +62,11 @@ export async function POST(request: Request) {
     ? (storeTypeRaw as StoreType)
     : undefined;
 
+  const vendorRaw = text(body.printVendor, 20);
+  const printVendor: PrintVendorType | undefined = (PRINT_VENDORS as readonly string[]).includes(vendorRaw)
+    ? (vendorRaw as PrintVendorType)
+    : undefined;
+
   const thresholds = body.thresholds && typeof body.thresholds === "object"
     ? (body.thresholds as Record<string, unknown>)
     : {};
@@ -87,6 +92,9 @@ export async function POST(request: Request) {
       tonerDays: toDays(thresholds.tonerDays),
       paperDays: toDays(thresholds.paperDays),
     },
+    printVendor,
+    monthlyFixedCost: readFixedCost(body.monthlyFixedCost),
+    pin: typeof body.pin === "string" ? body.pin : undefined,
   };
 
   const result = await createStore(input);
@@ -104,9 +112,26 @@ export async function POST(request: Request) {
       store: result.created.store,
       adminCode: result.created.adminCode,
       adminUrl: result.created.adminUrl,
+      pin: result.created.pin,
       secrets: portalSecretKeys(result.created.store.code),
-      message: "매장과 점주 어드민이 만들어졌습니다. 접근 코드는 지금 한 번만 보입니다.",
+      message: "매장과 점주 어드민이 만들어졌습니다. 접근 코드와 PIN은 지금 한 번만 보입니다.",
     },
     { status: 201, headers: { "Cache-Control": "no-store" } },
   );
+}
+
+/** 월 고정비 — 숫자만 받고 나머지는 버린다(0원도 유효). */
+function readFixedCost(value: unknown) {
+  if (!value || typeof value !== "object") return undefined;
+
+  const source = value as Record<string, unknown>;
+  const pick = (key: string) =>
+    typeof source[key] === "number" && Number.isFinite(source[key]) ? (source[key] as number) : 0;
+
+  return {
+    rent: pick("rent"),
+    maintenance: pick("maintenance"),
+    internet: pick("internet"),
+    solution: pick("solution"),
+  };
 }

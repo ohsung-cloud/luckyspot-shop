@@ -98,6 +98,9 @@ export type ConsumableBomRule = {
 
 export type StockSignal = "toner_black_pct" | "toner_color_pct" | "paper_tray_pct";
 
+/** 프린트 장비 벤더 출처 — 에스칼프린트·유피소프트·타사 공용 웹훅. */
+export type PrintVendorSource = "escalprint" | "yupisoft" | "generic_webhook" | "manual";
+
 /** 카탈로그 단가·품명까지 붙은 규칙. */
 export type ResolvedBomRule = ConsumableBomRule & {
   name: string;
@@ -146,6 +149,10 @@ export type SkuForecast = {
   stockNote?: string;
   /** 화면에 한 줄로 보여줄 교차 근거 */
   evidenceLine: string;
+  /** 교체완료 학습으로 보정된 지점 계수 (1 = 보정 없음) */
+  calibrationFactor?: number;
+  /** 이 품목을 마지막으로 갈아 끼운 시각(ISO) — 교체완료 버튼이 남긴 기록 */
+  lastReplacedAt?: string | null;
 };
 
 /** 단측 급감 이상 플래그 — 소진이 아니라 장비·결제 이상일 수 있다. */
@@ -182,7 +189,7 @@ export type DataSource = "supabase" | "memory" | "demo";
 /** 프린트 포털(에스칼프린트) 장비 스냅샷 — 2시간마다(08~22시) + 00:05 마감에 수집된다. */
 export type DeviceTelemetry = {
   storeCode: string;
-  source: "escalprint" | "manual";
+  source: PrintVendorSource;
   capturedAt: string;
   deviceModel: string | null;
   deviceSerial: string | null;
@@ -204,7 +211,7 @@ export type BeverageLine = {
 
 /** 포털 매출 스냅샷 (일/월 스코프). */
 export type RevenueSnapshot = {
-  source: "loyalsuns" | "escalprint" | "manual";
+  source: "loyalsuns" | "escalprint" | "yupisoft" | "generic_webhook" | "manual";
   scope: "day" | "month";
   periodStart: string;
   periodEnd: string;
@@ -217,7 +224,7 @@ export type RevenueSnapshot = {
 
 /** ingest-pos가 포털 스냅샷을 받았을 때 돌려주는 요약. */
 export type SnapshotIngestSummary = {
-  source: "escalprint" | "loyalsuns" | "both";
+  source: "escalprint" | "loyalsuns" | "yupisoft" | "generic_webhook" | "both";
   capturedAt: string;
   salesDate: string;
   derived: {

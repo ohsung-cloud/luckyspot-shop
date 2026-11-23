@@ -4,10 +4,13 @@ import {
   findStoreRecord,
   portalSecretKeys,
   regenerateAdminCode,
+  regeneratePin,
+  updateStoreSettings,
   updateStoreStatus,
   updateStoreThresholds,
 } from "@/features/stores/registry";
-import type { StoreStatus, StoreThresholds } from "@/features/stores/registry-types";
+import type { PrintVendorType, StoreStatus, StoreThresholds } from "@/features/stores/registry-types";
+import { PRINT_VENDORS } from "@/features/stores/registry-types";
 import { jsonError, readJsonObject, takeRateLimit } from "@/features/http/guard";
 
 /**
@@ -16,6 +19,8 @@ import { jsonError, readJsonObject, takeRateLimit } from "@/features/http/guard"
  *  PATCH  { status: "active" | "paused" | "deleted" }        → 상태 변경(삭제는 소프트 삭제)
  *         { thresholds: { beanDays, tonerDays, paperDays } } → 경보 기준일 변경
  *         { action: "regenerate-code" }                      → 점주 접근 코드 재발급(이전 코드 무효)
+ *         { action: "regenerate-pin" }                       → 4자리 PIN 재발급(새 PIN 한 번만 응답)
+ *         { settings: { printVendor, monthlyFixedCost, pinEnabled } } → 프린트 벤더·월 고정비·PIN 잠금
  */
 
 export const runtime = "nodejs";
@@ -56,6 +61,50 @@ export async function PATCH(
         secrets: portalSecretKeys(record.code),
         message: "새 접근 코드를 발급했습니다. 이전 코드는 더 이상 열리지 않습니다.",
       },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  if (body.action === "regenerate-pin") {
+    const issued = await regeneratePin(record.code);
+    if (!issued) return jsonError("매장을 찾을 수 없습니다.", 404);
+
+    return NextResponse.json(
+      {
+        ok: true,
+        store: issued.store,
+        pin: issued.pin,
+        message: "새 4자리 PIN을 발급했습니다. 이전 PIN은 더 이상 열리지 않습니다.",
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  if (body.settings && typeof body.settings === "object") {
+    const settings = body.settings as Record<string, unknown>;
+    const fixed = settings.monthlyFixedCost as Record<string, unknown> | undefined;
+    const vendorRaw = typeof settings.printVendor === "string" ? settings.printVendor : "";
+
+    const updated = await updateStoreSettings(record.code, {
+      printVendor: (PRINT_VENDORS as readonly string[]).includes(vendorRaw)
+        ? (vendorRaw as PrintVendorType)
+        : undefined,
+      monthlyFixedCost:
+        fixed && typeof fixed === "object"
+          ? {
+              rent: numberOrZero(fixed, "rent"),
+              maintenance: numberOrZero(fixed, "maintenance"),
+              internet: numberOrZero(fixed, "internet"),
+              solution: numberOrZero(fixed, "solution"),
+            }
+          : undefined,
+      pinEnabled: typeof settings.pinEnabled === "boolean" ? settings.pinEnabled : undefined,
+    });
+
+    if (!updated) return jsonError("매장을 찾을 수 없습니다.", 404);
+
+    return NextResponse.json(
+      { ok: true, store: updated, message: "매장 설정(벤더·고정비·PIN)을 저장했습니다." },
       { headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -121,4 +170,10 @@ export async function DELETE(
     { ok: true, store: updated, message: "목록에서 내렸습니다. 데이터는 보관됩니다." },
     { headers: { "Cache-Control": "no-store" } },
   );
+}
+
+function numberOrZero(source: Record<string, unknown>, key: string) {
+  const value = source[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(50_000_000, Math.round(value)));
 }

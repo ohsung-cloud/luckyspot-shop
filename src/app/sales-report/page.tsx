@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { SalesReportShell } from "@/features/sales-report/SalesReportShell";
+import type { StoreFixedCost } from "@/features/stores/registry-types";
+import { listStoreRecords } from "@/features/stores/registry";
 import { STORES } from "@/features/sales-report/stores";
 
 /**
@@ -20,12 +22,22 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
 };
 
-export default function SalesReportPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SalesReportPage() {
   const latest = STORES.map((store) => store.snapshot.capturedAt).sort().at(-1);
+
+  // 지점별 월 고정비 — 본사(/admin/stores)에서 고친 값이 그대로 순수익 계산에 쓰인다.
+  const fixedCosts: Record<string, StoreFixedCost> = {};
+  try {
+    for (const record of await listStoreRecords()) fixedCosts[record.code] = record.monthlyFixedCost;
+  } catch {
+    // 레지스트리를 못 읽어도 매출 리포트는 그대로 보여 준다(고정비는 지점 기본값으로).
+  }
 
   return (
     <>
-      <SalesReportShell />
+      <SalesReportShell fixedCosts={fixedCosts} />
       <p className="sr-only">수집 시각 {latest}</p>
     </>
   );

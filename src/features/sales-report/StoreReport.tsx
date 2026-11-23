@@ -1,6 +1,11 @@
+import type { StoreFixedCost } from "@/features/stores/registry-types";
+
 import { capturedLabel, days, manwon, pct, won } from "./format";
 import { monthlyForStore, formatWon, type MonthlyPeriod } from "./monthly";
-import { RevenueMixDonut } from "./RevenueMixDonut";
+import { ProfitRow } from "./ProfitRow";
+import type { ProfitEstimate } from "./profit";
+import { SalesPulseTabs } from "./SalesPulseTabs";
+import { storePulse, type StorePulse } from "./trend";
 import type { SalesReportSnapshot } from "./types";
 import { autoOrderHref, type StoreEntry } from "./stores";
 
@@ -29,9 +34,22 @@ function tonePct(value: number, red: number, amber: number) {
   return "border-[#D6EBDD] bg-white text-[#0F1412]";
 }
 
-export function StoreReport({ store, period }: { store: StoreEntry; period: MonthlyPeriod }) {
+export function StoreReport({
+  store,
+  period,
+  profit,
+  pulse,
+  fixedCost,
+}: {
+  store: StoreEntry;
+  period: MonthlyPeriod;
+  profit?: ProfitEstimate | null;
+  pulse?: StorePulse;
+  fixedCost?: StoreFixedCost | null;
+}) {
   const data: SalesReportSnapshot = store.snapshot;
   const month = monthlyForStore(store.code, period);
+  const chart = pulse ?? storePulse({ code: store.code, asOf: data.today, dailyRate: data.revenue.coffee.dailyRate });
   const burst = data.burst;
 
   const tonerMin = Math.min(data.print.toner.k, data.print.toner.c, data.print.toner.m, data.print.toner.y);
@@ -76,9 +94,9 @@ export function StoreReport({ store, period }: { store: StoreEntry; period: Mont
           </span>
         </p>
 
-        <div className="mt-3 rounded-[14px] bg-white p-2.5">
-          <RevenueMixDonut month={month} />
-        </div>
+        <ProfitRow fixedCost={fixedCost} profit={profit ?? null} />
+
+        <SalesPulseTabs month={month} pulse={chart} />
       </section>
 
       {/* ② 원두 · 토너 · 용지 + 원터치 발주 */}

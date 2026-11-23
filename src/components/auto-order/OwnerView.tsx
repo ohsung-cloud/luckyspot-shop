@@ -17,6 +17,10 @@ type OwnerViewProps = {
   onApprove: () => void;
   onCancel: () => void;
   onRefresh: () => void;
+  /** 교체완료 — 잔량 100% + 소진 속도 학습 */
+  onCalibrate?: (sku: string) => void;
+  calibrating?: string | null;
+  replacementNotes?: Record<string, string>;
 };
 
 export default function OwnerView({
@@ -30,6 +34,9 @@ export default function OwnerView({
   onApprove,
   onCancel,
   onRefresh,
+  onCalibrate,
+  calibrating,
+  replacementNotes,
 }: OwnerViewProps) {
   if (loading && !state) {
     return (
@@ -91,7 +98,10 @@ export default function OwnerView({
         </div>
         <div className="mt-2">
           <CoreStockCards
+            calibrating={calibrating}
             forecasts={state.run.forecasts}
+            onCalibrate={onCalibrate}
+            replacementNotes={replacementNotes}
             telemetry={state.telemetry}
             thresholds={{ beanDays: 4, tonerDays: 5, paperDays: 4 }}
           />

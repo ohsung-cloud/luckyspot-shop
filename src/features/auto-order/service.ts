@@ -18,6 +18,7 @@ import {
   listApprovals,
 } from "./store";
 import { stockOverridesFromTelemetry, telemetrySummary } from "./telemetry";
+import { findStoreRecord } from "../stores/registry";
 import type { AutoOrderProposal, ProposalListResponse, ProposalStatus, SplitResult } from "./types";
 
 /**
@@ -62,12 +63,18 @@ export async function buildState(input: BuildStateInput = {}): Promise<BuiltStat
   const latestTelemetry = telemetryHistory.length > 0 ? telemetryHistory[telemetryHistory.length - 1] : null;
   const stockOverrides = stockOverridesFromTelemetry(latestTelemetry);
 
+  // 교체완료 피드백 루프 — 점주가 누른 교체 기록(학습 계수·마지막 교체일)을 예측에 바로 넣는다.
+  const calibration = await findStoreRecord(storeCode)
+    .then((record) => record?.calibrations ?? {})
+    .catch(() => ({}));
+
   const run = forecastStore({
     storeCode,
     storeLabel,
     rows,
     dataSource: loaded?.dataSource ?? "demo",
     stockOverrides,
+    calibration,
   });
 
   const rawProposals = buildProposals(run);

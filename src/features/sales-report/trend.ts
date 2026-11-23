@@ -1,0 +1,166 @@
+/**
+ * 매출 카드 안의 '일간 / 주간 / 월간' 펄스 — 기존 POS 앱(비즐) 사용자가 익숙한 두 그림.
+ *
+ *   ① 주간: 최근 7일 일별 막대 + **평균 점선**
+ *   ② 일간: 하루를 여섯 구간(새벽·아침·점심·오후·저녁·밤)으로 나눈 매출 비중
+ *
+ * 원칙
+ *  - 화면을 세로로 늘리지 않는다. 카드 **내부 탭**으로 전환하고, 탭마다 높이를 같게 맞춘다.
+ *  - 숫자의 출처를 숨기지 않는다. 실측(포털·기존 POS 리포트)과 추정(일평균)을 구분해 적는다.
+ *  - 시간대 데이터가 없는 지점은 그림을 지어내지 않고 "수집 전"이라고 적는다.
+ *
+ * 출처
+ *  - 강남구청역점 일별 7일·시간대 6구간: 사용자가 보내 준 기존 POS(비즐) 매출분석보고서
+ *    (2026-11-16~11-22, 11/22 전체매출 55,700원 / 시간대 2,100·6,800·19,400·5,300·10,500·11,600원).
+ *    화면의 막대는 천원 단위로 반올림된 값이다.
+ *  - 한예종점: 일별 실측이 아직 없어 월 커피 일평균으로만 그린다(추정 표시).
+ */
+
+export type ChartDay = {
+  /** YYYY-MM-DD */
+  date: string;
+  /** 11.16(월) */
+  label: string;
+  /** 그날 전체 매출(원) */
+  total: number;
+};
+
+export type HourBucket = {
+  key: "dawn" | "morning" | "lunch" | "afternoon" | "evening" | "night";
+  label: string;
+  range: string;
+  amount: number;
+  share: number;
+};
+
+export type StorePulse = {
+  /** 최근 7일(오래된 → 최신) */
+  daily: ChartDay[];
+  dailyAverage: number;
+  dailySource: "measured" | "estimated" | "none";
+  dailyNote: string;
+  /** 하루 시간대 6구간 — 없으면 null */
+  hourly: HourBucket[] | null;
+  hourlyDate: string | null;
+  hourlyTotal: number | null;
+  hourlyNote: string;
+};
+
+export const HOUR_LABELS: { key: HourBucket["key"]; label: string; range: string }[] = [
+  { key: "dawn", label: "새벽", range: "00~06" },
+  { key: "morning", label: "아침", range: "06~11" },
+  { key: "lunch", label: "점심", range: "11~14" },
+  { key: "afternoon", label: "오후", range: "14~17" },
+  { key: "evening", label: "저녁", range: "17~21" },
+  { key: "night", label: "밤", range: "21~24" },
+];
+
+/** 기존 POS(비즐) 리포트에서 확인된 강남구청역점 값 — 천원 단위. */
+const GANGNAM_DAILY = [
+  { date: "2026-11-16", total: 69_000 },
+  { date: "2026-11-17", total: 73_000 },
+  { date: "2026-11-18", total: 51_000 },
+  { date: "2026-11-19", total: 59_000 },
+  { date: "2026-11-20", total: 56_000 },
+  { date: "2026-11-21", total: 32_000 },
+  { date: "2026-11-22", total: 56_000 },
+];
+
+/** 2026-11-22(일) 시간대 매출 — 합계 55,700원(비즐 리포트). */
+const GANGNAM_HOURLY = [2_100, 6_800, 19_400, 5_300, 10_500, 11_600];
+const GANGNAM_HOURLY_DATE = "2026-11-22";
+
+function labelOf(date: string) {
+  const value = new Date(`${date}T12:00:00+09:00`);
+  const month = value.getMonth() + 1;
+  const day = value.getDate();
+  const weekday = ["일", "월", "화", "수", "목", "금", "토"][value.getDay()];
+  return `${month}.${String(day).padStart(2, "0")}(${weekday})`;
+}
+
+function average(values: number[]) {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+/** 최근 7일 날짜(YYYY-MM-DD) — 기준일 포함 7일, KST. */
+export function lastSevenDays(asOf: string): string[] {
+  const base = new Date(`${asOf}T12:00:00+09:00`);
+  const days: string[] = [];
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const date = new Date(base.getTime() - offset * 86_400_000);
+    days.push(
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(date),
+    );
+  }
+
+  return days;
+}
+
+/**
+ * 지점의 매출 펄스.
+ * @param input.code 지점 코드
+ * @param input.asOf 기준일(스냅샷 today)
+ * @param input.dailyRate 그 지점 커피 일평균(스냅샷 revenue.coffee.dailyRate) — 추정에만 쓴다
+ */
+export function storePulse(input: { code: string; asOf: string; dailyRate?: number | null }): StorePulse {
+  const code = input.code.toUpperCase();
+
+  if (code === "STORE_GNM") {
+    const daily = GANGNAM_DAILY.map((row) => ({ ...row, label: labelOf(row.date) }));
+    const total = GANGNAM_HOURLY.reduce((sum, value) => sum + value, 0);
+
+    return {
+      daily,
+      dailyAverage: Math.round(average(daily.map((row) => row.total))),
+      dailySource: "measured",
+      dailyNote: "기존 POS(비즐) 매출분석보고서 11/16~11/22 · 막대는 천원 단위",
+      hourly: HOUR_LABELS.map((bucket, index) => ({
+        key: bucket.key,
+        label: bucket.label,
+        range: bucket.range,
+        amount: GANGNAM_HOURLY[index],
+        share: total > 0 ? (GANGNAM_HOURLY[index] / total) * 100 : 0,
+      })),
+      hourlyDate: GANGNAM_HOURLY_DATE,
+      hourlyTotal: total,
+      hourlyNote: `기존 POS(비즐) 리포트 ${labelOf(GANGNAM_HOURLY_DATE)} 실측 · 합계 ${total.toLocaleString("ko-KR")}원`,
+    };
+  }
+
+  const rate = typeof input.dailyRate === "number" && Number.isFinite(input.dailyRate) ? input.dailyRate : 0;
+  const days = lastSevenDays(input.asOf);
+
+  const daily = days.map((date) => ({
+    date,
+    label: labelOf(date),
+    total: Math.round(rate),
+  }));
+
+  return {
+    daily,
+    dailyAverage: Math.round(rate),
+    dailySource: rate > 0 ? "estimated" : "none",
+    dailyNote:
+      rate > 0
+        ? "일별 실측이 아직 없어 커피 일평균으로 그린 값입니다(추정). 수집기가 하루씩 쌓으면 실측으로 바뀝니다."
+        : "일별 매출이 아직 수집되지 않았습니다.",
+    hourly: null,
+    hourlyDate: null,
+    hourlyTotal: null,
+    hourlyNote: "시간대 매출은 이 지점 포털에 아직 없습니다. 수집기가 시간대를 읽으면 여기에 채워집니다.",
+  };
+}
+
+/** 만원·천원 표기 — 막대 위 숫자는 짧게. */
+export function shortWon(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0";
+  if (value >= 10_000) return `${Math.round(value / 1_000).toLocaleString("ko-KR")}천`;
+  return `${Math.round(value).toLocaleString("ko-KR")}`;
+}

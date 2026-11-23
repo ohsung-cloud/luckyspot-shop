@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 
 import InternalHeader from "@/components/internal/InternalHeader";
 
+import type { StoreFixedCost } from "@/features/stores/registry-types";
+
 import { capturedLabel, won } from "./format";
 import { MONTHLY_PERIODS, monthlyForStore, type MonthlyPeriod } from "./monthly";
+import { defaultFixedCost, estimateProfit } from "./profit";
+import { storePulse } from "./trend";
 import { StoreCompare } from "./StoreCompare";
 import { StoreReport } from "./StoreReport";
 import { STORES, autoOrderHref, findStore, type StoreId } from "./stores";
@@ -29,7 +33,7 @@ const TABS: { id: Tab; label: string; sub: string; className: string }[] = [
 
 const CORE_PATTERN = /원두|토너|A4|용지/i;
 
-export function SalesReportShell() {
+export function SalesReportShell({ fixedCosts = {} }: { fixedCosts?: Record<string, StoreFixedCost> }) {
   const [tab, setTab] = useState<Tab>("gangnam");
   const [period, setPeriod] = useState<MonthlyPeriod>("2026-11");
 
@@ -43,6 +47,13 @@ export function SalesReportShell() {
 
   const store = findStore(tab === "compare" ? null : tab);
   const month = monthlyForStore(store.code, period);
+  const fixedCost = fixedCosts[store.code] ?? defaultFixedCost(store.code);
+  const profit = estimateProfit({ month, fixedCost });
+  const pulse = storePulse({
+    code: store.code,
+    asOf: store.snapshot.today,
+    dailyRate: store.snapshot.revenue.coffee.dailyRate,
+  });
   const coreAmount = store.snapshot.orders.proposals
     .filter((proposal) => CORE_PATTERN.test(proposal.material) && proposal.amount !== null)
     .reduce((sum, proposal) => sum + (proposal.amount ?? 0), 0);
@@ -119,7 +130,14 @@ export function SalesReportShell() {
         {tab === "compare" ? (
           <StoreCompare period={period} />
         ) : (
-          <StoreReport key={`${store.id}-${period}`} period={period} store={store} />
+          <StoreReport
+            key={`${store.id}-${period}`}
+            fixedCost={fixedCost}
+            period={period}
+            profit={profit}
+            pulse={pulse}
+            store={store}
+          />
         )}
       </div>
 

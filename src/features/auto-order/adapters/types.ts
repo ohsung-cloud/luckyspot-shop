@@ -9,7 +9,7 @@ export type NormalizedPatch = Partial<
 >;
 
 export type NormalizedSnapshot = {
-  source: "escalprint" | "loyalsuns";
+  source: "escalprint" | "loyalsuns" | "yupisoft" | "generic_webhook";
   capturedAt: string;
   /** KST 기준 날짜 */
   salesDate: string;

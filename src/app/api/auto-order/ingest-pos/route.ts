@@ -5,6 +5,7 @@ import {
   normalizeSnapshotEnvelope,
   type NormalizedSnapshot,
 } from "@/features/auto-order/adapters";
+import { normalizeVendorPayload } from "@/lib/vendors";
 import { buildState } from "@/features/auto-order/service";
 import {
   loadSales,
@@ -153,6 +154,16 @@ async function mergeDailyRow(
   return merged;
 }
 
+/** 벤더 원본만 온 경우(예: consumables+sales)를 알아본다. */
+function looksLikeVendorPayload(data: Record<string, unknown>) {
+  return (
+    Array.isArray(data.consumables) ||
+    Array.isArray(data.supplies) ||
+    typeof data.yupisoft === "object" ||
+    (typeof data.device === "object" && typeof data.sales === "object")
+  );
+}
+
 export async function POST(request: Request) {
   const limited = takeRateLimit(request, "auto-order-ingest", 60, 60_000);
 
@@ -187,17 +198,32 @@ export async function POST(request: Request) {
   /* ------------------------------------------------------------------ */
   const envelope = detectSnapshotEnvelope(data);
 
-  if (envelope) {
-    let snapshots: NormalizedSnapshot[];
+  // 멀티벤더 — 유피소프트·타사 공용(표준 JSON 웹훅)은 벤더 어댑터가 표준 스냅샷으로 바꾼다.
+  const vendorPayload =
+    !envelope && (typeof data.vendor === "string" || looksLikeVendorPayload(data)) ? data : null;
+  const vendorNormalized = vendorPayload
+    ? normalizeVendorPayload({
+        vendor: typeof data.vendor === "string" ? data.vendor : null,
+        storeCode,
+        raw: data,
+      })
+    : null;
 
-    try {
-      snapshots = normalizeSnapshotEnvelope(envelope, { storeCode });
-    } catch {
-      return jsonError("포털 스냅샷 형식을 읽지 못했습니다. snapshot 필드 구조를 확인해 주세요.", 400);
+  if (envelope || vendorNormalized?.snapshot) {
+    let snapshots: NormalizedSnapshot[] = [];
+
+    if (envelope) {
+      try {
+        snapshots = normalizeSnapshotEnvelope(envelope, { storeCode });
+      } catch {
+        return jsonError("포털 스냅샷 형식을 읽지 못했습니다. snapshot 필드 구조를 확인해 주세요.", 400);
+      }
     }
 
+    if (vendorNormalized?.snapshot) snapshots = [vendorNormalized.snapshot];
+
     if (snapshots.length === 0) {
-      return jsonError("snapshot 안에 escalprint 또는 loyalsuns 값이 필요합니다.", 400);
+      return jsonError("snapshot 안에 escalprint · loyalsuns · yupisoft · consumables 값이 필요합니다.", 400);
     }
 
     const notes: string[] = [];
@@ -209,8 +235,7 @@ export async function POST(request: Request) {
       stockOverrides: {},
     };
 
-    const sourceLabel =
-      snapshots.length > 1 ? "both" : (snapshots[0].source as "escalprint" | "loyalsuns");
+    const sourceLabel = snapshots.length > 1 ? "both" : snapshots[0].source;
 
     for (const snapshot of snapshots) {
       notes.push(...snapshot.notes);
@@ -304,7 +329,11 @@ export async function POST(request: Request) {
             ? "에스칼프린트·로얄선즈 실측을 함께 반영했습니다."
             : sourceLabel === "escalprint"
               ? "에스칼프린트 장비 실측을 반영했습니다."
-              : "로얄선즈 판매 실측을 반영했습니다.",
+              : sourceLabel === "yupisoft"
+                ? "유피소프트 장비·매출 실측을 반영했습니다."
+                : sourceLabel === "generic_webhook"
+                  ? "타사 복합기 표준 웹훅을 반영했습니다."
+                  : "로얄선즈 판매 실측을 반영했습니다.",
         snapshot: snapshotSummary,
       },
       { headers: { "Cache-Control": "no-store" } },

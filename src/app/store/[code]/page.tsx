@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import InternalHeader from "@/components/internal/InternalHeader";
+import StorePinLock from "@/components/store-admin/StorePinLock";
 import StoreAdminView, {
   type StoreAdminHistoryEntry,
   type StoreAdminSnapshot,
 } from "@/components/store-admin/StoreAdminView";
 import { listApprovals } from "@/features/auto-order/store";
 import { monthlyForStore } from "@/features/sales-report/monthly";
+import { estimateProfit } from "@/features/sales-report/profit";
+import { storePulse } from "@/features/sales-report/trend";
 import { findStoreByCode } from "@/features/sales-report/stores";
+import { DEMO_PIN, readPinCookie, verifyPinToken } from "@/features/stores/pin";
 import { findStoreRecord, verifyAdminAccess } from "@/features/stores/registry";
 
 /**
@@ -47,9 +52,30 @@ export default async function StoreAdminPage({ params, searchParams }: PageProps
 
   const query = await searchParams;
   const keyParam = Array.isArray(query.key) ? query.key[0] : query.key;
-  const unlocked = await verifyAdminAccess(record, keyParam);
+  const lockParam = Array.isArray(query.lock) ? query.lock[0] : query.lock;
 
-  if (!unlocked) {
+  const keyUnlocked = await verifyAdminAccess(record, keyParam);
+
+  // 4자리 간편 PIN — 서명 쿠키(30일)가 있으면 ?key 없이도 열린다(1초 재접속).
+  const cookieHeader = (await cookies()).toString();
+  const pinUnlocked = verifyPinToken(record.code, readPinCookie(cookieHeader, record.code));
+
+  // ?lock=1 은 잠금 화면 미리보기(점주에게 보여 줄 때).
+  const needsPin = (record.pinEnabled && !keyUnlocked && !pinUnlocked) || lockParam === "1";
+
+  if (needsPin) {
+    return (
+      <StorePinLock
+        code={record.code}
+        demoPin={record.hasAdminCode ? null : DEMO_PIN}
+        label={record.label}
+        shortLabel={record.shortLabel}
+        wrongKey={Boolean(keyParam)}
+      />
+    );
+  }
+
+  if (!keyUnlocked && !pinUnlocked) {
     return (
       <main className="min-h-screen bg-[#F4F5F6]">
         <InternalHeader subtitle="점주 어드민" action={{ href: "/admin/stores", label: "본사" }} />
@@ -83,6 +109,15 @@ export default async function StoreAdminPage({ params, searchParams }: PageProps
             {keyParam ? (
               <p className="mt-3 rounded-[12px] bg-[#FFEBEE] px-3 py-2 text-[12px] font-semibold text-[#B3261E]">
                 코드가 맞지 않습니다. 본사에 재발급을 요청해 주세요.
+              </p>
+            ) : null}
+
+            {record.hasPin ? (
+              <p className="mt-3 text-center text-[11.5px] text-[#6B746D]">
+                이미 PIN을 받았다면{" "}
+                <a className="font-bold text-[#0B5C2A] underline" href={`/store/${record.code}?lock=1`}>
+                  4자리 PIN으로 열기
+                </a>
               </p>
             ) : null}
           </div>
@@ -158,11 +193,22 @@ export default async function StoreAdminPage({ params, searchParams }: PageProps
 
       <div className="mx-auto w-full max-w-[760px] px-4 py-5 sm:px-6 sm:py-7">
         <StoreAdminView
+          calibrations={record.calibrations}
+          fixedCost={record.monthlyFixedCost}
           history={history}
           monthly={{
             current: monthlyForStore(record.code, "2026-11"),
             previous: monthlyForStore(record.code, "2026-10"),
           }}
+          profit={{
+            current: estimateProfit({ month: monthlyForStore(record.code, "2026-11"), fixedCost: record.monthlyFixedCost }),
+            previous: estimateProfit({ month: monthlyForStore(record.code, "2026-10"), fixedCost: record.monthlyFixedCost }),
+          }}
+          pulse={storePulse({
+            code: record.code,
+            asOf: snapshotData?.today ?? "2026-11-23",
+            dailyRate: snapshotData?.revenue.coffee.dailyRate ?? null,
+          })}
           snapshot={snapshot}
           store={{
             code: record.code,
@@ -176,7 +222,10 @@ export default async function StoreAdminPage({ params, searchParams }: PageProps
             coffeeEntityName: record.coffeeEntity.name,
             printEntityName: record.printEntity.name,
             hasAdminCode: record.hasAdminCode,
+            pinEnabled: record.pinEnabled,
+            printVendor: record.printVendor,
           }}
+          todayRevenue={snapshotData?.revenue.coffee.today ?? null}
         />
       </div>
     </main>
