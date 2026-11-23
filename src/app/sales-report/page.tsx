@@ -232,7 +232,7 @@ export default function SalesReportPage() {
                   하루 {won(data.revenue.blended.dailyRate)} · 커피 + 프린트
                 </p>
               </div>
-              <span className="rounded-full bg-[#F4F5F6] px-2.5 py-1 text-[11px] font-semibold text-[#6B746D]">
+              <span className="hidden shrink-0 rounded-full bg-[#F4F5F6] px-2.5 py-1 text-[11px] font-semibold text-[#6B746D] sm:inline-flex">
                 커피 1,059,700 + 프린트 500,200
               </span>
             </div>
@@ -341,7 +341,7 @@ export default function SalesReportPage() {
             caption={`바닥 ${emptyStock.length} · 주의 ${watchStock.length}`}
           >
             <ul className="mt-3 divide-y divide-[#F4F5F6]">
-              {stock.map((item) => {
+              {stock.filter((item) => item.status !== "ok").map((item) => {
                 const meta = STATUS_META[item.status];
                 const meter = Math.max(2, Math.min(100, item.status === "empty" ? 0 : item.pct));
 
@@ -378,7 +378,28 @@ export default function SalesReportPage() {
                   </li>
                 );
               })}
+              {stock.filter((item) => item.status !== "ok").length === 0 ? (
+                <li className="py-3 text-[12.5px] text-[#6B746D]">바닥·주의 품목이 없습니다.</li>
+              ) : null}
             </ul>
+
+            <details className="mt-2 rounded-[14px] bg-[#F8F9F9] px-3 py-2.5">
+              <summary className="cursor-pointer text-[12px] font-semibold text-[#3B4740]">
+                정상 {stock.filter((item) => item.status === "ok").length}개 보기
+              </summary>
+              <ul className="mt-1 divide-y divide-[#EDEFEE]">
+                {stock
+                  .filter((item) => item.status === "ok")
+                  .map((item) => (
+                    <li key={`ok-${item.material}-${item.slot}`} className="flex items-center gap-2 py-2">
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] text-[#3B4740]">{item.material}</span>
+                      <span className="w-[70px] shrink-0 text-right text-[11.5px] tabular-nums text-[#6B746D]">
+                        {item.daysLeft !== null ? days(item.daysLeft) : item.pct > 200 ? "충분" : `${Math.round(item.pct)}%`}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </details>
           </Section>
 
           {/* ⑥ 이상 징후 */}
@@ -474,7 +495,7 @@ export default function SalesReportPage() {
                               {proposal.material}
                               {proposal.packLabel ? (
                                 <span className="ml-1 text-[11px] font-normal text-[#98A29B]">
-                                  {proposal.packLabel}
+                                  {proposal.packLabel.replace(/^시럽\s*/, "")}
                                 </span>
                               ) : null}
                             </span>
