@@ -47,11 +47,19 @@ function days(value: number | null) {
   return `${value.toFixed(1)}일`;
 }
 
+/** 수집 시각을 KST로 표시한다(서버가 UTC여도 12:10으로 보이게). */
 function capturedLabel(iso: string) {
-  const date = new Date(iso);
-  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${String(date.getHours()).padStart(2, "0")}:${String(
-    date.getMinutes(),
-  ).padStart(2, "0")}`;
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(iso));
+
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("month")}월 ${get("day")}일 ${get("hour")}:${get("minute")}`;
 }
 
 const STATUS_META = {
@@ -342,13 +350,21 @@ export default function SalesReportPage() {
                     <div className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-[#0F1412]">
                         {item.material}
-                        <span className="ml-1.5 text-[10.5px] font-normal text-[#98A29B]">{item.slot}</span>
+                        {item.slot.replace(/\s/g, "") !== item.material.replace(/\s/g, "") ? (
+                          <span className="ml-1.5 text-[10.5px] font-normal text-[#98A29B]">{item.slot}</span>
+                        ) : null}
                       </span>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold ${meta.className}`}>
                         {meta.label}
                       </span>
                       <span className="w-[64px] shrink-0 text-right text-[11.5px] font-semibold tabular-nums text-[#3B4740]">
-                        {item.status === "empty" ? "0%" : item.daysLeft === null ? `${Math.round(item.pct)}%` : days(item.daysLeft)}
+                        {item.status === "empty"
+                          ? "0%"
+                          : item.daysLeft !== null
+                            ? days(item.daysLeft)
+                            : item.pct > 200
+                              ? "충분"
+                              : `${Math.round(item.pct)}%`}
                       </span>
                     </div>
                     <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#EFF1F0]">
