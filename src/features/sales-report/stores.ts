@@ -54,6 +54,12 @@ export function findStore(id: string | null | undefined): StoreEntry {
   return STORES.find((store) => store.id === id) ?? STORES[0];
 }
 
+export function findStoreByCode(code: string | null | undefined): StoreEntry | null {
+  if (!code) return null;
+  const key = code.trim().toUpperCase();
+  return STORES.find((store) => store.code.toUpperCase() === key) ?? null;
+}
+
 export function autoOrderHref(store: StoreEntry) {
   return `/auto-order?storeCode=${store.code}`;
 }

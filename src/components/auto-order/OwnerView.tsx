@@ -2,6 +2,7 @@
 
 import type { ApprovalView, ProposalListResponse } from "@/features/auto-order/types";
 
+import CoreStockCards from "./CoreStockCards";
 import SplitSlips from "./SplitSlips";
 import { clock, dateLabel, days, packUnit, pct, remainingTone, shortEvidence, won } from "./format";
 
@@ -58,6 +59,13 @@ export default function OwnerView({
   const pending = state.proposals.filter(
     (proposal) => proposal.status === "pending_approval" || proposal.status === "grace_cancel_window",
   );
+  const CORE_ORDER = ["bean-10kg", "toner-black", "toner-color", "a4-paper"];
+  const sortedPending = [...pending].sort((a, b) => {
+    const aIndex = CORE_ORDER.indexOf(a.sku);
+    const bIndex = CORE_ORDER.indexOf(b.sku);
+    return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex) || a.remainingDays - b.remainingDays;
+  });
+  const coreCount = pending.filter((proposal) => CORE_ORDER.includes(proposal.sku)).length;
   const grace = approval?.status === "grace_cancel_window";
 
   return (
@@ -76,6 +84,20 @@ export default function OwnerView({
         </p>
       </header>
 
+      <section className="rounded-[22px] border-2 border-[#0F1412] bg-white p-3.5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[13px] font-bold text-[#0F1412]">지금 채울 3가지</h2>
+          <span className="text-[10.5px] text-[#6B746D]">원두 · 토너 · 용지</span>
+        </div>
+        <div className="mt-2">
+          <CoreStockCards
+            forecasts={state.run.forecasts}
+            telemetry={state.telemetry}
+            thresholds={{ beanDays: 4, tonerDays: 5, paperDays: 4 }}
+          />
+        </div>
+      </section>
+
       {state.dataQuality.sparse ? (
         <p className="rounded-[14px] bg-[#FFF9EA] px-4 py-3 text-[12px] leading-[1.6] text-[#8A5A00]">
           실측 {state.dataQuality.days}일치입니다. 7일 이상 쌓이면 예측이 안정됩니다.
@@ -89,28 +111,17 @@ export default function OwnerView({
       ) : null}
 
       {state.hold ? (
-        <section className="rounded-[24px] border-2 border-[#E0A800] bg-[#FFF9EA] p-5">
-          <p className="text-[13px] font-bold text-[#8A5A00]">자동발주 보류 · 이상 감지</p>
-          <h2 className="mt-1 text-[20px] font-bold text-[#0F1412]">{state.anomalies[0]?.title}</h2>
-          <p className="mt-2 text-[14px] leading-[1.6] text-[#3B4740]">{state.anomalies[0]?.message}</p>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-[14px] bg-white px-3 py-3 text-center">
-              <p className="text-[11.5px] text-[#6B746D]">음료 판매</p>
-              <p className="mt-1 text-[20px] font-bold tabular-nums text-[#0F1412]">
-                {pct(state.run.cafeRecentRatio - 1)}
-              </p>
-            </div>
-            <div className="rounded-[14px] bg-white px-3 py-3 text-center">
-              <p className="text-[11.5px] text-[#6B746D]">프린트 출력</p>
-              <p className="mt-1 text-[20px] font-bold tabular-nums text-[#0F1412]">
-                {pct(state.run.printRecentRatio - 1)}
-              </p>
-            </div>
-          </div>
-          <p className="mt-3 text-[12px] text-[#8A5A00]">
-            소모품이 덜 나간 것이 아니라 기기·결제 신호일 수 있어, 승인 버튼을 잠갔습니다.
+        <details className="rounded-[14px] border border-[#E6E9E7] bg-white px-3.5 py-2.5">
+          <summary className="flex cursor-pointer items-center justify-between text-[12px] font-bold text-[#3B4740]">
+            시스템 상태 · 알림 보기
+            <span className="rounded-full bg-[#FFF6E0] px-2 py-0.5 text-[9.5px] font-bold text-[#8A5A00]">보류</span>
+          </summary>
+          <p className="mt-1.5 text-[12px] font-bold text-[#8A5A00]">{state.anomalies[0]?.title}</p>
+          <p className="mt-0.5 text-[11px] leading-[1.55] text-[#3B4740]">{state.anomalies[0]?.message}</p>
+          <p className="mt-1 text-[10.5px] tabular-nums text-[#8A5A00]">
+            음료 {pct(state.run.cafeRecentRatio - 1)} · 프린트 {pct(state.run.printRecentRatio - 1)}
           </p>
-        </section>
+        </details>
       ) : null}
 
       {approval && grace ? (
@@ -191,7 +202,7 @@ export default function OwnerView({
           </div>
 
           <ul className="divide-y divide-[#EFF1F0]">
-            {pending.map((proposal) => (
+            {sortedPending.slice(0, 4).map((proposal) => (
               <li key={proposal.id} className="flex items-start gap-3 px-5 py-3.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[16.5px] font-bold text-[#0F1412]">{proposal.name}</p>
@@ -208,6 +219,11 @@ export default function OwnerView({
                 </div>
               </li>
             ))}
+            {pending.length > 4 ? (
+              <li className="px-5 py-2.5 text-[11.5px] text-[#6B746D]">
+                원두·토너·용지 외 {pending.length - 4}종은 ‘발주 승인’ 상세에 있습니다
+              </li>
+            ) : null}
           </ul>
 
         </section>
@@ -219,6 +235,7 @@ export default function OwnerView({
             <div className="flex items-baseline justify-between">
               <span className="text-[13px] font-semibold text-[#3B4740]">
                 총 <span className="text-[17px] font-bold tabular-nums text-[#0F1412]">{won(state.totals.totalAmount)}</span>
+                <span className="ml-1.5 text-[10.5px] text-[#6B746D]">3종 {coreCount}개 포함</span>
               </span>
               <span className="text-[11.5px] text-[#6B746D]">누르면 5분 동안 취소할 수 있어요</span>
             </div>

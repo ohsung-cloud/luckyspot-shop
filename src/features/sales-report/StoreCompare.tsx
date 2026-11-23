@@ -1,4 +1,5 @@
 import { days, manwon, pct, won } from "./format";
+import { formatWon, monthlyForStore, type MonthlyPeriod } from "./monthly";
 import type { SalesReportSnapshot } from "./types";
 import { STORES } from "./stores";
 
@@ -9,7 +10,8 @@ import { STORES } from "./stores";
  * 같은 항목끼리 좌우로 비교만 한다(사용자 지시: 합산 금지).
  */
 
-function metrics(snapshot: SalesReportSnapshot) {
+function metrics(snapshot: SalesReportSnapshot, period: MonthlyPeriod) {
+  const month = monthlyForStore(snapshot.storeCode, period);
   const bean = snapshot.bean;
   const stockEmpty = snapshot.stock.filter((item) => item.status === "empty");
   const toner = [
@@ -21,8 +23,16 @@ function metrics(snapshot: SalesReportSnapshot) {
 
   return [
     { key: "커피 오늘", value: won(snapshot.revenue.coffee.today), hint: `${bean.coffeeDrinks}잔 · 어제 ${won(snapshot.revenue.coffee.yesterday)}` },
-    { key: "커피 이달", value: won(snapshot.revenue.coffee.month), hint: `일평균 ${won(snapshot.revenue.coffee.dailyRate)}` },
-    { key: "프린트 실매출", value: won(snapshot.revenue.print.total), hint: `${snapshot.revenue.print.month} · 전월 ${pct(snapshot.revenue.print.trendPct)}` },
+    {
+      key: `커피 ${month?.monthLabel ?? "월"}`,
+      value: formatWon(month?.coffee.amount ?? null),
+      hint: month ? `${month.coffee.range} · ${month.coffee.orders ? `${month.coffee.orders}건` : month.coffee.status === "live" ? "실시간" : "미수집"}` : "수집 전",
+    },
+    {
+      key: `프린트 ${month?.monthLabel ?? "월"}`,
+      value: formatWon(month?.print.amount ?? null),
+      hint: month ? `${month.print.range} · ${month.print.status === "pending" ? "26일 정산 전" : month.print.status === "missing" ? "미수집" : "정산 확정"}` : "수집 전",
+    },
     { key: "프린트 누적", value: `${snapshot.print.cumulativePrintCount.toLocaleString("ko-KR")}매`, hint: `토너 평균 ${snapshot.print.tonerAvgPct}%` },
     { key: "토너 최저", value: `${Math.min(...toner)}%`, hint: `K ${snapshot.print.toner.k} · C ${snapshot.print.toner.c} · M ${snapshot.print.toner.m} · Y ${snapshot.print.toner.y}` },
     { key: "용지", value: `Tray1 ${snapshot.print.paper.tray1}%`, hint: `Tray2 ${snapshot.print.paper.tray2}%` },
@@ -33,8 +43,8 @@ function metrics(snapshot: SalesReportSnapshot) {
   ];
 }
 
-export function StoreCompare() {
-  const columns = STORES.map((store) => ({ store, rows: metrics(store.snapshot) }));
+export function StoreCompare({ period }: { period: MonthlyPeriod }) {
+  const columns = STORES.map((store) => ({ store, rows: metrics(store.snapshot, period) }));
   const keys = columns[0].rows.map((row) => row.key);
 
   return (

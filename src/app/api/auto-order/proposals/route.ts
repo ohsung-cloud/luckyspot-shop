@@ -31,8 +31,11 @@ function storeParams(url: URL) {
   const storeCode = STORE_CODE.test(raw.trim()) ? raw.trim().toUpperCase() : undefined;
   const scenarioParam = url.searchParams.get("scenario");
   const scenario: DemoScenario | undefined = isDemoScenario(scenarioParam) ? scenarioParam : undefined;
+  // 점주 어드민이 매장명을 넘기면 그 이름으로 분기 전표를 만든다(없으면 데모 이름).
+  const labelParam = (url.searchParams.get("storeLabel") ?? "").trim().slice(0, 40);
+  const storeLabel = labelParam.length >= 2 ? labelParam : undefined;
 
-  return { storeCode, scenario };
+  return { storeCode, scenario, storeLabel };
 }
 
 function approvalView(payload: GracePayload, token: string, now = new Date()) {
@@ -81,8 +84,8 @@ export async function GET(request: Request) {
     return jsonError("요청이 너무 많습니다.", 429, { retryAfter: limited.retryAfter });
   }
 
-  const { storeCode, scenario } = storeParams(new URL(request.url));
-  const built = await buildState({ storeCode, scenario });
+  const { storeCode, scenario, storeLabel } = storeParams(new URL(request.url));
+  const built = await buildState({ storeCode, scenario, storeLabel });
 
   return NextResponse.json(built.state, { headers: { "Cache-Control": "no-store" } });
 }

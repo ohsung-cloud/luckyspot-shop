@@ -35,7 +35,7 @@ type ActionResponse = {
 };
 
 export default function AutoOrderClient() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("owner");
   const [state, setState] = useState<ProposalListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
