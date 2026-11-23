@@ -91,7 +91,7 @@ function sanitizeRows(input: unknown, fallbackStoreCode: string): PosDailySales[
   return rows;
 }
 
-const NUMERIC_KEYS = ["cafeRevenue", "drinksSold", "printRevenue", "printSheets", "colorSheets"] as const;
+const NUMERIC_KEYS = ["cafeRevenue", "drinksSold", "beanGrams", "printRevenue", "printSheets", "colorSheets"] as const;
 
 /**
  * 그날 행이 이미 있으면 값만 덮어쓴다.
@@ -235,7 +235,9 @@ export async function POST(request: Request) {
 
       const reported = {
         cafe:
-          snapshot.patch.drinksSold !== undefined || snapshot.patch.cafeRevenue !== undefined,
+          snapshot.patch.drinksSold !== undefined ||
+          snapshot.patch.cafeRevenue !== undefined ||
+          snapshot.patch.beanGrams !== undefined,
         print:
           snapshot.patch.printSheets !== undefined ||
           snapshot.patch.printRevenue !== undefined ||

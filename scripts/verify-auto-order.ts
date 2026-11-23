@@ -24,6 +24,7 @@ import type { PosDailySales } from "../src/features/auto-order/types";
 import { normalizeEscalprintSnapshot } from "../src/features/auto-order/adapters/escalprint";
 import { normalizeLoyalsunsSnapshot } from "../src/features/auto-order/adapters/loyalsuns";
 import { sheetsFromCounters, stockOverridesFromTelemetry } from "../src/features/auto-order/telemetry";
+import { beanGramsForBestsellers, beanGramsPerDrink } from "../src/features/auto-order/menu";
 import { getProductById } from "../src/data/products";
 
 let passed = 0;
@@ -190,7 +191,7 @@ section("5. 잔여일 · 발주 수량 · 상한");
 const bean = surgeRun.forecasts.find((item) => item.sku === "bean-10kg")!;
 check("잔여일 = 현재고 ÷ 일 소진", near(bean.remainingDays, 3300 / bean.predictedDailyConsumption, 0.06), `${bean.remainingDays}일`);
 check("리드타임 안 진입 → 제안 대상", bean.due === true);
-check("수량 = ceil((12일×소진 − 현재고) ÷ 10kg)", bean.suggestedQty === 2, `${bean.suggestedQty}박스`);
+check("수량 = ceil((12일×소진 − 현재고) ÷ 10kg)", bean.suggestedQty === 1, `${bean.suggestedQty}박스`);
 check("상한 3박스 이내", bean.suggestedQty <= 3);
 
 const colorToner = surgeRun.forecasts.find((item) => item.sku === "toner-color")!;
@@ -313,7 +314,28 @@ check(
 );
 
 /* ------------------------------------------------------------------ */
-section("9. 포털 실측 어댑터 (에스칼프린트 · 로얄선즈)");
+section("9. 원두 소모 계수 (9g · 15g · 7g · 7g)");
+
+check("아메리카노 HOT 9g", beanGramsPerDrink("아메리카노 HOT") === 9);
+check("아메리카노 ICED 9g", beanGramsPerDrink("아메리카노 ICED") === 9);
+check("투샷 아메리카노 15g", beanGramsPerDrink("투샷 아메리카노 HOT") === 15);
+check("카페라떼 7g", beanGramsPerDrink("카페라떼 ICE") === 7);
+check("아샷추 7g", beanGramsPerDrink("아샷추") === 7);
+check("커피 아닌 음료 0g", beanGramsPerDrink("바닐라밀크티") === 0);
+check("투샷을 아메리카노보다 먼저 판정", beanGramsPerDrink("더블샷 아메리카노") === 15);
+
+const beanMix = beanGramsForBestsellers([
+  { name: "아메리카노 HOT", quantity: 180 },
+  { name: "투샷 아메리카노 ICED", quantity: 40 },
+  { name: "카페라떼 HOT", quantity: 50 },
+  { name: "아샷추", quantity: 20 },
+  { name: "바닐라밀크티", quantity: 30 },
+]);
+check("메뉴 구성 원두 합 2,710g", beanMix.grams === 2710, `${beanMix.grams}g`);
+check("커피 잔수 290 · 그 외 30", beanMix.coffeeDrinks === 290 && beanMix.otherDrinks === 30);
+
+/* ------------------------------------------------------------------ */
+section("10. 포털 실측 어댑터 (에스칼프린트 · 로얄선즈)");
 
 const capturedAt = "2026-11-23T03:10:00.000Z"; // KST 12:10
 
@@ -355,6 +377,11 @@ const loyalsuns = normalizeLoyalsunsSnapshot(
 );
 
 check("음료 잔수 = 베스트셀러 합", loyalsuns.patch.drinksSold === 372, String(loyalsuns.patch.drinksSold));
+check(
+  "원두 = 커피 330잔 × 9g (밀크티 42잔 제외)",
+  loyalsuns.patch.beanGrams === 2970,
+  String(loyalsuns.patch.beanGrams),
+);
 check("카페 매출 반영", loyalsuns.patch.cafeRevenue === 966_000);
 check("금일·어제·이달 매출 스냅샷 3건", loyalsuns.revenues.length === 3, String(loyalsuns.revenues.length));
 check("기계 알림 보존", loyalsuns.machine?.alerts[0] === "원두 부족", loyalsuns.machine?.alerts.join(","));

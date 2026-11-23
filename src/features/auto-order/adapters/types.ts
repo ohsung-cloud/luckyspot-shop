@@ -2,7 +2,10 @@ import type { BeverageLine, DeviceTelemetry, PosDailySales, RevenueSnapshot } fr
 
 /** 포털 스냅샷을 일일 마감 행으로 바꾼 결과(부분 패치). */
 export type NormalizedPatch = Partial<
-  Pick<PosDailySales, "cafeRevenue" | "drinksSold" | "printRevenue" | "printSheets" | "colorSheets">
+  Pick<
+    PosDailySales,
+    "cafeRevenue" | "drinksSold" | "beanGrams" | "printRevenue" | "printSheets" | "colorSheets"
+  >
 >;
 
 export type NormalizedSnapshot = {

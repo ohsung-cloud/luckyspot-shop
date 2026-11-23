@@ -6,6 +6,7 @@ import {
   RECENT_DAYS,
   resolveRules,
 } from "./rules";
+import { beanGramsForDrinks } from "./menu";
 import type {
   AnomalyFlag,
   DataSource,
@@ -42,6 +43,7 @@ const DECAY = 0.9;
 
 const DRIVER_VALUE: Record<DriverField, (row: PosDailySales) => number> = {
   drinks: (row) => row.drinksSold,
+  beanGrams: (row) => row.beanGrams ?? beanGramsForDrinks(row.drinksSold),
   sheets: (row) => row.printSheets,
   colorSheets: (row) => row.colorSheets,
 };
@@ -190,25 +192,31 @@ export function forecastStore(input: ForecastInput): ForecastRun {
 
   const windowRows = allRows.slice(-FORECAST_WINDOW_DAYS);
   const drinks = cafeRows.slice(-FORECAST_WINDOW_DAYS).map((row) => row.drinksSold);
+  const beanGrams = cafeRows
+    .slice(-FORECAST_WINDOW_DAYS)
+    .map((row) => (typeof row.beanGrams === "number" ? row.beanGrams : beanGramsForDrinks(row.drinksSold)));
   const sheets = printRows.slice(-FORECAST_WINDOW_DAYS).map((row) => row.printSheets);
   const colorSheets = printRows.slice(-FORECAST_WINDOW_DAYS).map((row) => row.colorSheets);
 
-  const seriesByDriver: Record<DriverField, number[]> = { drinks, sheets, colorSheets };
+  const seriesByDriver: Record<DriverField, number[]> = { drinks, beanGrams, sheets, colorSheets };
 
   const driverWindow: Record<DriverField, number[]> = {
     drinks,
+    beanGrams,
     sheets,
     colorSheets,
   };
 
   const baseByDriver: Record<DriverField, number> = {
     drinks: weightedMean(driverWindow.drinks),
+    beanGrams: weightedMean(driverWindow.beanGrams),
     sheets: weightedMean(driverWindow.sheets),
     colorSheets: weightedMean(driverWindow.colorSheets),
   };
 
   const ratioByDriver: Record<DriverField, number> = {
     drinks: recentRatio(seriesByDriver.drinks),
+    beanGrams: recentRatio(seriesByDriver.beanGrams),
     sheets: recentRatio(seriesByDriver.sheets),
     colorSheets: recentRatio(seriesByDriver.colorSheets),
   };

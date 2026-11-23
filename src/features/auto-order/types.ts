@@ -15,7 +15,7 @@ export type OwnerEntityType = "franchisee_cafe" | "hq_print";
 export type DomainKey = "cafe" | "print";
 
 /** POS 일일 마감표에서 소진량을 역산할 때 쓰는 계수 필드. */
-export type DriverField = "drinks" | "sheets" | "colorSheets";
+export type DriverField = "drinks" | "beanGrams" | "sheets" | "colorSheets";
 
 /** 재고·소모 단위. g(원두·토너), 개(컵·리드), 장(냅킨), 매(용지). */
 export type StockUnit = "g" | "개" | "장" | "매";
@@ -44,6 +44,11 @@ export type PosDailySales = {
   printRevenue: number;
   printSheets: number;
   colorSheets: number;
+  /**
+   * 그날 원두 사용량(g) — 베스트셀러 메뉴 구성으로 계산한 실측값.
+   * 없으면 drinksSold × 기본 블렌드(9.2g)로 대체한다.
+   */
+  beanGrams?: number;
   /**
    * 그날 그 도메인 값이 실제로 보고되었는가.
    * 포털 두 곳이 따로 들어오면 한쪽만 있는 날이 생기는데, 없는 쪽을 0으로 읽으면

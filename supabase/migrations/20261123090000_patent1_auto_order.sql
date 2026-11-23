@@ -69,6 +69,9 @@ create table if not exists public.pos_daily_sales (
   print_revenue integer     not null default 0 check (print_revenue >= 0),
   print_sheets  integer     not null default 0 check (print_sheets >= 0),
   color_sheets  integer     not null default 0 check (color_sheets >= 0),
+  -- 그날 원두 사용량(g) — 베스트셀러 메뉴 구성(9g/15g/7g/7g)으로 계산한 실측값.
+  -- 없으면 drinks_sold × 기본 블렌드(9.2g)로 대체한다.
+  bean_grams    numeric(12,1),
   -- 'manual' | 'auto-order-ingest' | 'pos-api' 등 입력 경로
   -- 그날 그 도메인 값이 실제로 보고되었는가. 한쪽 포털만 들어온 날을 0(=급감)으로 읽지 않기 위한 플래그.
   cafe_reported  boolean     not null default true,
@@ -80,6 +83,7 @@ create table if not exists public.pos_daily_sales (
 
 -- 지점·날짜 1건. ON CONFLICT (store_code, sales_date) 업서트가 이 인덱스를 쓴다.
 alter table public.pos_daily_sales
+  add column if not exists bean_grams     numeric(12,1),
   add column if not exists cafe_reported  boolean not null default true,
   add column if not exists print_reported boolean not null default true;
 
@@ -106,6 +110,7 @@ comment on column public.pos_daily_sales.print_sheets is
 --   cross_domain      : 교차 보정에 쓰는 반대편 도메인
 --   cross_domain_weight : 교차 상관계수 w (0~1). 엔진은 ±40%까지만 반영한다.
 --   consumption_per_driver_unit : 1잔당 g, 1매당 g/개 같은 단위 환산계수
+--                                 (원두는 driver_field='beanGrams', 계수 1 — 메뉴별 9/15/7/7g 합산)
 --   pack_size / pack_label      : 발주 1단위에 들어 있는 소모 단위
 --   max_order_qty               : 1회 자동발주 상한(초과 시 보류·재승인)
 -- ----------------------------------------------------------------------------
@@ -117,11 +122,11 @@ create table if not exists public.consumable_bom_rules (
   primary_domain             text          not null
                                check (primary_domain in ('cafe', 'print')),
   driver_field               text          not null
-                               check (driver_field in ('drinks', 'sheets', 'colorSheets')),
+                               check (driver_field in ('drinks', 'beanGrams', 'sheets', 'colorSheets')),
   cross_domain               text          not null
                                check (cross_domain in ('cafe', 'print')),
   cross_driver_field         text          not null
-                               check (cross_driver_field in ('drinks', 'sheets', 'colorSheets')),
+                               check (cross_driver_field in ('drinks', 'beanGrams', 'sheets', 'colorSheets')),
   cross_domain_weight        numeric(4,3)  not null default 0
                                check (cross_domain_weight >= 0 and cross_domain_weight <= 1),
   consumption_per_driver_unit numeric(12,4) not null
@@ -161,8 +166,8 @@ insert into public.consumable_bom_rules (
   consumption_per_driver_unit, stock_unit, pack_size, pack_label,
   lead_time_days, safety_stock_days, max_order_qty, stock_on_hand, supplier, unit_price
 ) values
-  ('bean-10kg', '제이웨이브 레귤러핏 원두 1박스', 'franchisee_cafe', 'cafe', 'drinks',
-   'print', 'sheets', 0.120, 12.5000, 'g', 10000, '1박스(10kg)',
+  ('bean-10kg', '제이웨이브 레귤러핏 원두 1박스', 'franchisee_cafe', 'cafe', 'beanGrams',
+   'print', 'sheets', 0.120, 1.0000, 'g', 10000, '1박스(10kg)',
    2, 3, 3, 3300, '제이웨이브', 200000),
   ('cup-plastic-16', '16온즈 플라스틱컵 92파이', 'franchisee_cafe', 'cafe', 'drinks',
    'print', 'sheets', 0.280, 0.5500, '개', 1000, '1박스(1,000개)',

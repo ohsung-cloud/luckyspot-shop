@@ -115,6 +115,7 @@ function rowToSales(row: Record<string, unknown>): PosDailySales | null {
     printRevenue: number(row.print_revenue),
     printSheets: number(row.print_sheets),
     colorSheets: number(row.color_sheets),
+    beanGrams: typeof row.bean_grams === "number" ? row.bean_grams : undefined,
     cafeReported: row.cafe_reported !== false,
     printReported: row.print_reported !== false,
   };
@@ -137,7 +138,7 @@ export async function loadSales(
   }
 
   const response = await supabaseRequest(
-    `pos_daily_sales?select=store_code,sales_date,cafe_revenue,drinks_sold,print_revenue,print_sheets,color_sheets,cafe_reported,print_reported&store_code=eq.${encodeURIComponent(
+    `pos_daily_sales?select=store_code,sales_date,cafe_revenue,drinks_sold,bean_grams,print_revenue,print_sheets,color_sheets,cafe_reported,print_reported&store_code=eq.${encodeURIComponent(
       key,
     )}&order=sales_date.desc&limit=28`,
   );
@@ -190,6 +191,7 @@ export async function saveSales(rows: PosDailySales[]): Promise<void> {
     print_revenue: Math.round(row.printRevenue),
     print_sheets: Math.round(row.printSheets),
     color_sheets: Math.round(row.colorSheets),
+    bean_grams: typeof row.beanGrams === "number" ? Math.round(row.beanGrams) : null,
     cafe_reported: row.cafeReported !== false,
     print_reported: row.printReported !== false,
     source: "auto-order-ingest",

@@ -25,11 +25,13 @@ const BASE_RULES: ConsumableBomRule[] = [
     sku: "bean-10kg",
     ownerEntityType: "franchisee_cafe",
     primaryDomain: "cafe",
-    driverField: "drinks",
+    // 원두는 '잔수'가 아니라 메뉴 구성으로 계산한 '하루 원두 g'을 운전값으로 쓴다.
+    // (아메리카노 9g · 투샷 15g · 카페라떼 7g · 아샷추 7g — menu.ts)
+    driverField: "beanGrams",
     crossDomain: "print",
     crossDriverField: "sheets",
     crossDomainWeight: 0.12,
-    consumptionPerDriverUnit: 12.5,
+    consumptionPerDriverUnit: 1,
     stockUnit: "g",
     packSize: 10000,
     packLabel: "1박스(10kg)",

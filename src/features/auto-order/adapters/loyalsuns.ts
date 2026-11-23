@@ -1,3 +1,4 @@
+import { beanGramsForBestsellers } from "../menu";
 import type { BeverageLine, RevenueSnapshot } from "../types";
 
 import {
@@ -156,6 +157,20 @@ export function normalizeLoyalsunsSnapshot(
   const patch: NormalizedSnapshot["patch"] = {};
   if (todayRevenue !== null) patch.cafeRevenue = Math.max(0, Math.round(todayRevenue));
   if (drinksSold !== null) patch.drinksSold = drinksSold;
+
+  // 원두는 메뉴 구성으로 계산한다 — 아메리카노 9g · 투샷 15g · 카페라떼 7g · 아샷추 7g.
+  if (beverages.length > 0) {
+    const bean = beanGramsForBestsellers(beverages);
+
+    if (bean.coffeeDrinks > 0) {
+      patch.beanGrams = bean.grams;
+      notes.push(
+        `원두 ${bean.grams.toLocaleString("ko-KR")}g (커피 ${bean.coffeeDrinks}잔 · 그 외 ${bean.otherDrinks}잔)`,
+      );
+    } else {
+      warnings.push("베스트셀러에 주력 커피 메뉴가 없어 원두는 기본 블렌드(9.2g/잔)로 계산합니다.");
+    }
+  }
 
   if (input.notes?.length) notes.push(...input.notes.slice(0, 5));
 

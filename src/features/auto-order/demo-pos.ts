@@ -145,10 +145,15 @@ export function generateDemoSeries(options: GenerateSeriesOptions = {}): PosDail
     const printSheets = Math.max(0, Math.round(sheets));
     const colorSheets = Math.round(printSheets * (0.16 + random() * 0.04));
 
+    // 실제 메뉴 구성(아메리카노 50%·투샷 15%·라떼 25%·아샷추 10%)의 원두 g.
+    // 9g×0.5 + 15g×0.15 + 7g×0.25 + 7g×0.10 = 9.2g/잔
+    const beanGrams = Math.round(drinksSold * 9.2 * (0.95 + random() * 0.1));
+
     rows.push({
       storeCode,
       salesDate,
       drinksSold,
+      beanGrams,
       printSheets,
       colorSheets,
       cafeRevenue: drinksSold * 2300,
