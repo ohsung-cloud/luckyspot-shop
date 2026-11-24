@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 
+import { isValidLoginId, isValidPassword, normalizeLoginId } from "@/features/stores/login-id";
 import {
   findStoreRecord,
   portalSecretKeys,
   regenerateAdminCode,
   regeneratePin,
+  resolveStoreCodeByLoginId,
+  setStoreLogin,
+  setStorePin,
   updateStoreSettings,
   updateStoreStatus,
   updateStoreThresholds,
@@ -20,6 +24,8 @@ import { jsonError, readJsonObject, takeRateLimit } from "@/features/http/guard"
  *         { thresholds: { beanDays, tonerDays, paperDays } } → 경보 기준일 변경
  *         { action: "regenerate-code" }                      → 점주 접근 코드 재발급(이전 코드 무효)
  *         { action: "regenerate-pin" }                       → 4자리 PIN 재발급(새 PIN 한 번만 응답)
+ *         { action: "set-pin", pin: "4821" }                  → 4자리 PIN을 지정 값으로 변경(대화 중 수정용)
+ *         { action: "set-login", loginId?, password? }        → 포털 아이디·비밀번호 변경(대화 중 수정용)
  *         { settings: { printVendor, monthlyFixedCost, pinEnabled } } → 프린트 벤더·월 고정비·PIN 잠금
  */
 
@@ -75,6 +81,67 @@ export async function PATCH(
         store: issued.store,
         pin: issued.pin,
         message: "새 4자리 PIN을 발급했습니다. 이전 PIN은 더 이상 열리지 않습니다.",
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  if (body.action === "set-pin") {
+    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
+    if (!/^\d{4}$/.test(pin)) return jsonError("PIN은 숫자 4자리입니다.", 400);
+
+    const issued = await setStorePin(record.code, pin);
+    if (!issued) return jsonError("PIN을 저장하지 못했습니다.", 400);
+
+    return NextResponse.json(
+      {
+        ok: true,
+        store: issued.store,
+        pin: issued.pin,
+        persisted: issued.persisted,
+        message: issued.persisted
+          ? `${issued.store.shortLabel} PIN을 ${issued.pin}으로 바꿨습니다.`
+          : `${issued.store.shortLabel} PIN을 ${issued.pin}으로 바꿨습니다. Supabase가 설정되지 않아 서버 메모리에만 적용돼요.`,
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  if (body.action === "set-login") {
+    const loginId = typeof body.loginId === "string" ? normalizeLoginId(body.loginId) : "";
+    const password = typeof body.password === "string" ? body.password : "";
+
+    if (!loginId && !password) return jsonError("바꿀 아이디나 비밀번호를 함께 보내 주세요.", 400);
+    if (loginId && !isValidLoginId(loginId)) {
+      return jsonError("아이디는 영문 소문자·숫자로 3자 이상이어야 합니다.", 400);
+    }
+    if (password && !isValidPassword(password)) {
+      return jsonError("비밀번호는 6자리 이상(공백 없이)이어야 합니다.", 400);
+    }
+
+    if (loginId) {
+      const owner = await resolveStoreCodeByLoginId(loginId);
+      if (owner && owner !== record.code) {
+        return jsonError(`이미 ${owner} 지점이 쓰는 아이디입니다.`, 409);
+      }
+    }
+
+    const result = await setStoreLogin(record.code, {
+      loginId: loginId || undefined,
+      password: password || undefined,
+    });
+    if (!result) return jsonError("매장을 찾을 수 없습니다.", 404);
+
+    return NextResponse.json(
+      {
+        ok: true,
+        store: result.store,
+        loginId: result.loginId,
+        passwordChanged: result.passwordChanged,
+        persisted: result.persisted,
+        message: result.persisted
+          ? `${result.store.shortLabel} 로그인 정보를 바꿨습니다.`
+          : `${result.store.shortLabel} 로그인 정보를 바꿨습니다. Supabase가 설정되지 않아 서버 메모리에만 적용돼요.`,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

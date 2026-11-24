@@ -5,6 +5,16 @@ import { type CalibrationEntry, type CalibrationStore } from "../auto-order/cali
 import { defaultFixedCost, normalizeFixedCost } from "../sales-report/profit";
 import { DEMO_PIN, generatePin, hashStorePin, isValidPin, matchesStorePin, normalizePin } from "./pin";
 import {
+  hashStorePassword,
+  matchesStorePassword,
+  normalizeLoginId,
+  seedAliasesFor,
+  seedCodeForLoginId,
+  seedLoginIdFor,
+  seedPasswordHashFor,
+} from "./login-id";
+import { seedPinFor } from "./seed-pins";
+import {
   PRINT_VENDORS,
   STORE_TYPES,
   type CreateStoreInput,
@@ -58,6 +68,10 @@ type RegistryMemory = {
   stores: Map<string, StoreRegistryRecord>;
   admins: Map<string, AdminCredential>;
   pins: Map<string, PinCredential>;
+  /** 이 프로세스에서 바꾼 로그인 ID — DB(Supabase)에 쓰기 전에도 바로 쓰기 위함 */
+  logins: Map<string, { loginId: string; setAt: string }>;
+  /** 이 프로세스에서 바꾼 비밀번호 해시 */
+  passwords: Map<string, { passwordHash: string; setAt: string }>;
   /** Supabase에서 한 번이라도 읽은 매장 (시드 덮어쓰기 방지) */
   hydrated: boolean;
   /** 확장 컬럼(벤더·고정비·PIN·교체학습)을 쓸 수 있는가 — 한 번 실패하면 이 프로세스에서는 끈다. */
@@ -72,6 +86,8 @@ function memory(): RegistryMemory {
       stores: new Map(),
       admins: new Map(),
       pins: new Map(),
+      logins: new Map(),
+      passwords: new Map(),
       hydrated: false,
       extendedColumns: true,
     };
@@ -179,6 +195,27 @@ const SEED_STORES: StoreRegistryRecord[] = [
     label: "럭키스팟 평택점",
     shortLabel: "평택점",
     region: "경기 평택",
+    storeType: "미지정",
+  }),
+  seed({
+    code: "STORE_CJ",
+    label: "럭키스팟 충주점",
+    shortLabel: "충주점",
+    region: "충북 충주",
+    storeType: "미지정",
+  }),
+  seed({
+    code: "STORE_SYU",
+    label: "럭키스팟 선유로점",
+    shortLabel: "선유로점",
+    region: "서울 영등포",
+    storeType: "미지정",
+  }),
+  seed({
+    code: "STORE_YDP",
+    label: "럭키스팟 영등포시장역점",
+    shortLabel: "영등포시장역점",
+    region: "서울 영등포",
     storeType: "미지정",
   }),
 ];
@@ -898,9 +935,9 @@ export async function regeneratePin(code: string): Promise<{ store: StoreRegistr
 
 /**
  * 점주 PIN 검증.
- *  - 메모리(이 프로세스에서 발급·검증한 것) → Supabase(pin_hash) 순.
- *  - 시드 지점은 아직 pin_hash가 DB에 없어서 데모 PIN(0000)으로 연다.
- *  - 컬럼이 아직 없으면(SQL 미적용) 시드만 데모 PIN으로 통과한다.
+ *  - 메모리(이 프로세스에서 발급·검증한 것) → Supabase(pin_hash) → 시드 기본 PIN 순.
+ *  - 시드 지점에 `seed-pins.ts` 값이 있으면 그 값만 통과하고, 없으면 데모 PIN(0000).
+ *  - 컬럼이 아직 없으면(SQL 미적용) 시드만 위 기본값으로 통과한다.
  */
 export async function verifyStorePin(record: StoreRegistryRecord, given: string | null | undefined) {
   if (!isValidPin(given)) return false;
@@ -930,10 +967,215 @@ export async function verifyStorePin(record: StoreRegistryRecord, given: string 
     }
   }
 
-  // 시드 지점 — 본사가 PIN을 따로 발급하기 전까지 데모 PIN.
+  // DB에 PIN이 아직 없을 때 — 코드에 적어 둔 기본 PIN이 있으면 그것만, 없으면 데모 PIN.
+  const seededPin = seedPinFor(record.code);
+  if (seededPin) return matchesStorePin(hashStorePin(record.code, seededPin), record.code, given);
+
   if (!record.hasAdminCode) return normalizePin(given) === DEMO_PIN;
 
   return false;
+}
+
+/**
+ * 점주 PIN을 지정 값으로 바꾼다(본사·대화 중 관리용).
+ *  - `regeneratePin`(무작위 발급)과 달리 대표가 정한 4자리를 그대로 쓴다.
+ *  - `pinEnabled`(잠금 여부)는 건드리지 않는다 — 기존 `/store/[code]`의 열람 방식을 바꾸지 않기 위함.
+ *  - Supabase 키가 있으면 `stores.pin_hash`에 저장되고, 없으면 이 인스턴스 메모리에만 남는다.
+ */
+export async function setStorePin(
+  code: string,
+  pin: string,
+): Promise<{ store: StoreRegistryRecord; pin: string; persisted: boolean } | null> {
+  const record = await findStoreRecord(code);
+  if (!record || !isValidPin(pin)) return null;
+
+  const normalized = normalizePin(pin);
+  const pinHash = hashStorePin(record.code, normalized);
+  const now = new Date().toISOString();
+
+  const next: StoreRegistryRecord = {
+    ...record,
+    hasPin: true,
+    pinSetAt: now,
+    updatedAt: now,
+  };
+
+  memory().stores.set(next.code, next);
+  memory().pins.set(next.code, { storeCode: next.code, pinHash, setAt: now, enabled: record.pinEnabled });
+
+  const response = await supabaseRequest(`stores?store_code=eq.${encodeURIComponent(next.code)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ pin_hash: pinHash, pin_set_at: now, updated_at: now }),
+  });
+
+  // 실제로 갱신된 행이 있어야 '영구 저장'이다. 시드 지점이 DB에 아직 없으면 0행이다.
+  let persisted = false;
+  if (response?.ok) {
+    const rows = (await response.json().catch(() => null)) as unknown;
+    persisted = Array.isArray(rows) && rows.length > 0;
+  }
+
+  return { store: next, pin: normalized, persisted };
+}
+
+/* ------------------------------------------------------------------------- */
+/* 점주 로그인 ID·비밀번호 — `/owner` 아이디 로그인                                    */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * 지점별 로그인 ID·비밀번호 설정 상태 — 한 번의 쿼리로 모든 지점을 읽는다.
+ *  - `stores.login_id · password_hash · password_set_at` (마이그레이션 20261125120000).
+ *  - 컬럼이 아직 없으면(400) 빈 Map — 화면은 코드에 적힌 시드 로그인으로 계속 동작한다.
+ */
+export async function loadStoreLoginRows(): Promise<
+  Map<string, { loginId: string | null; passwordSetAt: string | null; hasPassword: boolean }>
+> {
+  const map = new Map<string, { loginId: string | null; passwordSetAt: string | null; hasPassword: boolean }>();
+
+  if (!readSupabaseConfig()) return map;
+
+  const response = await supabaseRequest(
+    "stores?select=store_code,login_id,password_set_at&limit=200",
+  );
+  if (!response?.ok) return map;
+
+  const rows = (await response.json().catch(() => null)) as Record<string, unknown>[] | null;
+  if (!Array.isArray(rows)) return map;
+
+  for (const row of rows) {
+    const code = typeof row.store_code === "string" ? row.store_code.trim().toUpperCase() : "";
+    if (!code) continue;
+
+    const loginId = typeof row.login_id === "string" ? row.login_id.trim().toLowerCase() : "";
+    const setAt = typeof row.password_set_at === "string" ? row.password_set_at : null;
+
+    map.set(code, { loginId: loginId || null, passwordSetAt: setAt, hasPassword: Boolean(setAt) });
+  }
+
+  return map;
+}
+
+/** 이 지점의 현재 로그인 ID — 이 프로세스에서 바꾼 값 → 코드 기본값 → DB 순. */
+export function storeLoginIdOf(record: StoreRegistryRecord) {
+  return memory().logins.get(record.code)?.loginId ?? seedLoginIdFor(record.code) ?? null;
+}
+
+/**
+ * 로그인 ID → 지점 코드.
+ *  1) 이 프로세스에서 바꾼 값
+ *  2) DB(`stores.login_id`) — 본사가 바꿨으면 코드 기본값보다 우선
+ *  3) 코드에 적힌 시드 표(별칭 포함)
+ */
+export async function resolveStoreCodeByLoginId(loginId: string): Promise<string | null> {
+  const id = normalizeLoginId(loginId);
+  if (!id) return null;
+
+  for (const [code, entry] of memory().logins) if (entry.loginId === id) return code;
+
+  const rows = await loadStoreLoginRows();
+  for (const [code, row] of rows) if (row.loginId === id) return code;
+
+  const seeded = seedCodeForLoginId(id);
+  if (seeded) {
+    const row = rows.get(seeded);
+    // DB에 다른 ID가 적혀 있으면 시드 ID는 더 이상 쓰지 않는다(본사가 바꿈).
+    if (row?.loginId && row.loginId !== id) return null;
+    return seeded;
+  }
+
+  return null;
+}
+
+/**
+ * 점주 비밀번호 검증.
+ *  - 이 프로세스에서 바꾼 해시 → DB(`password_hash`) → 코드에 적힌 초기 해시 순.
+ *  - 저장된 해시가 하나도 없으면 항상 false.
+ */
+export async function verifyStorePassword(
+  record: StoreRegistryRecord,
+  given: string | null | undefined,
+): Promise<boolean> {
+  if (typeof given !== "string" || given.length === 0) return false;
+
+  const cached = memory().passwords.get(record.code);
+  if (cached) return matchesStorePassword(cached.passwordHash, record.code, given);
+
+  const response = await supabaseRequest(
+    `stores?select=password_hash,password_set_at&store_code=eq.${encodeURIComponent(record.code)}&limit=1`,
+  );
+
+  if (response?.ok) {
+    const rows = (await response.json().catch(() => null)) as Record<string, unknown>[] | null;
+    const hash = typeof rows?.[0]?.password_hash === "string" ? rows[0].password_hash : "";
+
+    if (hash) {
+      memory().passwords.set(record.code, {
+        passwordHash: hash,
+        setAt: typeof rows?.[0]?.password_set_at === "string" ? (rows[0].password_set_at as string) : new Date().toISOString(),
+      });
+
+      return matchesStorePassword(hash, record.code, given);
+    }
+  }
+
+  return matchesStorePassword(seedPasswordHashFor(record.code), record.code, given);
+}
+
+/**
+ * 로그인 ID·비밀번호 변경(본사·대화 중 관리용).
+ *  - 값은 HMAC 해시로만 저장한다. 원본은 응답에 싣지 않는다.
+ *  - Supabase 키가 없으면 이 인스턴스 메모리에만 남으므로 `persisted: false`로 돌려준다.
+ */
+export async function setStoreLogin(
+  code: string,
+  input: { loginId?: string; password?: string },
+): Promise<{
+  store: StoreRegistryRecord;
+  loginId: string | null;
+  passwordChanged: boolean;
+  persisted: boolean;
+} | null> {
+  const record = await findStoreRecord(code);
+  if (!record) return null;
+
+  const now = new Date().toISOString();
+  const body: Record<string, unknown> = { updated_at: now };
+
+  if (input.loginId) {
+    const loginId = normalizeLoginId(input.loginId);
+    memory().logins.set(record.code, { loginId, setAt: now });
+    body.login_id = loginId;
+  }
+
+  if (input.password) {
+    const passwordHash = hashStorePassword(record.code, input.password);
+    memory().passwords.set(record.code, { passwordHash, setAt: now });
+    body.password_hash = passwordHash;
+    body.password_set_at = now;
+  }
+
+  const response = await supabaseRequest(`stores?store_code=eq.${encodeURIComponent(record.code)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(body),
+  });
+
+  const rows = response?.ok ? await response.json().catch(() => null) : null;
+
+  return {
+    store: record,
+    loginId: storeLoginIdOf(record),
+    passwordChanged: Boolean(input.password),
+    persisted: Array.isArray(rows) && rows.length > 0,
+  };
+}
+
+/** 지점에 설정된 로그인 표기(아이디 + 별칭) — 관리 화면·응답용. */
+export function storeLoginAliases(record: StoreRegistryRecord) {
+  const seedAliases = seedAliasesFor(record.code);
+  const current = storeLoginIdOf(record);
+  return current ? [current, ...seedAliases.filter((alias) => normalizeLoginId(alias) !== current)] : seedAliases;
 }
 
 /** 교체완료 학습 기록 저장(지점 레코드의 calibrations에 SKU별로 덮어쓴다). */

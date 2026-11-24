@@ -79,6 +79,7 @@ export default function OrderSheet({
   initialStoreCode,
   notice,
   testMode = false,
+  lockedStores,
 }: {
   open: boolean;
   onClose: () => void;
@@ -88,6 +89,12 @@ export default function OrderSheet({
   notice?: string | null;
   /** 토스페이먼츠 테스트 키로 동작 중인지 — 화면 상단에 배지로 알린다 */
   testMode?: boolean;
+  /**
+   * "받는 곳" 목록을 서버(/api/stores) 대신 이 값으로 고정한다.
+   * `/owner`처럼 로그인한 지점 하나로만 주문을 내야 하는 화면이 쓴다.
+   * 넘기지 않으면 지금까지와 똑같이 /api/stores 목록을 쓴다.
+   */
+  lockedStores?: StoreOption[];
 }) {
   const router = useRouter();
   const lines = useCartStore((state) => state.lines);
@@ -207,6 +214,17 @@ export default function OrderSheet({
     }
 
     // 지점 목록은 개인정보 없는 값(코드·이름·주소)만 서버 API에서 받아온다.
+    if (lockedStores) {
+      if (!storesLoaded) {
+        setStores(lockedStores);
+        setStoresLoaded(true);
+
+        const preferred = initialStoreCode || lockedStores[0]?.code || "";
+        if (preferred && lockedStores.some((store) => store.code === preferred)) setAddressValue(preferred);
+      }
+      return;
+    }
+
     if (storesLoaded) return;
 
     let cancelled = false;
@@ -236,7 +254,7 @@ export default function OrderSheet({
     return () => {
       cancelled = true;
     };
-  }, [initialStoreCode, open, storesLoaded]);
+  }, [initialStoreCode, lockedStores, open, storesLoaded]);
 
   if (!open) return null;
 

@@ -1,6 +1,8 @@
 import type { StoreOption, StoreRecord, StoreTaxProfile } from "@/features/stores/types";
 import { readSupabaseConfig, SUPABASE_TIMEOUT_MS, supabaseHeaders } from "@/features/supabase/config";
 
+import { findStoreRecord } from "./registry";
+
 /**
  * 지점 목록 조회.
  *
@@ -65,6 +67,19 @@ const FALLBACK_STORES: StoreRecord[] = [
     region: "서울",
   },
 ];
+
+/**
+ * 레지스트리 시드 지점의 배송지 — 같은 매장이 발주 폼에서 쓰던 확정 주소를 그대로 옮겼다.
+ *  · STORE_GNM(강남구청역점) = 예전 코드 STORE_GNG 와 같은 매장
+ *  · STORE_PTK(평택점) = 예전 코드 STORE_PT 와 같은 매장
+ * 주소를 아직 확인하지 못한 지점(선유로·영등포시장역)은 비워 두고, 주문서에서 직접 입력하게 한다.
+ */
+const REGISTRY_STORE_ADDRESSES: Record<string, string> = {
+  STORE_GNM: "서울특별시 강남구 청담동 선릉로 714 도시빌딩 102호",
+  STORE_HYJ: "서울시 노원구 화랑로47길 38 (월계동 풍림아이원아파트) 108동 1001호",
+  STORE_PTK: "경기 평택시 송탄공원로 146 아주1차아파트 상가동 107호",
+  STORE_CJ: "충주시 남산6길 15 1층 럭키스팟 충주점",
+};
 
 type StoreRow = {
   address?: string | null;
@@ -179,7 +194,23 @@ export async function listStoreOptions(): Promise<StoreOption[]> {
 
 export async function resolveStoreByCode(code: string): Promise<StoreRecord | null> {
   const stores = await loadStores();
-  return stores.find((store) => store.code === code) ?? null;
+  const found = stores.find((store) => store.code === code) ?? null;
+  if (found) return found;
+
+  // 점주 포털(/owner)이 쓰는 레지스트리 지점 — 발주 폼 목록에는 없지만 실재하는 매장이다.
+  //  (예: STORE_GNM 강남구청역점, STORE_PTK 평택점 — 예전 코드 STORE_GNG·STORE_PT 로만 목록에 있었다)
+  //  이미 목록에 있는 코드의 동작은 그대로 두고, 못 찾은 코드만 여기서 한 번 더 확인한다.
+  const record = await findStoreRecord(code).catch(() => null);
+  if (!record || record.status !== "active") return null;
+
+  return {
+    address: REGISTRY_STORE_ADDRESSES[record.code] ?? "",
+    code: record.code,
+    label: record.label,
+    ownerName: record.ownerName || null,
+    phone: record.ownerPhone || null,
+    region: record.region || null,
+  };
 }
 
 export async function resolveStoreByLabel(label: string): Promise<StoreRecord | null> {

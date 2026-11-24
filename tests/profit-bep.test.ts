@@ -51,7 +51,7 @@ function tinyMonth(): MonthlySummary {
   };
 }
 
-test("BEP — 11월 강남구청역점은 새 공헌이익 기준(커피 68%)에서 이미 도달한 것으로 계산된다", () => {
+test("BEP — 강남구청역점 11월은 실제 월세 170만 기준에서 아직 미도달(11월 내 도달 불가)", () => {
   const month = monthlyForStore("STORE_GNM", "2026-11");
   assert.ok(month);
 
@@ -67,11 +67,13 @@ test("BEP — 11월 강남구청역점은 새 공헌이익 기준(커피 68%)에
   assert.equal(bep.fixedCostTotal, fixed);
   assert.equal(bep.dailyFixedCost, Math.round(fixed / 30));
   assert.equal(bep.contribution, contribution);
-  // 720,596 > 658,000 — 23일 시점에 이미 고정비를 넘었고, 같은 속도면 22일경 도달한다.
-  assert.ok(bep.progressPct > 100);
-  assert.equal(bep.reached, true);
-  assert.equal(bep.bepDay, 22);
-  assert.match(bep.bepLabel, /달성/);
+  // 720,596 < 1,908,000(월세 170만 포함) — 23일 시점 기준 달성률 38%이고,
+  // 같은 속도면 61일이 걸려 11월 안에는 못 넘는다.
+  assert.ok(bep.progressPct < 100);
+  assert.equal(bep.reached, false);
+  assert.equal(bep.bepDay, null);
+  assert.equal(bep.bepLabel, "이번 달 내 미도달");
+  assert.equal(bep.mode, "split_min");
 });
 
 test("BEP — 일할 고정비 = 월 고정비 ÷ 그 달 일수, BEP 일매출 = 일할 고정비 ÷ 공헌이익률", () => {
@@ -154,7 +156,13 @@ test("예상 순수익 — 이번달은 월말 투영(projectedNet)을 함께 �
   assert.ok(profit);
   assert.ok(profit.projectedNet !== null);
   assert.ok(profit.net !== null);
-  assert.ok((profit.projectedNet as number) > (profit.net as number));
+  // 강남구청역점 11월은 실제 월세 170만으로 아직 고정비를 못 넘는다 — 같은 속도면 월말 값은 더 내려간다.
+  assert.ok((profit.projectedNet as number) < (profit.net as number));
+
+  // 평택점(월세 30만)은 커피 공헌이익만으로 고정비를 넘어, 투영값이 현재값보다 크다.
+  const pyeongtaek = estimateProfit({ month: monthlyForStore("STORE_PTK", "2026-11"), fixedCost: defaultFixedCost("STORE_PTK"), asOf: AS_OF_NOV_23 });
+  assert.ok(pyeongtaek);
+  assert.ok((pyeongtaek.projectedNet as number) > (pyeongtaek.net as number));
 
   const final = estimateProfit({ month: monthlyForStore("STORE_GNM", "2026-10"), fixedCost: defaultFixedCost("STORE_GNM"), asOf: AS_OF_NOV_23 });
   assert.ok(final);

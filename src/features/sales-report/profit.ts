@@ -56,13 +56,28 @@ export const EMPTY_FIXED_COST: MonthlyFixedCost = {
 /**
  * 지점별 기본 고정비(월, 원).
  *  - 본사가 `/admin/stores`에서 언제든 고칠 수 있는 **초기값**이다.
- *  - 처음부터 정확한 임대료를 알 수 없으므로 '예시값'이며 화면에도 그렇게 밝힌다.
+ *  - 임대료는 대표가 확인한 2026-11 실제 월세다(6개 지점).
+ *    관리비·인터넷·솔루션료는 지점별 실측이 들어오기 전까지 기존 값을 그대로 둔다.
+ *  - 지점 코드는 `features/stores/registry.ts` 시드와 같다. 새 매장을 만들 때도
+ *    이 표의 코드를 쓰면 같은 고정비로 시작한다.
  */
 export const DEFAULT_FIXED_COST: Record<string, MonthlyFixedCost> = {
-  // 1평 샵인샵(강남구청역점) — 임대료가 작은 대신 매출도 작다.
-  STORE_GNM: { rent: 450_000, maintenance: 120_000, internet: 33_000, solution: 55_000 },
-  // 대학 상권 독립 매장(한예종점).
-  STORE_HYJ: { rent: 1_200_000, maintenance: 200_000, internet: 33_000, solution: 55_000 },
+  // 강남구청역점(1평 샵인샵) — 실제 월세 170만원.
+  STORE_GNM: { rent: 1_700_000, maintenance: 120_000, internet: 33_000, solution: 55_000 },
+  // 예전 코드(STORE_GNG, 강남구청점)도 같은 매장 — 같은 월세를 쓴다.
+  STORE_GNG: { rent: 1_700_000, maintenance: 120_000, internet: 33_000, solution: 55_000 },
+  // 한예종점(대학 상권 독립 매장) — 실제 월세 170만원.
+  STORE_HYJ: { rent: 1_700_000, maintenance: 200_000, internet: 33_000, solution: 55_000 },
+  // 평택점 — 실제 월세 30만원.
+  STORE_PTK: { rent: 300_000, maintenance: 0, internet: 0, solution: 0 },
+  // 예전 코드(STORE_PT)도 평택점 — 같은 월세를 쓴다.
+  STORE_PT: { rent: 300_000, maintenance: 0, internet: 0, solution: 0 },
+  // 충주점 — 실제 월세 30만원.
+  STORE_CJ: { rent: 300_000, maintenance: 0, internet: 0, solution: 0 },
+  // 선유로점 — 실제 월세 70만원.
+  STORE_SYU: { rent: 700_000, maintenance: 0, internet: 0, solution: 0 },
+  // 영등포시장역점 — 실제 월세 80만원.
+  STORE_YDP: { rent: 800_000, maintenance: 0, internet: 0, solution: 0 },
 };
 
 export const FIXED_COST_LABELS: { key: keyof MonthlyFixedCost; label: string }[] = [
