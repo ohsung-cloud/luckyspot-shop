@@ -69,7 +69,7 @@ export function StoreReport({
   return (
     <div className="grid gap-2.5">
       <p className="px-1 text-[11px] text-[#6B746D]">
-        {store.label} · {capturedLabel(data.capturedAt)} 수집 · {store.tagline}
+        {store.label} · 재고 {capturedLabel(data.capturedAt)} 수집 · {store.tagline}
         <span className="mt-0.5 block text-[10px] text-[#98A29B]">매일 08~22시 1시간마다 · 00:05 마감 업데이트</span>
       </p>
 
@@ -80,7 +80,7 @@ export function StoreReport({
             {month ? `${month.monthLabel} 매출` : "매출"}
           </span>
           <span className="text-[10.5px] text-[#9AA39C]">
-            {month ? `${month.role} · ${month.partial ? "확인된 항목만" : "확정"}` : "수집 전"}
+            {month ? `${month.coffee.range} · ${month.partial ? "확인된 항목만" : "확정"}` : "수집 전"}
           </span>
         </div>
 

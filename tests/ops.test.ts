@@ -73,6 +73,26 @@ test("프린트가 정산 전이면 커피만으로 계산하고 부분값임을
   assert.match(profit.note, /프린트/);
 });
 
+test("한예종점 10·11월 커피는 로얄선즈 실측값으로 채워진다", () => {
+  // 2026-11-24 로얄선즈 판매정보 직접 조회: 10/1~10/31 1,813건 6,099,900원
+  const oct = monthlyForStore("STORE_HYJ", "2026-10");
+  assert.ok(oct);
+  assert.equal(oct.coffee.amount, 6_099_900);
+  assert.equal(oct.coffee.orders, 1_813);
+  assert.equal(oct.coffee.status, "final");
+  assert.equal(oct.total, 6_099_900 + 1_963_240);
+  assert.equal(oct.partial, false);
+
+  // 11/1~11/24 1,242건 4,112,000원 — 프린트는 26일 정산 전이라 부분값
+  const nov = monthlyForStore("STORE_HYJ", "2026-11");
+  assert.ok(nov);
+  assert.equal(nov.coffee.amount, 4_112_000);
+  assert.equal(nov.coffee.orders, 1_242);
+  assert.equal(nov.coffee.range, "11/1~11/24");
+  assert.equal(nov.total, 4_112_000);
+  assert.equal(nov.partial, true);
+});
+
 /* ------------------------------------------------------------------ */
 /* 2) 교체완료 학습                                                    */
 /* ------------------------------------------------------------------ */

@@ -26,7 +26,7 @@ function metrics(snapshot: SalesReportSnapshot, period: MonthlyPeriod) {
     {
       key: `커피 ${month?.monthLabel ?? "월"}`,
       value: formatWon(month?.coffee.amount ?? null),
-      hint: month ? `${month.coffee.range} · ${month.coffee.orders ? `${month.coffee.orders}건` : month.coffee.status === "live" ? "실시간" : "미수집"}` : "수집 전",
+      hint: month ? `${month.coffee.range} · ${month.coffee.orders ? `${month.coffee.orders.toLocaleString("ko-KR")}건` : month.coffee.status === "live" ? "실시간" : "미수집"}` : "수집 전",
     },
     {
       key: `프린트 ${month?.monthLabel ?? "월"}`,

@@ -32,7 +32,7 @@ async def run():
             body = await page.inner_text("main")
             log[f"{name}.defaultSingleStore"] = "지점 단독 · 합산 없음" in body
             log[f"{name}.defaultGangnamToday"] = "14,600원" in body
-            log[f"{name}.defaultNoHanyejongNumbers"] = ("55,600원" not in body) and ("3,984,400" not in body)
+            log[f"{name}.defaultNoHanyejongNumbers"] = ("55,600원" not in body) and ("4,112,000" not in body)
             log[f"{name}.defaultDonut"] = await page.locator("section svg circle").count()
             log[f"{name}.defaultOverflowPx"] = await overflow(page)
             await page.screenshot(path=f"{OUT}/{name}-01-gangnam.png", full_page=True)
@@ -44,6 +44,7 @@ async def run():
                 "label": "럭키스팟 한예종점" in body,
                 "today": "55,600원" in body,
                 "printOct": "1,963,240원" in body,
+                "coffeeNov": "4,112,000원" in body,
                 "tonerAll5": "프린트 토너 4색 5%" in body,
                 "beanDays": "1.5일" in body,
                 "tonerSet": "577,700원" in body,

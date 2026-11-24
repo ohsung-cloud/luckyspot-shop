@@ -100,10 +100,16 @@ test("월별 매출 — 지점별로 따로, 모르는 값은 null(부분 집계
 
   const hanyeojongOct = monthlyForStore("STORE_HYJ", "2026-10");
   assert.ok(hanyeojongOct);
-  assert.equal(hanyeojongOct.coffee.amount, null);
-  assert.equal(hanyeojongOct.coffee.status, "missing");
+  assert.equal(hanyeojongOct.coffee.amount, 6_099_900);
+  assert.equal(hanyeojongOct.coffee.status, "final");
   assert.equal(hanyeojongOct.print.amount, 1_963_240);
-  assert.equal(hanyeojongOct.partial, true);
+  assert.equal(hanyeojongOct.partial, false);
+
+  const hanyeojongNov = monthlyForStore("STORE_HYJ", "2026-11");
+  assert.ok(hanyeojongNov);
+  assert.equal(hanyeojongNov.coffee.amount, 4_112_000);
+  assert.equal(hanyeojongNov.print.amount, null);
+  assert.equal(hanyeojongNov.partial, true);
 
   // 두 지점을 더한 값은 어디에도 없다.
   assert.equal(monthlyForStore("STORE_UNKNOWN", "2026-10"), null);

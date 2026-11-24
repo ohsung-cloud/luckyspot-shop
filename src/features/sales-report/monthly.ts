@@ -55,7 +55,8 @@ const PENDING_PRINT: MonthlySide = {
  *
  * 강남구청역점 10월 커피는 로얄선즈 판매정보에서 직접 조회한 값이다
  * (2026-10-01~10-31 624건 1,720,600원 / 로열티 기준 09-26~10-25 616건 1,691,100원).
- * 한예종점 10월 커피는 로얄선즈 계정 로그인 대기로 아직 수집하지 못했다 — null로 둔다.
+ * 한예종점 커피는 2026-11-24 계정 로그인 후 로얄선즈 판매정보에서 직접 조회했다
+ * (10월 10-01~10-31 1,813건 6,099,900원 / 11월 11-01~11-24 1,242건 4,112,000원, 11-24 10:25 기준).
  */
 const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
   STORE_GNM: {
@@ -107,15 +108,15 @@ const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
       monthLabel: "11월",
       role: "이번달",
       coffee: {
-        amount: 3_984_400,
-        orders: null,
-        range: "11/1~11/23",
+        amount: 4_112_000,
+        orders: 1_242,
+        range: "11/1~11/24",
         status: "live",
         source: "로얄선즈",
-        note: "실시간 집계 · 15:50 기준",
+        note: "실측 1,242건 · 오늘 30,800원 포함(10:25 기준)",
       },
       print: PENDING_PRINT,
-      total: 3_984_400,
+      total: 4_112_000,
       partial: true,
       note: "커피는 실시간, 프린트는 26일 정산 전이라 커피만 더한 값입니다.",
     },
@@ -124,12 +125,12 @@ const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
       monthLabel: "10월",
       role: "저번달",
       coffee: {
-        amount: null,
-        orders: null,
+        amount: 6_099_900,
+        orders: 1_813,
         range: "10/1~10/31",
-        status: "missing",
+        status: "final",
         source: "로얄선즈",
-        note: "한예종점 로얄선즈 계정 로그인 대기 — 10월 커피는 아직 미수집",
+        note: "판매정보 직접 조회 1,813건",
       },
       print: {
         amount: 1_963_240,
@@ -139,9 +140,9 @@ const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
         source: "에스칼프린트",
         note: "환불 없음 · 11-23 15:50 정산본",
       },
-      total: 1_963_240,
-      partial: true,
-      note: "10월 프린트만 확정. 커피 10월은 로얄선즈 로그인 후 채웁니다.",
+      total: 8_063_140,
+      partial: false,
+      note: "10월 확정: 커피 10/1~31 + 프린트 9/26~10/25 정산.",
     },
   },
 };
