@@ -28,6 +28,8 @@ export function ProfitRow({
   }
 
   const margin = profit.marginRate === null ? "—" : `${profit.marginRate.toFixed(1)}%`;
+  // 월 고정비가 비어 있으면 이 순수익은 고정비를 빼기 전 값이다 — 마진율을 그대로 보여 주면 실제보다 좋아 보인다.
+  const hasFixedCost = (fixedCost?.rent ?? 0) + (fixedCost?.maintenance ?? 0) + (fixedCost?.internet ?? 0) + (fixedCost?.solution ?? 0) > 0;
   const fixedText = FIXED_COST_LABELS.filter((item) => (fixedCost?.[item.key] ?? 0) > 0)
     .map((item) => `${item.label} ${Math.round((fixedCost?.[item.key] ?? 0) / 10_000).toLocaleString("ko-KR")}만`)
     .join(" · ");
@@ -36,11 +38,15 @@ export function ProfitRow({
     <details className="mt-2.5 rounded-[10px] bg-white/8 px-2.5 py-1.5">
       <summary className="flex cursor-pointer items-center justify-between gap-2 text-[11.5px]">
         <span className="truncate text-[#C8D0CA]">
-          {profit.monthLabel} 예상 순수익{" "}
+          {profit.monthLabel} 예상 순수익{hasFixedCost ? "" : "(고정비 전)"}{" "}
           <span className="font-bold tabular-nums text-[#1DFF26]">{formatWon(profit.net)}</span>
         </span>
-        <span className="shrink-0 rounded-full bg-[#1DFF26] px-1.5 py-0.5 text-[9.5px] font-bold text-[#0F1412]">
-          마진 {margin}
+        <span
+          className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold ${
+            hasFixedCost ? "bg-[#1DFF26] text-[#0F1412]" : "bg-[#EFC94C] text-[#0F1412]"
+          }`}
+        >
+          {hasFixedCost ? `마진 ${margin}` : "고정비 미등록"}
         </span>
       </summary>
 
