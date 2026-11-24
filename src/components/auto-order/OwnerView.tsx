@@ -304,7 +304,7 @@ export default function OwnerView({
         </Card>
       ) : null}
 
-      <div aria-hidden className={showOrderCard ? "h-24" : "h-0"} />
+      <div aria-hidden className={showOrderCard ? "h-36" : "h-0"} />
 
       <p className="px-1 text-[10px] leading-[1.6] text-[#B0B7B2]">
         데이터 출처:{" "}
