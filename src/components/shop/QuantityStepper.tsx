@@ -22,10 +22,10 @@ export default function QuantityStepper({
   const dimension = size === "md" ? "h-12 w-12" : "h-11 w-11";
 
   return (
-    <div className="flex items-center justify-between gap-1 rounded-full border-2 border-[var(--ls-line-strong)] bg-white p-1">
+    <div className="flex items-center justify-between gap-1 rounded-full bg-[#F7F8F9] p-1">
       <button
         aria-label={`${label} 수량 줄이기`}
-        className={`${dimension} ls-focus grid place-items-center rounded-full text-[#0F1412] transition-colors hover:bg-[#F0F2F1] disabled:text-[#A9B4AC]`}
+        className={`${dimension} ls-focus grid place-items-center rounded-full bg-white text-[#0F1412] shadow-[0_1px_2px_rgba(15,20,18,0.06)] transition-colors hover:bg-[#F0F2F1] disabled:bg-transparent disabled:text-[#C2C9C4] disabled:shadow-none`}
         disabled={quantity <= min}
         onClick={() => onChange(quantity - 1)}
         type="button"
@@ -36,7 +36,7 @@ export default function QuantityStepper({
       </button>
       <span
         aria-live="polite"
-        className="min-w-[30px] text-center text-[17px] font-bold tabular-nums text-[#0F1412]"
+        className="min-w-[30px] text-center text-[16px] font-bold tabular-nums tracking-[0.02em] text-[#0F1412]"
       >
         {quantity}
       </span>

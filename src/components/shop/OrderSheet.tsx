@@ -281,11 +281,11 @@ export default function OrderSheet({
       };
 
       if (!response.ok || prepared.ok !== true) {
-        throw new Error(prepared.error ?? "결제를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        throw new Error(prepared.error ?? "결제를 준비하지 못했어요. 잠시 후 다시 시도해 주세요.");
       }
 
       if (!prepared.orderId || !prepared.token || !prepared.clientKey || !prepared.amount) {
-        throw new Error("결제 준비 응답이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.");
+        throw new Error("결제 준비 응답이 올바르지 않아요. 잠시 후 다시 시도해 주세요.");
       }
 
       const recipient = isDirect
@@ -339,12 +339,12 @@ export default function OrderSheet({
 
       setErrorMessage(
         code === "USER_CANCEL"
-          ? "결제를 취소하셨습니다. 다시 결제해 주세요."
+          ? "결제를 취소하셨어요. 다시 결제해 주세요."
           : code === "sdk_load_failed" || code === "sdk_not_ready"
-            ? "결제 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요."
+            ? "결제 모듈을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요."
             : error instanceof Error
               ? error.message
-              : "결제를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+              : "결제를 시작하지 못했어요. 잠시 후 다시 시도해 주세요.",
       );
       setPreparing(false);
     }
@@ -382,7 +382,7 @@ export default function OrderSheet({
       };
 
       if (!response.ok || !result.orderId) {
-        throw new Error(result.error ?? "주문 접수에 실패했습니다.");
+        throw new Error(result.error ?? "주문 접수에 실패했어요.");
       }
 
       if (selectedStore) {
@@ -413,7 +413,7 @@ export default function OrderSheet({
       );
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "주문 접수에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+        error instanceof Error ? error.message : "주문 접수에 실패했어요. 잠시 후 다시 시도해 주세요.",
       );
       setSubmitting(false);
     }
@@ -521,7 +521,7 @@ export default function OrderSheet({
                 })}
               </ul>
             ) : (
-              <p className="mt-3 rounded-[12px] border border-dashed border-[var(--ls-line-strong)] px-4 py-8 text-center text-[13px] text-[var(--ls-muted)]">
+              <p className="mt-3 rounded-[14px] bg-[#F7F8F9] px-4 py-8 text-center text-[13px] font-medium text-[#8B948D]">
                 담긴 품목이 없어요. 목록에서 필요한 품목을 담아주세요.
               </p>
             )}
@@ -530,7 +530,7 @@ export default function OrderSheet({
               <p className="mt-3 break-keep rounded-[10px] bg-[#F4F5F6] px-3 py-2 text-[11px] leading-[1.55] text-[var(--ls-muted)]">
                 {`${storeScaleLabel(scale)} 매장 기준, 이 구성으로 소모품이 가장 빨리 떨어지는 품목까지 `}
                 <strong className="font-semibold text-[#0B5C2A]">{coverageText}</strong>
-                {"입니다. 잔량과 맞춰 수량을 조정하세요."}
+                {"예요. 잔량과 맞춰 수량을 조정해 주세요."}
               </p>
             ) : null}
           </section>
@@ -653,13 +653,13 @@ export default function OrderSheet({
             </div>
 
             {testMode ? (
-              <p className="mt-2 rounded-[10px] border border-[#E5C86A] bg-[#FFF9E4] px-3 py-2 text-[11px] leading-[1.55] text-[#7A5A00]">
+              <p className="mt-2 rounded-[12px] bg-[#FFF6E0] px-3 py-2 text-[11px] leading-[1.55] text-[#8A5A00]">
                 <strong className="font-semibold">테스트 결제 모드</strong> — 실제 금액이 청구되지
-                않습니다. 결제 흐름만 확인해 주세요.
+                않아요. 결제 흐름만 확인해 주세요.
               </p>
             ) : null}
 
-            <div className="mt-2 rounded-[12px] border border-[var(--ls-line-strong)] bg-white px-3.5 py-3">
+            <div className="mt-2 rounded-[14px] bg-[#F7F8F9] px-3.5 py-3">
               <div className="flex flex-wrap gap-1.5">
                 {["카드", "계좌이체", "가상계좌(무통장입금)", "간편결제"].map((label) => (
                   <span
@@ -671,14 +671,14 @@ export default function OrderSheet({
                 ))}
               </div>
               <p className="mt-2 text-[11px] leading-[1.55] text-[var(--ls-muted)]">
-                결제하기를 누르면 토스페이먼츠 결제창이 열립니다. 결제수단은 그 창에서 고르면
-                됩니다.
+                결제하기를 누르면 토스페이먼츠 결제창이 열려요. 결제수단은 그 창에서 고르면
+                돼요.
               </p>
             </div>
 
             <p className="mt-2 text-[10.5px] leading-[1.55] text-[var(--ls-muted)]">
               카드·계좌이체는 결제 즉시 완료되고, 가상계좌는 발급된 계좌로 입금하면 확인 후
-              출고됩니다.
+              출고돼요.
             </p>
           </section>
 
@@ -691,7 +691,7 @@ export default function OrderSheet({
                 type="checkbox"
               />
               <span className="text-[11.5px] leading-[1.55] text-[var(--ls-muted)]">
-                주문 접수를 위해 이름·연락처·배송지를 수집하는 데 동의합니다.{" "}
+                주문 접수를 위해 이름·연락처·배송지를 수집하는 데 동의해요.{" "}
                 <a
                   className="underline underline-offset-2 hover:text-[#0F1412]"
                   href={PRIVACY_HREF}
@@ -720,12 +720,12 @@ export default function OrderSheet({
             <p className="text-[14px] font-semibold text-[#3B4740]">
               합계 <span className="text-[12px] font-normal">부가세 포함</span>
             </p>
-            <p className="text-[24px] font-bold tabular-nums tracking-[-0.03em] text-[#0F1412]">
+            <p className="text-[24px] font-bold tabular-nums tracking-[0.02em] text-[#0F1412]">
               {formatPrice(total)}
             </p>
           </div>
           <button
-            className="ls-focus mt-2 flex h-[58px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[18px] font-bold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#5F6A63]"
+            className="ls-focus mt-2 flex h-[58px] w-full items-center justify-center rounded-[16px] bg-[#1DFF26] text-[18px] font-bold text-[#0F1412] transition-colors hover:bg-[#3BE93F] disabled:bg-[#E6E9E7] disabled:text-[#98A29B]"
             disabled={!canSubmit}
             onClick={handlePay}
             type="button"
@@ -749,7 +749,7 @@ export default function OrderSheet({
                   ? "세금계산서 정보를 채우거나 발급 요청을 해제해 주세요."
                   : !agreed
                     ? "개인정보 수집에 동의하면 결제할 수 있어요."
-                    : "결제가 완료되면 발주가 접수되고 본사에서 확인합니다."}
+                    : "결제가 완료되면 발주가 접수되고 본사에서 확인해요."}
           </p>
         </footer>
       </div>

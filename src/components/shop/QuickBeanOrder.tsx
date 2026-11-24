@@ -34,6 +34,7 @@ import {
 } from "@/features/tax-invoice";
 import { ORDER_SUPPORT_PHONE } from "@/features/order/utils";
 import type { StoreOption } from "@/features/stores/types";
+import { Card, CardBody, CardHead, Chip } from "@/components/internal/card-ui";
 import { useCartStore } from "@/stores/cartStore";
 import TaxInvoiceFields from "./TaxInvoiceFields";
 
@@ -223,7 +224,7 @@ export default function QuickBeanOrder({
       };
 
       if (!response.ok || !result.orderId) {
-        throw new Error(result.error ?? "발주를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        throw new Error(result.error ?? "발주를 접수하지 못했어요. 잠시 후 다시 시도해 주세요.");
       }
 
       const orderId = result.orderId;
@@ -253,7 +254,7 @@ export default function QuickBeanOrder({
       );
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "발주를 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        error instanceof Error ? error.message : "발주를 접수하지 못했어요. 잠시 후 다시 시도해 주세요.",
       );
       setSubmitting(false);
     }
@@ -265,37 +266,21 @@ export default function QuickBeanOrder({
   };
 
   return (
-    <section
-      aria-labelledby="quick-bean-title"
-      className="relative mt-1 overflow-hidden rounded-[20px] bg-[#0F1412] text-white"
-      id="quick-bean"
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-16 -top-20 size-[240px] rounded-full bg-[radial-gradient(closest-side,rgba(29,255,38,0.16),rgba(29,255,38,0))]"
+    <Card className="mt-3">
+      <CardHead
+        right={<Chip tone="green">3단계</Chip>}
+        sub={`1박스는 ${BEAN_BAGS_PER_BOX}봉(10kg) · ${formatPrice(unitPrice)}이에요`}
+        title="원두 간편 발주"
       />
 
-      <div className="relative px-4 pb-5 pt-5 sm:px-6">
-        <h2
-          className="break-keep text-[24px] font-bold leading-[1.2] tracking-[-0.03em] text-white"
-          id="quick-bean-title"
-        >
-          원두 발주
-        </h2>
-        <p className="mt-1.5 break-keep text-[15px] leading-[1.5] text-[#D5DCD7]">
-          1박스 = {BEAN_BAGS_PER_BOX}봉(10kg) ·{" "}
-          <strong className="font-bold text-[#1DFF26]">{formatPrice(unitPrice)}</strong>
-        </p>
-      </div>
-
-      <div className="relative rounded-t-[18px] bg-white px-4 pb-5 pt-5 text-[#0F1412] sm:px-6">
+      <CardBody className="pt-4">
         {/* ① 지점 */}
         <StepLabel step={1} title="어느 매장인가요?" />
 
         <div className="relative mt-2" id="quick-store">
           <select
             aria-label="발주 지점 선택"
-            className="ls-focus h-14 w-full appearance-none rounded-[12px] border-2 border-[var(--ls-line-strong)] bg-white px-4 pr-11 text-[17px] font-semibold text-[#0F1412] outline-none"
+            className="ls-focus h-14 w-full appearance-none rounded-[14px] bg-[#F7F8F9] px-4 pr-11 text-[17px] font-semibold text-[#0F1412] outline-none ring-0 transition-shadow focus:ring-2 focus:ring-[#0F1412]"
             onChange={(event) => {
               setStoreCode(event.target.value);
               setTaxHint(null);
@@ -315,7 +300,7 @@ export default function QuickBeanOrder({
           </select>
           <span
             aria-hidden
-            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#0F1412]"
+            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#8B948D]"
           >
             <svg height="16" viewBox="0 0 14 14" width="16">
               <path
@@ -331,15 +316,14 @@ export default function QuickBeanOrder({
         </div>
 
         {selectedStore ? (
-          <p className="mt-2 break-keep text-[15px] leading-[1.5] text-[#3B4740]">
-            <strong className="font-semibold text-[#0F1412]">{selectedStore.label}</strong>으로
-            배송합니다.
+          <p className="mt-2 break-keep text-[13.5px] leading-[1.5] text-[#8B948D]">
+            <strong className="font-bold text-[#0B5C2A]">{selectedStore.label}</strong>으로 배송해요.
           </p>
         ) : null}
 
         {storeError ? (
           <p
-            className="mt-2 break-keep rounded-[10px] bg-[#FDF2F2] px-3.5 py-2.5 text-[15px] font-semibold leading-[1.5] text-[#8A2323]"
+            className="mt-2 break-keep rounded-[12px] bg-[#FFF2F2] px-3.5 py-2.5 text-[13.5px] font-semibold leading-[1.5] text-[#B3261E]"
             role="alert"
           >
             {storeError}
@@ -350,7 +334,7 @@ export default function QuickBeanOrder({
           <div className="mt-2 space-y-2">
             <input
               aria-label="주문자 성함"
-              className="ls-focus h-14 w-full rounded-[12px] border-2 border-[var(--ls-line-strong)] px-4 text-[16px] text-[#0F1412] outline-none placeholder:text-[#6B746D]"
+              className="ls-focus h-14 w-full rounded-[14px] bg-[#F7F8F9] px-4 text-[16px] text-[#0F1412] outline-none ring-0 transition-shadow placeholder:text-[#98A29B] focus:ring-2 focus:ring-[#0F1412]"
               onChange={(event) => setCustomerName(event.target.value)}
               placeholder="주문자 성함"
               type="text"
@@ -358,7 +342,7 @@ export default function QuickBeanOrder({
             />
             <input
               aria-label="휴대폰 번호"
-              className="ls-focus h-14 w-full rounded-[12px] border-2 border-[var(--ls-line-strong)] px-4 text-[16px] text-[#0F1412] outline-none placeholder:text-[#6B746D]"
+              className="ls-focus h-14 w-full rounded-[14px] bg-[#F7F8F9] px-4 text-[16px] text-[#0F1412] outline-none ring-0 transition-shadow placeholder:text-[#98A29B] focus:ring-2 focus:ring-[#0F1412]"
               inputMode="numeric"
               maxLength={11}
               onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 11))}
@@ -368,7 +352,7 @@ export default function QuickBeanOrder({
             />
             <input
               aria-label="배송지 주소"
-              className="ls-focus h-14 w-full rounded-[12px] border-2 border-[var(--ls-line-strong)] px-4 text-[16px] text-[#0F1412] outline-none placeholder:text-[#6B746D]"
+              className="ls-focus h-14 w-full rounded-[14px] bg-[#F7F8F9] px-4 text-[16px] text-[#0F1412] outline-none ring-0 transition-shadow placeholder:text-[#98A29B] focus:ring-2 focus:ring-[#0F1412]"
               onChange={(event) => setDeliveryAddress(event.target.value)}
               placeholder="배송지 주소"
               type="text"
@@ -382,17 +366,21 @@ export default function QuickBeanOrder({
           <StepLabel step={2} title="몇 박스 보낼까요?" />
         </div>
 
-        <div className="mt-2 space-y-2 sm:grid sm:grid-cols-3 sm:gap-3 sm:space-y-0" role="group" aria-label="원두 박스 수량 선택">
+        <div
+          aria-label="원두 박스 수량 선택"
+          className="mt-2 space-y-2 sm:grid sm:grid-cols-3 sm:gap-2.5 sm:space-y-0"
+          role="group"
+        >
           {BEAN_BOX_OPTIONS.map((option) => {
             const active = boxes === option;
 
             return (
               <button
                 aria-pressed={active}
-                className={`ls-focus flex min-h-[78px] w-full items-center justify-between gap-3 rounded-[14px] px-4 text-left transition-colors sm:min-h-[118px] sm:flex-col sm:items-start sm:justify-center sm:gap-1 sm:px-5 ${
+                className={`ls-focus flex min-h-[78px] w-full items-center justify-between gap-3 rounded-[16px] px-4 text-left transition-colors sm:min-h-[112px] sm:flex-col sm:items-start sm:justify-center sm:gap-1 sm:px-5 ${
                   active
-                    ? "bg-[#0F1412] text-white ring-2 ring-[#0F1412] ring-offset-2"
-                    : "border-2 border-[var(--ls-line-strong)] bg-white text-[#0F1412] hover:border-[#0F1412]"
+                    ? "bg-[#0F1412] text-white shadow-[0_10px_24px_-14px_rgba(15,20,18,0.65)]"
+                    : "bg-[#F7F8F9] text-[#0F1412] hover:bg-[#EFF1F0]"
                 }`}
                 key={option}
                 onClick={() => setBoxes(option)}
@@ -400,10 +388,10 @@ export default function QuickBeanOrder({
               >
                 <span className="min-w-0">
                   <span className="flex items-center gap-2">
-                    <span className="text-[21px] font-bold leading-none">{option}박스</span>
+                    <span className="text-[20px] font-bold leading-none tracking-[-0.01em]">{option}박스</span>
                     {option === 1 ? (
                       <span
-                        className={`rounded-full px-2 py-[3px] text-[11.5px] font-bold ${
+                        className={`rounded-full px-2 py-[3px] text-[11px] font-bold leading-none ${
                           active ? "bg-[#1DFF26] text-[#0F1412]" : "bg-[#EDFBEF] text-[#0B5C2A]"
                         }`}
                       >
@@ -411,7 +399,7 @@ export default function QuickBeanOrder({
                       </span>
                     ) : null}
                     {active ? (
-                      <svg aria-hidden height="16" viewBox="0 0 24 24" width="16">
+                      <svg aria-hidden height="15" viewBox="0 0 24 24" width="15">
                         <path
                           d="M5 12.5l4.5 4.5L19 7.5"
                           fill="none"
@@ -424,15 +412,15 @@ export default function QuickBeanOrder({
                     ) : null}
                   </span>
                   <span
-                    className={`mt-1 block text-[14px] font-medium ${
-                      active ? "text-[#C8D0CA]" : "text-[#3B4740]"
+                    className={`mt-1 block text-[13px] font-medium ${
+                      active ? "text-[#C8D0CA]" : "text-[#8B948D]"
                     }`}
                   >
                     {beanBoxesToBags(option)}봉 · {beanBoxesToBags(option)}kg
                   </span>
                 </span>
                 <span
-                  className={`shrink-0 text-[19px] font-bold tabular-nums sm:mt-1 ${
+                  className={`shrink-0 text-[18px] font-bold tabular-nums tracking-[0.02em] sm:mt-1 ${
                     active ? "text-[#1DFF26]" : "text-[#0F1412]"
                   }`}
                 >
@@ -443,37 +431,37 @@ export default function QuickBeanOrder({
           })}
         </div>
 
-        <p className="mt-2 break-keep text-[15px] leading-[1.5] text-[#3B4740]">
+        <p className="mt-2.5 break-keep text-[13.5px] leading-[1.55] text-[#8B948D]">
           한 번에 최대 {BEAN_MAX_BOXES}박스까지예요. 더 필요하면{" "}
           <a
-            className="whitespace-nowrap font-semibold underline underline-offset-2"
+            className="whitespace-nowrap font-bold text-[#0B5C2A] underline underline-offset-2"
             href={`tel:${ORDER_SUPPORT_PHONE.replace(/\D/g, "")}`}
           >
             {ORDER_SUPPORT_PHONE}
           </a>
-          에 전화 주세요.
+          로 전화 주세요.
         </p>
 
         {/* 세금계산서 — 평소에는 접힌 한 줄, 필요할 때만 연다 */}
-        <div className="mt-5 rounded-[14px] border-2 border-[var(--ls-line)]" id="quick-tax">
+        <div className="mt-4 rounded-[16px] bg-[#F7F8F9]" id="quick-tax">
           <button
             aria-expanded={taxOpen}
-            className="ls-focus flex min-h-[56px] w-full items-center justify-between gap-2 rounded-[12px] px-4 text-left"
+            className="ls-focus flex min-h-[56px] w-full items-center justify-between gap-2 rounded-[16px] px-4 text-left"
             onClick={() => setTaxOpen((open) => !open)}
             type="button"
           >
-            <span className="text-[16px] font-semibold text-[#0F1412]">세금계산서</span>
+            <span className="text-[15px] font-bold text-[#0F1412]">세금계산서</span>
             <span className="flex items-center gap-1.5">
               <span
-                className={`text-[14.5px] font-semibold ${
-                  tax.requested && !taxComplete ? "text-[#B42318]" : tax.requested ? "text-[#0B5C2A]" : "text-[#3B4740]"
+                className={`text-[12.5px] font-bold ${
+                  tax.requested && !taxComplete ? "text-[#8A5A00]" : tax.requested ? "text-[#0B5C2A]" : "text-[#8B948D]"
                 }`}
               >
-                {tax.requested ? (taxComplete ? "발급 신청함" : "정보 입력 필요") : "발급 안 함"}
+                {tax.requested ? (taxComplete ? "발급 신청함" : "정보 입력 필요") : "발급 안 해요"}
               </span>
               <svg
                 aria-hidden
-                className={`text-[#3B4740] transition-transform ${taxOpen ? "rotate-180" : ""}`}
+                className={`text-[#8B948D] transition-transform ${taxOpen ? "rotate-180" : ""}`}
                 height="14"
                 viewBox="0 0 14 14"
                 width="14"
@@ -493,7 +481,7 @@ export default function QuickBeanOrder({
           {taxOpen ? (
             <div className="px-3 pb-3">
               {!taxComplete ? (
-                <p className="mb-2 rounded-[10px] bg-[#FFF7E6] px-3 py-2 text-[14px] font-semibold leading-[1.5] text-[#7A5A00]">
+                <p className="mb-2 rounded-[12px] bg-[#FFF6E0] px-3 py-2 text-[12.5px] font-semibold leading-[1.5] text-[#8A5A00]">
                   사업자 정보를 채워 주세요. 발급이 필요 없으면 위 체크를 풀어 주세요.
                 </p>
               ) : null}
@@ -503,26 +491,26 @@ export default function QuickBeanOrder({
         </div>
 
         {/* ③ 낼 금액과 발주 */}
-        <div className="mt-5 border-t-2 border-[#0F1412] pt-4">
+        <div className="mt-4 rounded-[18px] bg-[#F7F8F9] px-4 py-4">
           <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-[16px] font-semibold text-[#3B4740]">낼 금액</p>
-              <p className="mt-0.5 text-[14.5px] tabular-nums text-[#3B4740]">
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-[#8B948D]">낼 금액</p>
+              <p className="mt-0.5 text-[12.5px] tabular-nums tracking-[0.01em] text-[#8B948D]">
                 {boxes}박스 · {bags}봉 · 부가세 포함
               </p>
             </div>
-            <p className="text-[30px] font-bold leading-none tracking-[-0.03em] tabular-nums text-[#0F1412]">
+            <p className="shrink-0 text-[26px] font-bold leading-none tracking-[0.02em] tabular-nums text-[#0F1412] sm:text-[28px]">
               {formatPrice(total)}
             </p>
           </div>
-          <p className="mt-1 text-right text-[13.5px] tabular-nums text-[#3B4740]">
+          <p className="mt-1.5 text-right text-[11.5px] tabular-nums tracking-[0.01em] text-[#98A29B]">
             공급가액 {formatPrice(vat.supply)} + 부가세 {formatPrice(vat.vat)}
           </p>
         </div>
 
         {errorMessage ? (
           <p
-            className="mt-3 break-keep rounded-[12px] border-2 border-[#E4B4B4] bg-[#FDF2F2] px-4 py-3 text-[15px] font-semibold leading-[1.5] text-[#8A2323]"
+            className="mt-3 break-keep rounded-[12px] bg-[#FFF2F2] px-4 py-3 text-[13.5px] font-semibold leading-[1.5] text-[#B3261E]"
             role="alert"
           >
             {errorMessage}
@@ -530,7 +518,7 @@ export default function QuickBeanOrder({
         ) : null}
 
         <button
-          className="ls-focus mt-4 flex h-[60px] w-full items-center justify-center rounded-[14px] bg-[#0F1412] text-[19px] font-bold text-[#1DFF26] transition-colors hover:bg-[#1B241F] disabled:bg-[#D5DAD7] disabled:text-[#5F6A63]"
+          className="ls-focus mt-3 flex h-[58px] w-full items-center justify-center rounded-[16px] bg-[#1DFF26] text-[18px] font-bold tracking-[-0.01em] text-[#0F1412] transition-colors hover:bg-[#3BE93F] disabled:opacity-50"
           disabled={submitting}
           onClick={() => void handleSubmit()}
           type="button"
@@ -538,28 +526,28 @@ export default function QuickBeanOrder({
           {submitting ? "발주 접수 중…" : `${boxes}박스 발주하기`}
         </button>
 
-        <p className="mt-2 break-keep text-center text-[15px] leading-[1.5] text-[#3B4740]">
-          발주하면 접수되고, 입금하시면 출고됩니다.
+        <p className="mt-2 break-keep text-center text-[13px] leading-[1.5] text-[#8B948D]">
+          발주하면 접수되고, 입금하시면 출고돼요.
         </p>
 
         <button
-          className="ls-focus mt-3 flex h-[54px] w-full items-center justify-center rounded-[14px] border-2 border-[var(--ls-line-strong)] text-[15.5px] font-semibold text-[#0F1412] transition-colors hover:border-[#0F1412]"
+          className="ls-focus mt-2.5 flex h-[52px] w-full items-center justify-center rounded-[16px] bg-[#F2F4F6] text-[14.5px] font-bold text-[#3B4740] transition-colors hover:bg-[#E9ECEB]"
           onClick={handleCardCheckout}
           type="button"
         >
           카드로 결제하기
         </button>
-      </div>
-    </section>
+      </CardBody>
+    </Card>
   );
 }
 
 function StepLabel({ step, title }: { step: number; title: string }) {
   return (
-    <h3 className="flex items-center gap-2 text-[18px] font-bold leading-[1.3] tracking-[-0.02em] text-[#0F1412]">
+    <h3 className="flex items-center gap-2 text-[16px] font-bold leading-[1.3] tracking-[-0.02em] text-[#0F1412]">
       <span
         aria-hidden
-        className="grid size-7 shrink-0 place-items-center rounded-full bg-[#0F1412] text-[14px] font-bold text-[#1DFF26]"
+        className="grid size-6 shrink-0 place-items-center rounded-full bg-[#EDFBEF] text-[12px] font-bold text-[#0B5C2A]"
       >
         {step}
       </span>

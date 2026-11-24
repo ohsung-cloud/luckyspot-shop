@@ -607,7 +607,7 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                   </div>
                 </div>
                 <p className="mt-1 text-[9px] leading-[1.5] text-[#98A29B]">
-                  커피 7 : 프린트 3 · 커피 공헌이익 48% · 프린트 75% 기준 참고값입니다. 실제 매출은 수집 후 바뀝니다.
+                  커피 7 : 프린트 3 · 커피 공헌이익 68% · 프린트 75% 기준 참고값이에요. 실제 매출은 수집 후 바뀌어요.
                 </p>
               </div>
 

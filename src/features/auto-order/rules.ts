@@ -203,7 +203,7 @@ export const BUSINESS_ENTITIES = {
     name: "점주 사업자 (카페)",
     businessNoMasked: "***-**-*****",
     paymentOwner: "점주 사업자 — 지점 정산 계좌",
-    costShareNote: "음료 원가·변동비 52% · 카페 소모품 원가 100% 점주 부담",
+    costShareNote: "음료 원가·변동비 32% · 카페 소모품 원가 100% 점주 부담",
   },
   hq_print: {
     type: "hq_print" as const,
