@@ -10,8 +10,15 @@ import { STORES } from "./stores";
  * 같은 항목끼리 좌우로 비교만 한다(사용자 지시: 합산 금지).
  */
 
+/** 스냅샷 날짜(11/23) — '오늘' 대신 실제 수집일을 적어 하루 지난 값을 오늘로 읽지 않게 한다. */
+function shortDate(iso: string) {
+  const [, month, day] = iso.split("-");
+  return `${Number(month)}/${Number(day)}`;
+}
+
 function metrics(snapshot: SalesReportSnapshot, period: MonthlyPeriod) {
   const month = monthlyForStore(snapshot.storeCode, period);
+  const day = shortDate(snapshot.today);
   const bean = snapshot.bean;
   const stockEmpty = snapshot.stock.filter((item) => item.status === "empty");
   const toner = [
@@ -22,7 +29,7 @@ function metrics(snapshot: SalesReportSnapshot, period: MonthlyPeriod) {
   ];
 
   return [
-    { key: "커피 오늘", value: won(snapshot.revenue.coffee.today), hint: `${bean.coffeeDrinks}잔 · 어제 ${won(snapshot.revenue.coffee.yesterday)}` },
+    { key: `커피 ${day}`, value: won(snapshot.revenue.coffee.today), hint: `${bean.coffeeDrinks}잔 · 전일 ${won(snapshot.revenue.coffee.yesterday)}` },
     {
       key: `커피 ${month?.monthLabel ?? "월"}`,
       value: formatWon(month?.coffee.amount ?? null),
@@ -37,7 +44,7 @@ function metrics(snapshot: SalesReportSnapshot, period: MonthlyPeriod) {
     { key: "토너 최저", value: `${Math.min(...toner)}%`, hint: `K ${snapshot.print.toner.k} · C ${snapshot.print.toner.c} · M ${snapshot.print.toner.m} · Y ${snapshot.print.toner.y}` },
     { key: "용지", value: `Tray1 ${snapshot.print.paper.tray1}%`, hint: `Tray2 ${snapshot.print.paper.tray2}%` },
     { key: "원두 잔여", value: `${snapshot.bean.stockPct}%`, hint: `${Math.round(snapshot.bean.stockGrams ?? 0).toLocaleString("ko-KR")}g · ${days(snapshot.bean.daysLeftWithBurst)}` },
-    { key: "오늘 원두 소모", value: `${snapshot.bean.dailyGrams}g`, hint: `${snapshot.bean.coffeeDrinks}잔 · 잔당 ${snapshot.bean.avgGramsPerDrink}g` },
+    { key: `${day} 원두 소모`, value: `${snapshot.bean.dailyGrams}g`, hint: `${snapshot.bean.coffeeDrinks}잔 · 잔당 ${snapshot.bean.avgGramsPerDrink}g` },
     { key: "재고 0% 칸", value: `${stockEmpty.length}칸`, hint: stockEmpty.map((item) => item.material).join(" · ") || "없음" },
     { key: "누적 커피 매출", value: manwon(snapshot.revenue.coffee.cumulativeTotal) + "원", hint: "개점 이후" },
   ];
