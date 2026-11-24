@@ -61,10 +61,6 @@ export function StoreReport({
 
   const coffeeAmount = month?.coffee.amount ?? null;
   const printAmount = month?.print.amount ?? null;
-  const mixKnown = (coffeeAmount ?? 0) + (printAmount ?? 0);
-  const bothKnown = coffeeAmount !== null && printAmount !== null && mixKnown > 0;
-  const coffeePct = bothKnown ? Math.round((coffeeAmount / mixKnown) * 100) : null;
-  const printPct = bothKnown ? Math.round((printAmount / mixKnown) * 100) : null;
 
   const tonerMin = Math.min(data.print.toner.k, data.print.toner.c, data.print.toner.m, data.print.toner.y);
   const trayAvg = data.print.trayAvgPct;
@@ -110,14 +106,12 @@ export function StoreReport({
             <p className="mt-1.5 flex flex-wrap gap-1.5 text-[10.5px] text-[#C8D0CA]">
               <span className="rounded-full bg-white/10 px-2 py-0.5">
                 <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-white align-middle" />
-                커피 {coffeePct !== null ? `${coffeePct}% · ` : ""}{month ? formatWon(month.coffee.amount) : "—"}
+                커피 {month ? formatWon(month.coffee.amount) : "—"}
               </span>
               <span className="rounded-full bg-white/10 px-2 py-0.5">
                 <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-[#1DFF26] align-middle" />
                 프린트{" "}
-                {printAmount !== null
-                  ? `${printPct !== null ? `${printPct}% · ` : ""}${formatWon(printAmount)}`
-                  : "26일 정산 전"}
+                {printAmount !== null ? formatWon(printAmount) : "26일 정산 전"}
               </span>
             </p>
           </div>

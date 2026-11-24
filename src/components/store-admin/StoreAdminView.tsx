@@ -471,12 +471,11 @@ export default function StoreAdminView({
             <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-[#C8D0CA]">
               <span className="rounded-full bg-white/10 px-2 py-0.5">
                 <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-white align-middle" />
-                커피 {mixPct(current, "coffee")}
-                {current ? formatWon(current.coffee.amount) : "—"}
+                커피 {current ? formatWon(current.coffee.amount) : "—"}
               </span>
               <span className="rounded-full bg-white/10 px-2 py-0.5">
                 <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-[#1DFF26] align-middle" />
-                프린트 {mixPct(current, "print")}
+                프린트{" "}
                 {current?.print.amount !== null && current?.print.amount !== undefined
                   ? formatWon(current.print.amount)
                   : "26일 정산 전"}
@@ -859,16 +858,6 @@ function shortDate(iso: string) {
 function average(values: number[]) {
   if (values.length === 0) return null;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-/** 매출 비중(%) — 커피·프린트 둘 다 확인된 달에만 숫자를 붙인다(정산 전이면 비운다). */
-function mixPct(month: MonthlySummary | null, side: "coffee" | "print") {
-  const coffee = month?.coffee.amount ?? null;
-  const print = month?.print.amount ?? null;
-  if (coffee === null || print === null) return "";
-  const total = coffee + print;
-  if (total <= 0) return "";
-  return `${Math.round(((side === "coffee" ? coffee : print) / total) * 100)}% · `;
 }
 
 function daysShort(value: number | null | undefined) {

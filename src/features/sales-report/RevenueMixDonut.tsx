@@ -42,7 +42,6 @@ export function RevenueMixMini({
   const track = tone === "dark" ? "#2A332E" : "#EFF1F0";
   const coffeeColor = tone === "dark" ? "#FFFFFF" : "#0F1412";
   const printColor = tone === "dark" ? "#1DFF26" : "#1D9F4C";
-  const labelColor = tone === "dark" ? "text-[#9AA39C]" : "text-[#98A29B]";
 
   return (
     <div
@@ -80,9 +79,19 @@ export function RevenueMixMini({
       </svg>
 
       <span className="pointer-events-none absolute inset-0 grid place-items-center text-center leading-none">
-        <span>
-          <span className={`block text-[7.5px] font-bold ${labelColor}`}>{month.monthLabel}</span>
-          {month.partial ? <span className="mt-0.5 block text-[7px] font-bold text-[#E8C97A]">부분</span> : null}
+        <span className="block">
+          {print ? (
+            <>
+              <span className={`block text-[7.5px] font-bold ${tone === "dark" ? "text-white" : "text-[#0F1412]"}`}>
+                커피 {Math.round(coffeePct)}%
+              </span>
+              <span className="mt-[2px] block text-[7.5px] font-bold text-[#1DFF26]">
+                프린트 {Math.round(printPct)}%
+              </span>
+            </>
+          ) : (
+            <span className="block text-[7.5px] font-bold text-[#E8C97A]">부분</span>
+          )}
         </span>
       </span>
     </div>
