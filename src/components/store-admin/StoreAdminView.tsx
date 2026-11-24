@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Card, CardBody, CardHead, CTA, Chip, QUIET_BUTTON, Row, RowList, SUMMARY_ROW } from "@/components/internal/card-ui";
 import SplitSlips from "@/components/auto-order/SplitSlips";
 import { clock, won as wonShort } from "@/components/auto-order/format";
 import type { ApprovalView, ProposalListResponse, SplitResult } from "@/features/auto-order/types";
@@ -20,14 +21,16 @@ import type { StorePulse } from "@/features/sales-report/trend";
 import type { PrintVendorType, StoreFixedCost } from "@/features/stores/registry-types";
 
 /**
- * 점주 전용 어드민 — 매출(1순위) → 원두·토너·용지 발주(2순위) → 접이식 상세(3순위).
+ * 점주 전용 어드민 — 토스 앱식 카드 화면.
+ *
+ * 매출(1순위) → 원두·토너·용지 발주(2순위) → 매출 흐름 → 접이식 상세(3순위).
+ * 카드 방식: 흰 카드 24px 라운드 · 테두리 없이 여백으로 나눔 · 왼쪽 라벨/설명, 오른쪽 굵은 숫자·상태 칩.
  *
  * 오류·경고(이상 감지·미등록 품목·연결 실패)는 첫 화면에 펼치지 않는다.
- * 모두 '시스템 상태·알림 보기' 안에 접어 두고, 평상시에는 매출과 3종만 보이게 한다.
+ * 모두 '확인할 것' 안에 접어 두고, 평상시에는 매출과 3종만 보이게 한다.
  *
  * 2026-11-23 4대 고도화
- *  - 매출 히어로에 `예상 순수익` 한 줄(탭하면 내역) + [일간][주간][월간] 매출 펄스 탭.
- *    세 그림을 세로로 쌓지 않고 카드 안에서 전환해 세로 길이를 지킨다.
+ *  - 매출 카드에 `예상 순수익` 한 줄(탭하면 내역) + [일간][주간][월간] 매출 펄스 탭.
  *  - 3종 카드마다 `교체완료` — 잔량 100% + 소진 속도 학습(0.85x~1.25x).
  *  - 시스템 상태 접이식 안에 매일 00:05 마감 알림톡 미리보기(발송 없음).
  */
@@ -93,7 +96,23 @@ type CalibrateResponse = {
 const CORE_SKUS = ["bean-10kg", "toner-black", "toner-color", "a4-paper"];
 const CALIBRATE_SKUS = new Set(["bean-10kg", "toner-black", "a4-paper"]);
 
-function CoreCard({
+type Tone = "red" | "amber" | "ok" | "gray";
+
+const DOT: Record<Tone, string> = {
+  red: "bg-[#B3261E]",
+  amber: "bg-[#E0A800]",
+  ok: "bg-[#1D9F4C]",
+  gray: "bg-[#C9CFCB]",
+};
+
+const VALUE_TONE: Record<Tone, "red" | "amber" | "ink" | "muted"> = {
+  red: "red",
+  amber: "amber",
+  ok: "ink",
+  gray: "muted",
+};
+
+function CoreRow({
   label,
   value,
   sub,
@@ -106,46 +125,29 @@ function CoreCard({
   label: string;
   value: string;
   sub: string;
-  tone: "red" | "amber" | "green" | "gray";
+  tone: Tone;
   badge?: string;
   onCalibrate?: () => void;
   busy?: boolean;
   replacedLabel?: string | null;
 }) {
-  const styles = {
-    red: "border-[#F3D2D2] bg-[#FFF7F7]",
-    amber: "border-[#F0E1B8] bg-[#FFFBF0]",
-    green: "border-[#D6EBDD] bg-white",
-    gray: "border-[#E6E9E7] bg-white",
-  }[tone];
-  const valueTone = {
-    red: "text-[#B3261E]",
-    amber: "text-[#8A5A00]",
-    green: "text-[#0F1412]",
-    gray: "text-[#98A29B]",
-  }[tone];
-
   return (
-    <div className={`rounded-[14px] border p-2.5 ${styles}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold text-[#3B4740]">{label}</span>
-        {badge ? (
-          <span className="rounded-full bg-[#0F1412] px-1.5 py-0.5 text-[9px] font-bold text-[#1DFF26]">{badge}</span>
-        ) : null}
-      </div>
-      <p className={`mt-1.5 text-[18px] font-bold leading-none tabular-nums tracking-[-0.02em] ${valueTone}`}>{value}</p>
-      <p className="mt-1 truncate text-[9.5px] text-[#6B746D]">{replacedLabel ?? sub}</p>
-      {onCalibrate ? (
-        <button
-          className="mt-1.5 h-[22px] w-full rounded-full border border-[#C9CFCB] bg-white/70 text-[9px] font-bold text-[#3B4740] disabled:opacity-50"
-          disabled={busy}
-          onClick={onCalibrate}
-          type="button"
-        >
-          {busy ? "기록 중…" : "교체완료"}
-        </button>
-      ) : null}
-    </div>
+    <Row
+      chip={badge}
+      chipTone="ink"
+      dot={DOT[tone]}
+      label={label}
+      sub={replacedLabel ?? sub}
+      trailing={
+        onCalibrate ? (
+          <button className={QUIET_BUTTON} disabled={busy} onClick={onCalibrate} type="button">
+            {busy ? "기록 중" : "교체완료"}
+          </button>
+        ) : null
+      }
+      value={value}
+      valueTone={VALUE_TONE[tone]}
+    />
   );
 }
 
@@ -185,13 +187,13 @@ export default function StoreAdminView({
       const payload = (await response.json().catch(() => null)) as (ProposalListResponse & { error?: string }) | null;
 
       if (!response.ok || !payload || payload.ok !== true) {
-        throw new Error(payload?.error ?? "발주 제안을 불러오지 못했습니다.");
+        throw new Error(payload?.error ?? "발주 제안을 불러오지 못했어요.");
       }
 
       setState(payload);
       setNow(Date.now());
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "발주 제안을 불러오지 못했습니다.");
+      setError(cause instanceof Error ? cause.message : "발주 제안을 불러오지 못했어요.");
     } finally {
       setLoading(false);
     }
@@ -285,7 +287,7 @@ export default function StoreAdminView({
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; approval?: ApprovalView; error?: string } | null;
 
       if (!response.ok || !payload?.ok || !payload.approval) {
-        throw new Error(payload?.error ?? "승인하지 못했습니다.");
+        throw new Error(payload?.error ?? "승인하지 못했어요.");
       }
 
       setApproval(payload.approval);
@@ -300,7 +302,7 @@ export default function StoreAdminView({
         ...prev,
       ]);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "승인하지 못했습니다.");
+      setError(cause instanceof Error ? cause.message : "승인하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -322,18 +324,18 @@ export default function StoreAdminView({
 
       if (payload?.status === "confirmed_split" && payload.split) {
         setApproval({ ...approval, status: "confirmed_split", remainingSeconds: 0, splitPreview: payload.split });
-        setNotice(payload.message ?? "유예가 이미 끝나 확정됐습니다.");
+        setNotice(payload.message ?? "유예가 이미 끝나 확정됐어요.");
         applyLocal(approval.proposals.map((proposal) => proposal.id), "confirmed_split");
         return;
       }
 
-      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "취소하지 못했습니다.");
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "취소하지 못했어요.");
 
       setApproval(null);
       setNotice(payload.message ?? "발주를 취소했어요.");
       applyLocal(approval.proposals.map((proposal) => proposal.id), "canceled");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "취소하지 못했습니다.");
+      setError(cause instanceof Error ? cause.message : "취소하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -353,7 +355,7 @@ export default function StoreAdminView({
       const payload = (await response.json().catch(() => null)) as CalibrateResponse | null;
 
       if (!response.ok || !payload?.ok || !payload.calibration) {
-        throw new Error(payload?.error ?? "교체완료를 기록하지 못했습니다.");
+        throw new Error(payload?.error ?? "교체완료를 기록하지 못했어요.");
       }
 
       setLocalCalibrations((prev) => ({ ...prev, [sku]: payload.calibration as CalibrationEntry }));
@@ -369,7 +371,7 @@ export default function StoreAdminView({
       ]);
       void load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "교체완료를 기록하지 못했습니다.");
+      setError(cause instanceof Error ? cause.message : "교체완료를 기록하지 못했어요.");
     } finally {
       setCalibrating(null);
     }
@@ -377,9 +379,10 @@ export default function StoreAdminView({
 
   const current = monthly.current;
   const previous = monthly.previous;
-  const pending = state?.proposals.filter(
-    (proposal) => proposal.status === "pending_approval" || proposal.status === "grace_cancel_window",
-  ) ?? [];
+  const pending =
+    state?.proposals.filter(
+      (proposal) => proposal.status === "pending_approval" || proposal.status === "grace_cancel_window",
+    ) ?? [];
   const corePending = pending.filter((proposal) => CORE_SKUS.includes(proposal.sku));
   const otherPending = pending.filter((proposal) => !CORE_SKUS.includes(proposal.sku));
   const coreAmount = corePending.reduce((sum, proposal) => sum + proposal.amount, 0);
@@ -389,9 +392,7 @@ export default function StoreAdminView({
   const bep = computeBepAndOrderMode({ month: current, fixedCost, orderAmount: coreAmount });
 
   const grace = approval?.status === "grace_cancel_window";
-  const remainingSeconds = approval
-    ? Math.max(0, Math.ceil((new Date(approval.expiresAt).getTime() - now) / 1000))
-    : 0;
+  const remainingSeconds = approval ? Math.max(0, Math.ceil((new Date(approval.expiresAt).getTime() - now) / 1000)) : 0;
 
   const forecasts = state?.run.forecasts ?? [];
   const bean = forecasts.find((item) => item.sku === "bean-10kg");
@@ -404,14 +405,14 @@ export default function StoreAdminView({
         ),
         snapshot?.tonerMin ?? 100,
       )
-    : snapshot?.tonerMin ?? null;
+    : (snapshot?.tonerMin ?? null);
   const paperPct = state?.telemetry
     ? average(
         [state.telemetry.paper.tray1, state.telemetry.paper.tray2].filter(
           (value): value is number => typeof value === "number",
         ),
       )
-    : snapshot?.paperAvgPct ?? null;
+    : (snapshot?.paperAvgPct ?? null);
 
   const allHistory = [...localHistory, ...history].slice(0, 6);
   const warningCount = (error ? 1 : 0) + (state?.hold ? 1 : 0) + (snapshot?.alerts.length ?? 0);
@@ -424,7 +425,7 @@ export default function StoreAdminView({
     if (hours >= 0 && hours <= 24) return "오늘 교체 · 100%";
     const date = new Date(entry.lastReplacedAt);
     const label = `${date.getMonth() + 1}/${date.getDate()}`;
-    return `${label} 교체 · ${entry.factor.toFixed(2)}x`;
+    return `${label} 교체`;
   };
 
   const digest = buildDigest({
@@ -436,391 +437,446 @@ export default function StoreAdminView({
     due: corePending.length,
   });
 
+  const beanTone = toneFor(bean?.remainingDays ?? snapshot?.beanDaysLeft ?? null, store.thresholds.beanDays);
+  const tonerTone = toner?.remainingDays != null ? toneFor(toner.remainingDays, store.thresholds.tonerDays) : pctTone(tonerPct);
+  const paperTone = paper?.remainingDays != null ? toneFor(paper.remainingDays, store.thresholds.paperDays) : pctTone(paperPct);
+
   return (
-    <div className="grid gap-2.5">
+    <div className="grid gap-3">
       <header className="px-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full bg-[#0F1412] px-2.5 py-1 font-mono text-[10px] font-bold text-[#1DFF26]">
-            {store.code}
-          </span>
-          <span className="rounded-full border border-[#D7DBD9] px-2 py-0.5 text-[10px] font-semibold text-[#6B746D]">
-            {store.storeType}
-          </span>
-          <span className="rounded-full border border-[#D7DBD9] px-2 py-0.5 text-[10px] font-semibold text-[#6B746D]">
-            PWA · PIN {store.pinEnabled ? "켜짐" : "열람"}
-          </span>
+          <Chip tone="ink">{store.code}</Chip>
+          <Chip tone="gray">{store.storeType}</Chip>
+          <Chip tone="gray">PIN {store.pinEnabled ? "켜짐" : "열람"}</Chip>
         </div>
-        <h1 className="mt-1.5 text-[21px] font-bold leading-[1.25] tracking-[-0.02em] text-[#0F1412]">
-          {store.shortLabel} 점주 어드민
+        <h1 className="mt-2.5 text-[24px] font-bold leading-[1.25] tracking-[-0.03em] text-[#0F1412]">
+          {store.shortLabel} 사장님
         </h1>
-        <p className="mt-1 text-[10px] text-[#98A29B]">매일 08~22시 1시간마다 · 00:05 마감 업데이트</p>
+        <p className="mt-1 text-[11.5px] font-medium leading-[1.5] text-[#8B948D]">
+          오늘 매출과 채울 것을 한 화면에 모았어요 · 00:05에 마감해요
+        </p>
       </header>
 
       {/* ① 매출 — 최상위 위계 */}
-      <section className="rounded-[20px] bg-[#0F1412] p-4 text-white">
-        <div className="flex items-center justify-between">
-          <span className="rounded-full bg-[#1DFF26] px-2.5 py-1 text-[10.5px] font-bold text-[#0F1412]">이번달 매출</span>
-          <span className="text-[10px] tabular-nums text-[#9AA39C]">{current?.coffee.range ?? "수집 전"}</span>
-        </div>
-
-        <div className="mt-2.5 flex items-end justify-between gap-2">
+      <Card className="min-w-0 px-5 py-5">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[33px] font-bold leading-none tabular-nums tracking-[-0.03em]">
+            <p className="text-[13px] font-semibold text-[#6B746D]">이번 달 매출</p>
+            <p className="mt-2 text-[32px] font-bold leading-none tabular-nums tracking-[-0.035em] text-[#0F1412]">
               {current ? formatWon(current.total) : "—"}
             </p>
-
-            <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-[#C8D0CA]">
-              <span className="rounded-full bg-white/10 px-2 py-0.5">
-                <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-white align-middle" />
-                커피 {current ? formatWon(current.coffee.amount) : "—"}
-              </span>
-              <span className="rounded-full bg-white/10 px-2 py-0.5">
-                <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-[#1DFF26] align-middle" />
-                프린트{" "}
-                {current?.print.amount !== null && current?.print.amount !== undefined
-                  ? formatWon(current.print.amount)
-                  : current?.print.status === "missing"
-                    ? "미확보"
-                    : "26일 정산 전"}
-              </span>
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              <Chip tone={current && !current.partial ? "green" : "gray"}>
+                {current ? (current.partial ? "확인된 항목만" : "확정") : "수집 전"}
+              </Chip>
+              <span className="text-[10.5px] font-medium text-[#A7AFA9]">{current?.coffee.range ?? "수집 전"}</span>
             </div>
           </div>
-          <RevenueMixMini month={current} size={60} />
+          <RevenueMixMini month={current} size={66} />
         </div>
 
-        <ProfitRow
-          fixedCost={fixedCost}
-          note={
-            fixedCostTotal(fixedCost) === 0
-              ? "월 고정비가 등록되지 않아 고정비 없이 계산한 값입니다."
-              : undefined
-          }
-          profit={profit.current}
-        />
+        <RowList className="mt-4 border-t border-[#F1F3F2]">
+          <Row
+            dot="bg-[#0F1412]"
+            label="커피"
+            sub={current ? `${current.coffee.range} · ${current.coffee.source}` : "수집 전"}
+            value={current ? formatWon(current.coffee.amount) : "—"}
+          />
+          <Row
+            dot="bg-[#1D9F4C]"
+            label="프린트"
+            sub={current ? `${current.print.range} · ${current.print.status === "pending" ? "매월 26일 정산" : current.print.source}` : "수집 전"}
+            value={
+              current?.print.amount !== null && current?.print.amount !== undefined
+                ? formatWon(current.print.amount)
+                : current?.print.status === "missing"
+                  ? "미확보"
+                  : "26일 정산 전"
+            }
+            valueTone={current?.print.amount !== null && current?.print.amount !== undefined ? "ink" : "muted"}
+          />
+        </RowList>
 
-        <SalesPulseTabs comparison={comparison} month={current} pulse={pulse} />
+        <div className="mt-4 rounded-[18px] bg-[#F7F8F9] px-4 py-3.5">
+          <ProfitRow
+            fixedCost={fixedCost}
+            note={
+              fixedCostTotal(fixedCost) === 0 ? "월 고정비를 넣으면 실제 순수익이 보여요. 본사 화면에서 넣을 수 있어요." : undefined
+            }
+            previousNet={profit.previous?.net ?? null}
+            profit={profit.current}
+          />
+        </div>
 
-        <p className="mt-2 text-[9.5px] tabular-nums text-[#8A948C]">
+        <p className="mt-2 text-[10.5px] font-medium tabular-nums text-[#A7AFA9]">
           지난달 커피 {previous ? formatWon(previous.coffee.amount) : "—"} · 프린트{" "}
           {previous?.print.amount !== null && previous?.print.amount !== undefined ? formatWon(previous.print.amount) : "—"}
-          {" · "}예상 순수익 {profit.previous?.net !== null && profit.previous?.net !== undefined ? formatWon(profit.previous.net) : "—"}
         </p>
-      </section>
+      </Card>
 
       {/* ② 원두 · 토너 · 용지 + 원터치 발주 */}
-      <section className="rounded-[20px] border-2 border-[#0F1412] bg-white p-3.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-bold text-[#0F1412]">지금 채울 3가지</h2>
-          <span className="text-[10px] text-[#6B746D]">
-            {state
-              ? state.dataSource === "demo"
-                ? "데모 예측 · 실측 마감 0일"
-                : `${state.run.asOfDate.slice(5).replace("-", "/")} 마감`
-              : snapshot
-                ? "실측"
-                : "수집 전"}
-          </span>
-        </div>
+      <Card>
+        <CardHead
+          right={
+            <span className="text-[10.5px] font-semibold text-[#A7AFA9]">
+              {state
+                ? state.dataSource === "demo"
+                  ? "데모 예측"
+                  : `${state.run.asOfDate.slice(5).replace("-", "/")} 마감`
+                : snapshot
+                  ? "실측"
+                  : "수집 전"}
+            </span>
+          }
+          sub="원두·토너·용지 잔량이에요"
+          title="채울 때가 됐어요"
+        />
 
-        <div className="mt-2 grid grid-cols-3 gap-1.5">
-          <CoreCard
-            badge={bean?.due ? "발주" : undefined}
-            busy={calibrating === "bean-10kg"}
-            label="원두"
-            onCalibrate={CALIBRATE_SKUS.has("bean-10kg") ? () => void calibrate("bean-10kg", "원두") : undefined}
-            replacedLabel={replaceNote("bean-10kg")}
-            sub={bean ? `${Math.round(bean.stockOnHand).toLocaleString("ko-KR")}g · ${bean.predictedDailyConsumption.toFixed(0)}g/일` : snapshot?.beanDaysLeft ? `실측 ${snapshot.beanDaysLeft.toFixed(1)}일` : "수집 전"}
-            tone={toneFor(bean?.remainingDays ?? snapshot?.beanDaysLeft ?? null, store.thresholds.beanDays)}
-            value={daysShort(bean?.remainingDays ?? snapshot?.beanDaysLeft ?? null)}
-          />
-          <CoreCard
-            badge={toner?.due ? "발주" : undefined}
-            busy={calibrating === "toner-black"}
-            label="토너"
-            onCalibrate={() => void calibrate("toner-black", "토너")}
-            replacedLabel={replaceNote("toner-black")}
-            sub={
-              toner
-                ? `${Math.round(toner.stockOnHand).toLocaleString("ko-KR")}g · ${toner.predictedDailyConsumption.toFixed(1)}g/일`
-                : tonerPct !== null
-                  ? `잔량 ${Math.round(tonerPct)}%`
-                  : "수집 전"
-            }
-            tone={toner?.remainingDays != null ? toneFor(toner.remainingDays, store.thresholds.tonerDays) : pctTone(tonerPct)}
-            value={toner?.remainingDays != null ? daysShort(toner.remainingDays) : tonerPct !== null ? `${Math.round(tonerPct)}%` : "—"}
-          />
-          <CoreCard
-            badge={paper?.due ? "발주" : undefined}
-            busy={calibrating === "a4-paper"}
-            label="용지"
-            onCalibrate={() => void calibrate("a4-paper", "용지")}
-            replacedLabel={replaceNote("a4-paper")}
-            sub={
-              paper
-                ? `${Math.round(paper.stockOnHand).toLocaleString("ko-KR")}매 · ${paper.predictedDailyConsumption.toFixed(0)}매/일`
-                : paperPct !== null
-                  ? `잔량 ${Math.round(paperPct)}%`
-                  : "수집 전"
-            }
-            tone={paper?.remainingDays != null ? toneFor(paper.remainingDays, store.thresholds.paperDays) : pctTone(paperPct)}
-            value={paper?.remainingDays != null ? daysShort(paper.remainingDays) : paperPct !== null ? `${Math.round(paperPct)}%` : "—"}
-          />
-        </div>
+        <CardBody className="pt-2">
+          <RowList>
+            <CoreRow
+              badge={bean?.due ? "발주" : undefined}
+              busy={calibrating === "bean-10kg"}
+              label="원두"
+              onCalibrate={CALIBRATE_SKUS.has("bean-10kg") ? () => void calibrate("bean-10kg", "원두") : undefined}
+              replacedLabel={replaceNote("bean-10kg")}
+              sub={
+                bean
+                  ? `${Math.round(bean.stockOnHand).toLocaleString("ko-KR")}g · ${bean.predictedDailyConsumption.toFixed(0)}g/일`
+                  : snapshot?.beanDaysLeft
+                    ? `실측 ${snapshot.beanDaysLeft.toFixed(1)}일`
+                    : "수집 전"
+              }
+              tone={beanTone}
+              value={daysShort(bean?.remainingDays ?? snapshot?.beanDaysLeft ?? null)}
+            />
+            <CoreRow
+              badge={toner?.due ? "발주" : undefined}
+              busy={calibrating === "toner-black"}
+              label="토너"
+              onCalibrate={() => void calibrate("toner-black", "토너")}
+              replacedLabel={replaceNote("toner-black")}
+              sub={
+                toner
+                  ? `${Math.round(toner.stockOnHand).toLocaleString("ko-KR")}g · ${toner.predictedDailyConsumption.toFixed(1)}g/일`
+                  : tonerPct !== null
+                    ? `잔량 ${Math.round(tonerPct)}%`
+                    : "수집 전"
+              }
+              tone={tonerTone}
+              value={toner?.remainingDays != null ? daysShort(toner.remainingDays) : tonerPct !== null ? `${Math.round(tonerPct)}%` : "—"}
+            />
+            <CoreRow
+              badge={paper?.due ? "발주" : undefined}
+              busy={calibrating === "a4-paper"}
+              label="용지"
+              onCalibrate={() => void calibrate("a4-paper", "용지")}
+              replacedLabel={replaceNote("a4-paper")}
+              sub={
+                paper
+                  ? `${Math.round(paper.stockOnHand).toLocaleString("ko-KR")}매 · ${paper.predictedDailyConsumption.toFixed(0)}매/일`
+                  : paperPct !== null
+                    ? `잔량 ${Math.round(paperPct)}%`
+                    : "수집 전"
+              }
+              tone={paperTone}
+              value={paper?.remainingDays != null ? daysShort(paper.remainingDays) : paperPct !== null ? `${Math.round(paperPct)}%` : "—"}
+            />
+          </RowList>
 
-        {grace && approval ? (
-          <div className="mt-2.5 rounded-[14px] bg-[#0F1412] px-3 py-3 text-white">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[#1DFF26]">발주 잠금 · 아직 주문 전</span>
-              <span className="text-[24px] font-bold leading-none tabular-nums">{clock(remainingSeconds)}</span>
+          {grace && approval ? (
+            <div className="mt-4 rounded-[20px] bg-[#0F1412] px-4 py-4 text-white">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[12.5px] font-bold text-[#1DFF26]">아직 주문 전이에요</p>
+                  <p className="mt-1 text-[11.5px] leading-[1.5] text-[#C8D0CA]">5분 안이면 취소할 수 있어요</p>
+                </div>
+                <p className="shrink-0 text-[30px] font-bold leading-none tabular-nums tracking-[-0.03em]">
+                  {clock(remainingSeconds)}
+                </p>
+              </div>
+              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+                <div
+                  className="h-full rounded-full bg-[#1DFF26] transition-[width] duration-300"
+                  style={{ width: `${Math.max(0, Math.min(100, (remainingSeconds / Math.max(1, approval.graceSeconds)) * 100))}%` }}
+                />
+              </div>
+              <button
+                className="mt-3 h-12 w-full rounded-[14px] border border-[#FF6B6B] text-[14px] font-bold text-[#FF8A8A] disabled:opacity-60"
+                disabled={busy}
+                onClick={() => void cancel()}
+                type="button"
+              >
+                {busy ? "취소하는 중…" : "발주 취소하기"}
+              </button>
             </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
-              <div
-                className="h-full rounded-full bg-[#1DFF26] transition-[width] duration-300"
-                style={{ width: `${Math.max(0, Math.min(100, (remainingSeconds / Math.max(1, approval.graceSeconds)) * 100))}%` }}
-              />
-            </div>
+          ) : corePending.length > 0 ? (
             <button
-              className="mt-2.5 h-11 w-full rounded-[11px] border border-[#FF6B6B] text-[14px] font-bold text-[#FF8A8A] disabled:opacity-60"
+              className={`${CTA} mt-4`}
               disabled={busy}
-              onClick={() => void cancel()}
+              onClick={() => void approve(corePending.map((proposal) => proposal.id))}
               type="button"
             >
-              {busy ? "취소하는 중…" : "발주 취소하기"}
+              {busy ? "발주하는 중…" : `버튼 한 번으로 발주 · ${wonShort(coreAmount)}`}
             </button>
-          </div>
-        ) : corePending.length > 0 ? (
-          <button
-            className="mt-2.5 h-[54px] w-full rounded-[14px] bg-[#1DFF26] text-[16px] font-bold text-[#0F1412] disabled:opacity-60"
-            disabled={busy}
-            onClick={() => void approve(corePending.map((proposal) => proposal.id))}
-            type="button"
-          >
-            {busy ? "승인하는 중…" : `3종 채우기 · ${wonShort(coreAmount)}`}
-          </button>
-        ) : (
-          <div className="mt-2.5 flex h-[50px] items-center justify-center rounded-[14px] bg-[#F4F5F6] text-[12.5px] font-semibold text-[#6B746D]">
-            {loading ? "계산 중…" : state?.hold ? "이상 감지로 멈춤 — 아래 알림" : "3종 모두 충분해요"}
-          </div>
-        )}
+          ) : (
+            <div className="mt-4 flex h-14 items-center justify-center rounded-[16px] bg-[#F2F4F6] text-[13px] font-semibold text-[#6B746D]">
+              {loading ? "잔량을 계산하고 있어요…" : state?.hold ? "이상 감지로 멈췄어요 — 아래에서 확인해요" : "지금은 채울 게 없어요"}
+            </div>
+          )}
 
-        <p className="mt-1.5 text-center text-[9.5px] text-[#6B746D]">
-          {corePending.length > 0 ? "승인 후 5분 동안 취소할 수 있어요" : "잔여일이 기준 안으로 오면 버튼이 켜집니다"}
-          {otherPending.length > 0 ? ` · 기타 ${otherPending.length}종은 아래 상세` : ""}
-        </p>
-      </section>
+          <p className="mt-2 text-center text-[10.5px] font-medium leading-[1.5] text-[#A7AFA9]">
+            {corePending.length > 0 ? "누르면 5분 동안 취소할 수 있어요" : "잔여일이 기준 안으로 오면 버튼이 켜져요"}
+            {otherPending.length > 0 ? ` · 기타 ${otherPending.length}종은 아래 상세에 있어요` : ""}
+          </p>
+        </CardBody>
+      </Card>
 
       {notice ? (
-        <p className="rounded-[12px] bg-[#EDFBEF] px-3 py-2 text-[11.5px] font-semibold text-[#0B5C2A]">{notice}</p>
+        <p className="rounded-[16px] bg-[#EDFBEF] px-4 py-3 text-[12.5px] font-semibold leading-[1.5] text-[#0B5C2A]">{notice}</p>
       ) : null}
 
       {approval?.status === "confirmed_split" ? (
-        <section className="rounded-[16px] border border-[#007A36] bg-[#EDFBEF] p-3">
-          <p className="text-[11px] font-bold text-[#0B5C2A]">발주 확정 · {wonShort(approval.splitPreview.totalAmount)}</p>
-          <p className="mt-0.5 text-[11px] text-[#3B4740]">사업자별로 나뉘어 발주됐어요. 전표는 아래 상세에서.</p>
-        </section>
+        <div className="rounded-[20px] bg-[#EDFBEF] px-4 py-4">
+          <p className="text-[12px] font-bold text-[#0B5C2A]">발주 확정 · {wonShort(approval.splitPreview.totalAmount)}</p>
+          <p className="mt-1 text-[12px] leading-[1.55] text-[#3B4740]">점주 사업자와 본사 사업자로 나눠 담았어요. 전표는 아래에 있어요.</p>
+        </div>
       ) : null}
 
-      {/* ③ 접이식 2개 — 기본 접힘 */}
-      <details className="rounded-[14px] border border-[#E6E9E7] bg-white px-3.5 py-3">
-        <summary className="flex cursor-pointer items-center justify-between text-[12.5px] font-bold text-[#3B4740]">
-          교차예측 · 특허 근거 보기
-          <span className="text-[10px] font-semibold text-[#98A29B]">3종 → 사업자 분리</span>
-        </summary>
+      {/* ③ 흐름 */}
+      <Card className="min-w-0">
+        <CardHead
+          right={
+            <Chip tone={pulse.dailySource === "measured" ? "green" : pulse.dailySource === "estimated" ? "amber" : "gray"}>
+              {pulse.dailySource === "measured" ? "실측" : pulse.dailySource === "estimated" ? "추정" : "수집 전"}
+            </Chip>
+          }
+          sub="탭을 눌러 일간·주간·월간을 봐요"
+          title="매출 흐름"
+        />
+        <CardBody className="pt-3">
+          <SalesPulseTabs comparison={comparison} month={current} pulse={pulse} />
+        </CardBody>
+      </Card>
 
-        <div className="mt-2 flex flex-wrap items-center gap-1 text-[9.5px] font-semibold text-[#3B4740]">
-          {["수집", "교차예측", "임계", "사업자 분리", "알림톡"].map((step, index) => (
-            <span key={step} className="flex items-center gap-1">
-              <span className={`rounded-full px-1.5 py-0.5 ${index === 1 ? "bg-[#0F1412] text-[#1DFF26]" : "bg-[#F4F5F6]"}`}>
-                {step}
+      {/* ④ 접이식 2장 — 기본 접힘 */}
+      <Card>
+        <details className="group">
+          <summary className={SUMMARY_ROW}>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-bold text-[#0F1412]">발주가 나온 이유</span>
+              <span className="mt-0.5 block truncate text-[11.5px] font-medium text-[#8B948D]">
+                교차예측 · 사업자별 전표 · 손익분기
               </span>
-              {index < 4 ? <span className="text-[#B0B7B2]">›</span> : null}
             </span>
-          ))}
-        </div>
+            <span aria-hidden className="text-[16px] font-bold text-[#C2C9C4] transition-transform group-open:rotate-90">
+              ›
+            </span>
+          </summary>
 
-        {/* 손익분기(BEP) · 발주 모드 — 접힘 패널 안에서만. */}
-        {bep ? (
-          <div className="mt-2 rounded-[10px] bg-[#0F1412] px-2.5 py-2 text-white">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold text-[#C8D0CA]">손익분기(BEP) · 발주 모드</p>
-              <span className="shrink-0 rounded-full bg-[#1DFF26] px-1.5 py-0.5 text-[8.5px] font-bold text-[#0F1412]">
-                {bep.modeLabel}
-              </span>
+          <div className="border-t border-[#F1F3F2] px-5 py-4">
+            <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold text-[#3B4740]">
+              {["수집", "교차예측", "임계", "사업자 분리", "알림톡"].map((step, index) => (
+                <span key={step} className="flex items-center gap-1">
+                  <span className={`rounded-full px-2 py-1 ${index === 1 ? "bg-[#0F1412] text-[#1DFF26]" : "bg-[#F2F4F6] text-[#6B746D]"}`}>
+                    {step}
+                  </span>
+                  {index < 4 ? <span className="text-[#C2C9C4]">›</span> : null}
+                </span>
+              ))}
             </div>
 
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
-              <div
-                className={`h-full rounded-full ${bep.reached ? "bg-[#1DFF26]" : "bg-[#EFC94C]"}`}
-                style={{ width: `${Math.min(100, Math.max(0, bep.progressPct))}%` }}
-              />
-            </div>
+            {/* 손익분기(BEP) · 발주 모드 — 접힘 패널 안에서만. */}
+            {bep ? (
+              <div className="mt-3 rounded-[18px] bg-[#F7F8F9] px-4 py-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[12px] font-bold text-[#3B4740]">손익분기 · 발주 모드</p>
+                  <Chip tone={bep.reached ? "green" : "amber"}>{bep.modeLabel}</Chip>
+                </div>
 
-            <div className="mt-1 flex items-baseline justify-between gap-2 text-[9.5px]">
-              <span className="text-[#C8D0CA]">
-                BEP 달성률{" "}
-                <span className="font-bold tabular-nums text-white">{Math.round(bep.progressPct)}%</span>
-              </span>
-              <span className={`shrink-0 font-bold ${bep.reached ? "text-[#1DFF26]" : "text-[#EFC94C]"}`}>
-                {bep.bepLabel}
-              </span>
-            </div>
+                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-[#E3E8E5]">
+                  <div
+                    className={`h-full rounded-full ${bep.reached ? "bg-[#1D9F4C]" : "bg-[#E0A800]"}`}
+                    style={{ width: `${Math.min(100, Math.max(0, bep.progressPct))}%` }}
+                  />
+                </div>
 
-            <p className="mt-1 text-[8.5px] leading-[1.5] text-[#8A948C]">
-              일할 고정비 {formatWon(bep.dailyFixedCost)} · 하루 공헌이익 {formatWon(bep.dailyContribution)} · BEP 일매출{" "}
-              {formatWon(bep.bepDailyRevenue)}
+                <div className="mt-2 flex items-baseline justify-between gap-2">
+                  <span className="text-[11.5px] font-medium text-[#6B746D]">
+                    달성률 <span className="font-bold tabular-nums text-[#0F1412]">{Math.round(bep.progressPct)}%</span>
+                  </span>
+                  <span className={`text-[12px] font-bold ${bep.reached ? "text-[#0B5C2A]" : "text-[#8A5A00]"}`}>
+                    {bep.bepLabel}
+                  </span>
+                </div>
+
+                <p className="mt-2 text-[10px] leading-[1.6] text-[#8B948D]">
+                  일할 고정비 {formatWon(bep.dailyFixedCost)} · 하루 공헌이익 {formatWon(bep.dailyContribution)} · BEP 일매출{" "}
+                  {formatWon(bep.bepDailyRevenue)}
+                </p>
+                <p className="text-[10px] leading-[1.6] text-[#8B948D]">
+                  여유 현금 {formatWon(bep.freeCashFlow)} (월말 예상 순수익 − 3종 발주 {formatWon(bep.orderAmount)})
+                </p>
+                <p className="mt-1 text-[10px] leading-[1.6] text-[#A7AFA9]">{bep.reason}</p>
+              </div>
+            ) : null}
+
+            <RowList className="mt-3">
+              {forecasts.map((forecast) => (
+                <Row
+                  key={forecast.sku}
+                  label={forecast.name}
+                  sub={`교차 ×${forecast.crossFactor.toFixed(2)}`}
+                  value={daysShort(forecast.remainingDays)}
+                />
+              ))}
+            </RowList>
+
+            <p className="mt-2 text-[10px] leading-[1.6] text-[#A7AFA9]">
+              기본 = 14일 지수가중(0.9) · 교차 = 1 + w×clamp(최근3일/직전주, ±40%) · 잔여일 = 현재고 ÷ 보정소진
             </p>
-            <p className="text-[8.5px] leading-[1.5] text-[#8A948C]">
-              여유 현금 {formatWon(bep.freeCashFlow)} (월말 예상 순수익 − 3종 발주 {formatWon(bep.orderAmount)})
-            </p>
-            <p className="mt-1 text-[8.5px] leading-[1.5] text-[#9AA39C]">{bep.reason}</p>
+
+            {/* 교체완료 학습 — 최근 교체일·학습 계수 */}
+            <div className="mt-3 rounded-[18px] bg-[#F7F8F9] px-4 py-3.5">
+              <p className="text-[11.5px] font-bold text-[#3B4740]">교체 학습 · 자동 보정</p>
+              <ul className="mt-1.5 space-y-1">
+                {["bean-10kg", "toner-black", "a4-paper"].map((sku) => {
+                  const entry = localCalibrations[sku];
+                  const label = sku === "bean-10kg" ? "원두" : sku === "toner-black" ? "토너" : "용지";
+
+                  return (
+                    <li key={sku} className="flex items-baseline justify-between gap-2 text-[10.5px]">
+                      <span className="shrink-0 font-semibold text-[#3B4740]">{label}</span>
+                      <span className="min-w-0 flex-1 truncate text-right text-[#8B948D]">
+                        {entry
+                          ? `${shortDate(entry.lastReplacedAt)} 교체 · 학습 ${entry.factor.toFixed(2)}x${entry.samples > 0 ? ` · ${entry.samples}회` : ""}`
+                          : "교체 기록 없음 — 버튼 한 번이면 학습을 시작해요"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="mt-1.5 text-[9.5px] leading-[1.6] text-[#A7AFA9]">
+                실제 교체 간격 ÷ 예측 간격을 0.85~1.25배로 눌러 다음 잔여일에 바로 적용해요. (시드 지점 값은 예시)
+              </p>
+            </div>
+
+            {state?.splitPreview ? (
+              <div className="mt-3">
+                <SplitSlips compact split={state.splitPreview} />
+              </div>
+            ) : approval?.status === "confirmed_split" ? (
+              <div className="mt-3">
+                <SplitSlips compact split={approval.splitPreview} />
+              </div>
+            ) : null}
+
+            {otherPending.length > 0 ? (
+              <button
+                className="mt-3 h-12 w-full rounded-[14px] border border-[#D7DBD9] text-[12.5px] font-bold text-[#3B4740] disabled:opacity-60"
+                disabled={busy || grace}
+                onClick={() => void approve(otherPending.map((proposal) => proposal.id))}
+                type="button"
+              >
+                기타 {otherPending.length}종 함께 발주 · {wonShort(otherPending.reduce((sum, item) => sum + item.amount, 0))}
+              </button>
+            ) : null}
           </div>
-        ) : null}
+        </details>
+      </Card>
 
-        <ul className="mt-2 divide-y divide-[#F4F5F6]">
-          {forecasts.map((forecast) => (
-            <li key={forecast.sku} className="flex items-center gap-2 py-1.5">
-              <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-[#0F1412]">{forecast.name}</span>
-              <span className="shrink-0 text-[10px] tabular-nums text-[#6B746D]">×{forecast.crossFactor.toFixed(2)}</span>
-              <span className="w-[44px] shrink-0 text-right text-[10.5px] font-bold tabular-nums text-[#0F1412]">
-                {daysShort(forecast.remainingDays)}
+      <Card>
+        <details className="group">
+          <summary className={SUMMARY_ROW}>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-bold text-[#0F1412]">확인할 것</span>
+              <span className="mt-0.5 block truncate text-[11.5px] font-medium text-[#8B948D]">
+                알림 · 최근 기록 · 어디서 온 숫자인지
               </span>
-            </li>
-          ))}
-        </ul>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <Chip tone={warningCount > 0 ? "amber" : "green"}>{warningCount > 0 ? `알림 ${warningCount}` : "정상"}</Chip>
+              <span aria-hidden className="text-[16px] font-bold text-[#C2C9C4] transition-transform group-open:rotate-90">
+                ›
+              </span>
+            </span>
+          </summary>
 
-        <p className="mt-1.5 text-[9.5px] leading-[1.6] text-[#98A29B]">
-          기본 = 14일 지수가중(0.9) · 교차 = 1 + w×clamp(최근3일/직전주, ±40%) · 잔여일 = 현재고 ÷ 보정소진
-        </p>
+          <div className="grid gap-2 border-t border-[#F1F3F2] px-5 py-4">
+            {error ? (
+              <p className="rounded-[14px] bg-[#FFF2F2] px-3.5 py-2.5 text-[11px] leading-[1.55] text-[#B3261E]">{error}</p>
+            ) : null}
 
-        {/* 교체완료 학습 — 최근 교체일·학습 계수 */}
-        <div className="mt-2 rounded-[10px] bg-[#F8F9F9] px-2.5 py-2">
-          <p className="text-[10px] font-bold text-[#3B4740]">교체 학습 · 자동 보정</p>
-          <ul className="mt-1 space-y-0.5">
-            {["bean-10kg", "toner-black", "a4-paper"].map((sku) => {
-              const entry = localCalibrations[sku];
-              const label = sku === "bean-10kg" ? "원두" : sku === "toner-black" ? "토너" : "용지";
+            {state?.hold ? (
+              <p className="rounded-[14px] bg-[#FFF8E6] px-3.5 py-2.5 text-[11px] leading-[1.55] text-[#8A5A00]">
+                {state.anomalies[0]?.title} — {state.anomalies[0]?.message}
+              </p>
+            ) : null}
 
-              return (
-                <li key={sku} className="flex items-baseline justify-between gap-2 text-[9.5px] text-[#6B746D]">
-                  <span className="shrink-0 font-semibold text-[#3B4740]">{label}</span>
-                  <span className="min-w-0 flex-1 truncate text-right">
-                    {entry
-                      ? `${shortDate(entry.lastReplacedAt)} 교체 · 학습 ${entry.factor.toFixed(2)}x${entry.samples > 0 ? ` · ${entry.samples}회` : ""}`
-                      : "교체 기록 없음 — 버튼 한 번이면 학습 시작"}
+            {(snapshot?.alerts ?? []).map((alert) => (
+              <p key={alert.title} className="rounded-[14px] bg-[#F7F8F9] px-3.5 py-2.5 text-[11px] leading-[1.55] text-[#3B4740]">
+                <span className="font-bold">{alert.title}</span> · {alert.detail}
+              </p>
+            ))}
+
+            {warningCount === 0 ? (
+              <p className="rounded-[14px] bg-[#F7F8F9] px-3.5 py-2.5 text-[11px] text-[#6B746D]">
+                연결·수집·발주 모두 정상이에요.
+              </p>
+            ) : null}
+
+            {/* 매일 00:05 마감 알림톡 미리보기 — 실제 발송 없음 */}
+            <div className="rounded-[16px] bg-[#F7F8F9] px-3.5 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10.5px] font-bold text-[#3B4740]">00:05 마감 알림톡 미리보기</p>
+                <Chip tone="gray">발송 안 됨</Chip>
+              </div>
+              <p className="mt-1.5 text-[10.5px] leading-[1.65] text-[#3B4740]">{digest}</p>
+              <p className="mt-1 text-[9px] leading-[1.5] text-[#A7AFA9]">
+                실제 알림톡은 보내지 않아요. 문구·수치를 확인하는 미리보기예요.
+              </p>
+            </div>
+
+            <ul className="mt-1 space-y-1.5">
+              {allHistory.map((entry, index) => (
+                <li key={`${entry.at}-${index}`} className="flex gap-2 text-[10px]">
+                  <span className="w-[62px] shrink-0 tabular-nums text-[#A7AFA9]">
+                    {new Date(entry.at).toLocaleString("ko-KR", {
+                      timeZone: "Asia/Seoul",
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="font-semibold text-[#0F1412]">{entry.title}</span>
+                    <span className="text-[#8B948D]"> · {entry.detail}</span>
                   </span>
                 </li>
-              );
-            })}
-          </ul>
-          <p className="mt-1 text-[9px] leading-[1.6] text-[#98A29B]">
-            실제 교체 간격 ÷ 예측 간격을 0.85~1.25배로 눌러 다음 잔여일에 바로 적용합니다. (시드 지점 값은 예시)
-          </p>
-        </div>
+              ))}
+              {allHistory.length === 0 ? <li className="text-[10.5px] text-[#8B948D]">아직 기록이 없어요.</li> : null}
+            </ul>
 
-        {state?.splitPreview ? (
-          <div className="mt-2">
-            <SplitSlips compact split={state.splitPreview} />
-          </div>
-        ) : approval?.status === "confirmed_split" ? (
-          <div className="mt-2">
-            <SplitSlips compact split={approval.splitPreview} />
-          </div>
-        ) : null}
-
-        {otherPending.length > 0 ? (
-          <button
-            className="mt-2 h-10 w-full rounded-[10px] border border-[#0F1412] text-[11.5px] font-bold text-[#0F1412] disabled:opacity-60"
-            disabled={busy || grace}
-            onClick={() => void approve(otherPending.map((proposal) => proposal.id))}
-            type="button"
-          >
-            기타 {otherPending.length}종 함께 발주 · {wonShort(otherPending.reduce((sum, item) => sum + item.amount, 0))}
-          </button>
-        ) : null}
-      </details>
-
-      <details className="rounded-[14px] border border-[#E6E9E7] bg-white px-3.5 py-3">
-        <summary className="flex cursor-pointer items-center justify-between text-[12.5px] font-bold text-[#3B4740]">
-          시스템 상태 · 알림 보기
-          <span className={`rounded-full px-2 py-0.5 text-[9.5px] font-bold ${warningCount > 0 ? "bg-[#FFF6E0] text-[#8A5A00]" : "bg-[#EDFBEF] text-[#0B5C2A]"}`}>
-            {warningCount > 0 ? `알림 ${warningCount}` : "정상"}
-          </span>
-        </summary>
-
-        <div className="mt-2 grid gap-1.5">
-          {error ? (
-            <p className="rounded-[8px] bg-[#FFEBEE] px-2.5 py-1.5 text-[10.5px] leading-[1.5] text-[#B3261E]">{error}</p>
-          ) : null}
-
-          {state?.hold ? (
-            <p className="rounded-[8px] bg-[#FFF9EA] px-2.5 py-1.5 text-[10.5px] leading-[1.5] text-[#8A5A00]">
-              {state.anomalies[0]?.title} — {state.anomalies[0]?.message}
-            </p>
-          ) : null}
-
-          {(snapshot?.alerts ?? []).map((alert) => (
-            <p key={alert.title} className="rounded-[8px] bg-[#F8F9F9] px-2.5 py-1.5 text-[10.5px] leading-[1.5] text-[#3B4740]">
-              <span className="font-bold">{alert.title}</span> · {alert.detail}
-            </p>
-          ))}
-
-          {warningCount === 0 ? (
-            <p className="rounded-[8px] bg-[#F8F9F9] px-2.5 py-1.5 text-[10.5px] text-[#6B746D]">
-              연결·수집·발주 모두 정상입니다.
-            </p>
-          ) : null}
-
-          {/* 매일 00:05 마감 알림톡 미리보기 — 실제 발송 없음 */}
-          <div className="rounded-[10px] border border-[#E6E9E7] bg-[#FBFCFB] px-2.5 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold text-[#3B4740]">매일 00:05 마감 알림톡 미리보기</p>
-              <span className="shrink-0 rounded-full bg-[#F1F2F2] px-1.5 py-0.5 text-[8.5px] font-bold text-[#6B746D]">
-                발송 안 됨
-              </span>
-            </div>
-            <p className="mt-1 text-[10px] leading-[1.65] text-[#3B4740]">{digest}</p>
-            <p className="mt-0.5 text-[9px] leading-[1.5] text-[#98A29B]">
-              실제 알림톡은 발송하지 않습니다. 문구·수치 확인용 미리보기입니다.
+            <p className="text-[9.5px] leading-[1.6] text-[#B0B7B2]">
+              예측 데이터:{" "}
+              {state
+                ? state.dataSource === "supabase"
+                  ? "Supabase POS 마감"
+                  : state.dataSource === "memory"
+                    ? "방금 수집한 POS 마감"
+                    : "데모 시계열(실측 마감 0일)"
+                : "수집 전"}
+              · 원두 {store.thresholds.beanDays}일 · 토너 {store.thresholds.tonerDays}일 · 용지 {store.thresholds.paperDays}일 기준
+              {snapshot
+                ? ` · 실측 ${new Date(snapshot.capturedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}`
+                : ""}
+              {" · "}프린트 벤더 {store.printVendor === "yupisoft" ? "유피소프트" : store.printVendor === "generic_webhook" ? "타사 복합기(공용)" : "에스칼프린트"}
             </p>
           </div>
-
-          <ul className="mt-1 space-y-1.5">
-            {allHistory.map((entry, index) => (
-              <li key={`${entry.at}-${index}`} className="flex gap-1.5 text-[10px]">
-                <span className="w-[64px] shrink-0 tabular-nums text-[#98A29B]">
-                  {new Date(entry.at).toLocaleString("ko-KR", {
-                    timeZone: "Asia/Seoul",
-                    month: "numeric",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  })}
-                </span>
-                <span className="min-w-0 flex-1 truncate">
-                  <span className="font-semibold text-[#0F1412]">{entry.title}</span>
-                  <span className="text-[#6B746D]"> · {entry.detail}</span>
-                </span>
-              </li>
-            ))}
-            {allHistory.length === 0 ? <li className="text-[10.5px] text-[#6B746D]">아직 이력이 없습니다.</li> : null}
-          </ul>
-
-          <p className="text-[9.5px] leading-[1.6] text-[#98A29B]">
-            예측 데이터:{" "}
-            {state
-              ? state.dataSource === "supabase"
-                ? "Supabase POS 마감"
-                : state.dataSource === "memory"
-                  ? "방금 수집한 POS 마감"
-                  : "데모 시계열(실측 마감 0일)"
-              : "수집 전"}
-            · 원두 {store.thresholds.beanDays}일 · 토너 {store.thresholds.tonerDays}일 · 용지 {store.thresholds.paperDays}일 기준
-            {snapshot ? ` · 실측 ${new Date(snapshot.capturedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}` : ""}
-            {" · "}프린트 벤더 {store.printVendor === "yupisoft" ? "유피소프트" : store.printVendor === "generic_webhook" ? "타사 복합기(공용)" : "에스칼프린트"}
-          </p>
-        </div>
-      </details>
+        </details>
+      </Card>
     </div>
   );
 }
@@ -863,7 +919,7 @@ function shortDate(iso: string) {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(iso));
-  return `${Number(kst.slice(5, 7))}/${kst.slice(8, 10)}`;
+  return `${Number(kst.slice(5, 7))}/${Number(kst.slice(8, 10))}`;
 }
 
 function average(values: number[]) {
@@ -877,16 +933,16 @@ function daysShort(value: number | null | undefined) {
   return `${value.toFixed(value < 10 ? 1 : 0)}일`;
 }
 
-function toneFor(daysLeft: number | null | undefined, threshold: number): "red" | "amber" | "green" | "gray" {
+function toneFor(daysLeft: number | null | undefined, threshold: number): Tone {
   if (daysLeft === null || daysLeft === undefined) return "gray";
   if (daysLeft <= 2) return "red";
   if (daysLeft <= threshold) return "amber";
-  return "green";
+  return "ok";
 }
 
-function pctTone(value: number | null): "red" | "amber" | "green" | "gray" {
+function pctTone(value: number | null): Tone {
   if (value === null) return "gray";
   if (value <= 10) return "red";
   if (value <= 30) return "amber";
-  return "green";
+  return "ok";
 }

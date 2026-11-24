@@ -1,12 +1,13 @@
 "use client";
 
+import { Card, CardBody, CardHead, Chip, Row, RowList, SUMMARY_ROW } from "@/components/internal/card-ui";
 import type { ProposalListResponse } from "@/features/auto-order/types";
 
 import CoreStockCards from "./CoreStockCards";
-import { dateLabel, days, ENTITY_LABEL, pct, remainingTone, won } from "./format";
+import { dateLabel, days, ENTITY_LABEL, pct, won } from "./format";
 
 /**
- * 통합 현황 — 첫 화면은 원두·토너·용지 3종과 발주 버튼뿐.
+ * 통합 현황 — 토스 앱식 카드 화면. 첫 화면은 원두·토너·용지 3종과 발주 버튼뿐.
  * 매출·컵/뚜껑·장비 목록은 접이식으로 내려 심플하게 유지한다(2026-11-23 사용자 지시).
  */
 
@@ -23,25 +24,21 @@ export default function OverviewView({ state, loading, error, onGoOrder, onGoHq,
   if (loading && !state) {
     return (
       <div className="grid gap-3">
-        <div className="h-[150px] animate-pulse rounded-[22px] bg-white" />
-        <div className="h-[200px] animate-pulse rounded-[22px] bg-white" />
+        <div className="h-[150px] animate-pulse rounded-[24px] bg-white" />
+        <div className="h-[200px] animate-pulse rounded-[24px] bg-white" />
       </div>
     );
   }
 
   if (error || !state) {
     return (
-      <div className="rounded-[22px] border border-[#E6E9E7] bg-white p-6 text-center">
-        <p className="text-[15px] font-semibold text-[#0F1412]">현황을 불러오지 못했어요.</p>
-        <p className="mt-1.5 text-[12px] text-[#6B746D]">{error ?? "잠시 후 다시 시도해 주세요."}</p>
-        <button
-          className="mt-3 h-11 w-full rounded-[12px] bg-[#0F1412] text-[13px] font-bold text-white"
-          onClick={onRefresh}
-          type="button"
-        >
+      <Card className="px-6 py-8 text-center">
+        <p className="text-[16px] font-bold text-[#0F1412]">현황을 불러오지 못했어요</p>
+        <p className="mt-2 text-[12px] leading-[1.55] text-[#8B948D]">{error ?? "잠시 후 다시 시도해 주세요."}</p>
+        <button className="mt-4 h-12 w-full rounded-[14px] bg-[#0F1412] text-[13.5px] font-bold text-white" onClick={onRefresh} type="button">
           다시 불러오기
         </button>
-      </div>
+      </Card>
     );
   }
 
@@ -55,134 +52,161 @@ export default function OverviewView({ state, loading, error, onGoOrder, onGoHq,
 
   const cafeForecasts = state.run.forecasts.filter((forecast) => forecast.ownerEntityType === "franchisee_cafe");
   const printForecasts = state.run.forecasts.filter((forecast) => forecast.ownerEntityType === "hq_print");
+  const alertCount = (state.hold ? 1 : 0) + (machine?.alerts.length ?? 0);
 
   return (
     <div className="grid gap-3">
       <header className="px-1">
-        <p className="text-[12.5px] font-semibold text-[#007A36]">{state.storeLabel}</p>
-        <h1 className="mt-1 text-[23px] font-bold leading-[1.25] tracking-[-0.02em] text-[#0F1412]">
+        <p className="text-[12px] font-bold text-[#0B5C2A]">{state.storeLabel}</p>
+        <h1 className="mt-1.5 text-[24px] font-bold leading-[1.3] tracking-[-0.03em] text-[#0F1412]">
           원두·토너·용지,
           <br />
           채울 때가 됐어요
         </h1>
-        <p className="mt-1 text-[11.5px] text-[#6B746D]">
+        <p className="mt-1.5 text-[12px] font-medium text-[#8B948D]">
           {dateLabel(state.asOfDate)} POS 마감 · {revenue?.source === "portal" ? "포털 실측" : "데모 기준"}
         </p>
       </header>
 
-      <section className="rounded-[22px] border-2 border-[#0F1412] bg-white p-3.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-bold text-[#0F1412]">지금 채울 3가지</h2>
-          <span className="text-[10.5px] text-[#6B746D]">{dateLabel(state.asOfDate)} 기준</span>
-        </div>
-        <div className="mt-2">
+      <Card>
+        <CardHead
+          right={<span className="text-[10.5px] font-semibold text-[#A7AFA9]">{dateLabel(state.asOfDate)} 기준</span>}
+          sub="잔여일이 기준 안으로 들어오면 발주를 제안해요"
+          title="채울 때가 됐어요"
+        />
+        <CardBody className="pt-2">
           <CoreStockCards
             forecasts={state.run.forecasts}
             telemetry={state.telemetry}
             thresholds={{ beanDays: 4, tonerDays: 5, paperDays: 4 }}
           />
-        </div>
 
-        <button
-          className="mt-3 h-[56px] w-full rounded-[16px] bg-[#1DFF26] text-[16px] font-bold text-[#0F1412]"
-          onClick={onGoOrder}
-          type="button"
-        >
-          {state.hold ? "이상 내용 보기" : core.length > 0 ? `3종 발주 · ${won(coreAmount)} →` : "발주 화면 열기"}
-        </button>
-        <p className="mt-1.5 text-center text-[10.5px] text-[#6B746D]">
-          {pending.length > core.length ? `기타 ${pending.length - core.length}종은 발주 화면에서 ` : ""}
-          승인 후 5분간 취소할 수 있어요
-        </p>
-      </section>
+          <button
+            className={`mt-4 flex h-[56px] w-full items-center justify-center rounded-[16px] text-[16px] font-bold tracking-[-0.01em] ${
+              state.hold ? "bg-[#F2F4F6] text-[#6B746D]" : "bg-[#1DFF26] text-[#0F1412]"
+            }`}
+            onClick={onGoOrder}
+            type="button"
+          >
+            {state.hold ? "이상 내용 확인하기" : core.length > 0 ? `버튼 한 번으로 발주 · ${won(coreAmount)}` : "발주 화면 열기"}
+          </button>
+          <p className="mt-2 text-center text-[10.5px] font-medium text-[#A7AFA9]">
+            {pending.length > core.length ? `기타 ${pending.length - core.length}종은 발주 화면에서 · ` : ""}
+            누르면 5분 동안 취소할 수 있어요
+          </p>
+        </CardBody>
+      </Card>
 
-      {(state.hold || (machine?.alerts.length ?? 0) > 0) ? (
-        <details className="rounded-[12px] border border-[#E6E9E7] bg-white px-3 py-2">
-          <summary className="flex cursor-pointer items-center justify-between text-[11.5px] font-bold text-[#3B4740]">
-            시스템 상태 · 알림 보기
-            <span className="rounded-full bg-[#FFF6E0] px-2 py-0.5 text-[9.5px] font-bold text-[#8A5A00]">
-              알림 {(state.hold ? 1 : 0) + (machine?.alerts.length ?? 0)}
-            </span>
-          </summary>
-          {state.hold ? (
-            <p className="mt-1.5 rounded-[8px] bg-[#FFF9EA] px-2.5 py-1.5 text-[10.5px] leading-[1.5] text-[#8A5A00]">
-              {state.anomalies[0]?.title} — {state.anomalies[0]?.message}
-            </p>
-          ) : null}
-          {(machine?.alerts ?? []).map((alert) => (
-            <p key={alert} className="mt-1.5 rounded-[8px] bg-[#F8F9F9] px-2.5 py-1.5 text-[10.5px] text-[#3B4740]">
-              {alert}
-            </p>
-          ))}
-        </details>
+      {alertCount > 0 ? (
+        <Card>
+          <details className="group">
+            <summary className={SUMMARY_ROW}>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-bold text-[#0F1412]">확인할 것</span>
+                <span className="mt-0.5 block truncate text-[11.5px] font-medium text-[#8B948D]">
+                  {state.hold ? "이상 감지로 발주를 멈췄어요" : "장비·연결 알림이에요"}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <Chip tone="amber">알림 {alertCount}</Chip>
+                <span aria-hidden className="text-[16px] font-bold text-[#C2C9C4] transition-transform group-open:rotate-90">
+                  ›
+                </span>
+              </span>
+            </summary>
+            <div className="border-t border-[#F1F3F2] px-5 py-4">
+              {state.hold ? (
+                <p className="rounded-[14px] bg-[#FFF8E6] px-3.5 py-2.5 text-[11px] leading-[1.55] text-[#8A5A00]">
+                  {state.anomalies[0]?.title} — {state.anomalies[0]?.message}
+                </p>
+              ) : null}
+              {(machine?.alerts ?? []).map((alert) => (
+                <p key={alert} className="mt-1.5 rounded-[14px] bg-[#F7F8F9] px-3.5 py-2.5 text-[11px] leading-[1.55] text-[#3B4740]">
+                  {alert}
+                </p>
+              ))}
+            </div>
+          </details>
+        </Card>
       ) : null}
 
-      <section className="rounded-[18px] bg-[#0F1412] px-4 py-3.5 text-white">
-        <div className="flex items-center justify-between">
-          <span className="text-[11.5px] font-semibold text-[#9AA39C]">이달 매출</span>
-          <span className="text-[10.5px] text-[#9AA39C]">{revenue?.source === "portal" ? "포털 실측" : "데모"}</span>
+      <Card className="px-5 py-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-[#6B746D]">오늘 카페 매출</p>
+            <p className="mt-2 text-[30px] font-bold leading-none tabular-nums tracking-[-0.035em] text-[#0F1412]">
+              {revenue?.cafeToday != null ? won(revenue.cafeToday) : "—"}
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              <Chip tone="gray">이달 카페 {revenue?.cafeMonth != null ? won(revenue.cafeMonth) : "—"}</Chip>
+              <Chip tone="gray">이달 프린트 {revenue?.printMonth != null ? won(revenue.printMonth) : "정산 전"}</Chip>
+            </div>
+          </div>
+          <Chip tone={revenue?.source === "portal" ? "green" : "amber"}>
+            {revenue?.source === "portal" ? "포털 실측" : "데모"}
+          </Chip>
         </div>
-        <p className="mt-1 flex items-baseline gap-2">
-          <span className="text-[27px] font-bold leading-none tabular-nums tracking-[-0.02em]">
-            {revenue?.cafeToday != null ? won(revenue.cafeToday) : "—"}
-          </span>
-          <span className="text-[10.5px] text-[#9AA39C]">오늘 카페</span>
-        </p>
-        <div className="mt-2 flex flex-wrap gap-1.5 text-[10.5px] text-[#C8D0CA]">
-          <span className="rounded-full bg-white/10 px-2 py-0.5">이달 카페 {revenue?.cafeMonth != null ? won(revenue.cafeMonth) : "—"}</span>
-          <span className="rounded-full bg-white/10 px-2 py-0.5">이달 프린트 {revenue?.printMonth != null ? won(revenue.printMonth) : "정산 전"}</span>
-        </div>
-      </section>
+      </Card>
 
+      <Card>
+        <details className="group">
+          <summary className={SUMMARY_ROW}>
+            <span className="min-w-0">
+              <span className="block text-[15px] font-bold text-[#0F1412]">전체 품목 보기</span>
+              <span className="mt-0.5 block truncate text-[11.5px] font-medium text-[#8B948D]">
+                원두·토너·용지 외 {state.run.forecasts.length - 3}종
+              </span>
+            </span>
+            <span aria-hidden className="text-[16px] font-bold text-[#C2C9C4] transition-transform group-open:rotate-90">
+              ›
+            </span>
+          </summary>
 
-      <details className="rounded-[16px] border border-[#E6E9E7] bg-white px-3.5 py-3">
-        <summary className="cursor-pointer text-[13px] font-bold text-[#3B4740]">전체 품목 보기 (3종 외)</summary>
-        <div className="mt-2 grid gap-2">
-          <div>
-            <p className="text-[10.5px] font-bold text-[#6B746D]">카페 · 점주 사업자</p>
-            <ul className="mt-1 divide-y divide-[#F4F5F6]">
+          <div className="border-t border-[#F1F3F2] px-5 py-4">
+            <p className="text-[10.5px] font-bold text-[#A7AFA9]">카페 · 점주 사업자</p>
+            <RowList className="mt-1">
               {cafeForecasts.map((forecast) => (
-                <li key={forecast.sku} className="flex items-center gap-2 py-1.5">
-                  <span className="min-w-0 flex-1 truncate text-[12px] text-[#3B4740]">{forecast.name}</span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${remainingTone(forecast.remainingDays)}`}>
-                    {days(forecast.remainingDays)}
-                  </span>
-                  <span className="w-[62px] shrink-0 text-right text-[10px] text-[#98A29B]">{ENTITY_LABEL[forecast.ownerEntityType].replace(" 사업자", "")}</span>
-                </li>
+                <Row
+                  key={forecast.sku}
+                  chip={ENTITY_LABEL[forecast.ownerEntityType].replace(" 사업자", "")}
+                  chipTone="green"
+                  label={forecast.name}
+                  value={days(forecast.remainingDays)}
+                />
               ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-[10.5px] font-bold text-[#6B746D]">프린트 · 본사 사업자</p>
-            <ul className="mt-1 divide-y divide-[#F4F5F6]">
+            </RowList>
+
+            <p className="mt-3 text-[10.5px] font-bold text-[#A7AFA9]">프린트 · 본사 사업자</p>
+            <RowList className="mt-1">
               {printForecasts.map((forecast) => (
-                <li key={forecast.sku} className="flex items-center gap-2 py-1.5">
-                  <span className="min-w-0 flex-1 truncate text-[12px] text-[#3B4740]">{forecast.name}</span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${remainingTone(forecast.remainingDays)}`}>
-                    {days(forecast.remainingDays)}
-                  </span>
-                  <span className="w-[62px] shrink-0 text-right text-[10px] text-[#98A29B]">{ENTITY_LABEL[forecast.ownerEntityType].replace(" 사업자", "")}</span>
-                </li>
+                <Row
+                  key={forecast.sku}
+                  chip={ENTITY_LABEL[forecast.ownerEntityType].replace(" 사업자", "")}
+                  chipTone="blue"
+                  label={forecast.name}
+                  value={days(forecast.remainingDays)}
+                />
               ))}
-            </ul>
+            </RowList>
+
+            <p className="mt-2 text-[10px] leading-[1.6] text-[#A7AFA9]">
+              교차 보정 최대 ×{Math.max(...state.run.forecasts.map((item) => item.crossFactor)).toFixed(2)} · 음료{" "}
+              {pct(state.run.cafeRecentRatio - 1)} · 프린트 {pct(state.run.printRecentRatio - 1)}
+            </p>
           </div>
-          <p className="text-[10px] leading-[1.6] text-[#98A29B]">
-            교차 보정 최대 ×{Math.max(...state.run.forecasts.map((item) => item.crossFactor)).toFixed(2)} · 음료 {pct(state.run.cafeRecentRatio - 1)} · 프린트{" "}
-            {pct(state.run.printRecentRatio - 1)}
-          </p>
-        </div>
-      </details>
+        </details>
+      </Card>
 
       <div className="grid grid-cols-2 gap-2">
         <button
-          className="h-11 rounded-[12px] border border-[#E6E9E7] bg-white text-[12.5px] font-semibold text-[#3B4740]"
+          className="h-12 rounded-[14px] bg-white text-[12.5px] font-bold text-[#3B4740] shadow-[0_1px_2px_rgba(15,20,18,0.04)]"
           onClick={onGoHq}
           type="button"
         >
           분기·근거 보기
         </button>
         <a
-          className="flex h-11 items-center justify-center rounded-[12px] border border-[#E6E9E7] bg-white text-[12.5px] font-semibold text-[#007A36]"
+          className="flex h-12 items-center justify-center rounded-[14px] bg-white text-[12.5px] font-bold text-[#0B5C2A] shadow-[0_1px_2px_rgba(15,20,18,0.04)]"
           href="/sales-report"
         >
           매출 리포트
@@ -190,12 +214,12 @@ export default function OverviewView({ state, loading, error, onGoOrder, onGoHq,
       </div>
 
       {state.dataQuality.sparse ? (
-        <p className="rounded-[12px] bg-[#FFF9EA] px-3 py-2 text-[11px] leading-[1.5] text-[#8A5A00]">
-          실측 {state.dataQuality.days}일치로 계산했습니다. 7일 이상 쌓이면 교차예측이 안정됩니다.
+        <p className="rounded-[16px] bg-[#FFF8E6] px-4 py-3 text-[11px] leading-[1.55] text-[#8A5A00]">
+          실측 {state.dataQuality.days}일치로 계산했어요. 7일 이상 쌓이면 교차예측이 안정돼요.
         </p>
       ) : null}
 
-      <p className="text-[10px] text-[#98A29B]">
+      <p className="px-1 text-[10px] leading-[1.6] text-[#B0B7B2]">
         데이터: {state.dataSource === "supabase" ? "Supabase POS 마감" : state.dataSource === "memory" ? "방금 입력한 마감" : "데모 실측 폴백"}
       </p>
     </div>

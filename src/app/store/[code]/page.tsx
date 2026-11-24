@@ -79,27 +79,29 @@ export default async function StoreAdminPage({ params, searchParams }: PageProps
     return (
       <main className="min-h-screen bg-[#F4F5F6]">
         <InternalHeader subtitle="점주 어드민" action={{ href: "/admin/stores", label: "본사" }} />
-        <div className="mx-auto w-full max-w-[430px] px-4 py-10">
-          <div className="rounded-[24px] border border-[#E6E9E7] bg-white p-6">
-            <p className="font-mono text-[11px] font-bold text-[#98A29B]">{record.code}</p>
-            <h1 className="mt-1 text-[22px] font-bold leading-[1.3] text-[#0F1412]">
+        <div className="mx-auto w-full max-w-[430px] px-5 py-10">
+          <div className="rounded-[24px] bg-white px-6 py-7 shadow-[0_1px_2px_rgba(15,20,18,0.04)]">
+            <span className="inline-flex rounded-full bg-[#0F1412] px-2.5 py-1 font-mono text-[10px] font-bold text-[#1DFF26]">
+              {record.code}
+            </span>
+            <h1 className="mt-3 text-[24px] font-bold leading-[1.3] tracking-[-0.03em] text-[#0F1412]">
               점주 접근 코드가
               <br />
-              필요합니다
+              필요해요
             </h1>
-            <p className="mt-2 text-[12.5px] leading-[1.6] text-[#6B746D]">
-              본사에서 발급한 접근 코드를 넣으면 {record.shortLabel} 화면이 열립니다.
+            <p className="mt-2 text-[12.5px] font-medium leading-[1.6] text-[#8B948D]">
+              본사에서 받은 코드를 넣으면 {record.shortLabel} 화면이 열려요.
             </p>
 
             <form action={`/store/${record.code}`} className="mt-5" method="get">
               <input
                 autoComplete="one-time-code"
-                className="h-12 w-full rounded-[12px] border border-[#E0E4E2] bg-white px-3 text-center font-mono text-[18px] font-bold tracking-[0.12em] text-[#0F1412] uppercase outline-none focus:border-[#0F1412]"
+                className="h-14 w-full rounded-[14px] bg-[#F7F8F9] px-3 text-center font-mono text-[18px] font-bold tracking-[0.12em] text-[#0F1412] uppercase outline-none ring-1 ring-transparent focus:ring-[#0F1412]"
                 name="key"
                 placeholder="XXXX-XXXXXX"
               />
               <button
-                className="mt-2 h-[54px] w-full rounded-[14px] bg-[#0F1412] text-[16px] font-bold text-white"
+                className="mt-2 h-[54px] w-full rounded-[16px] bg-[#1DFF26] text-[16px] font-bold text-[#0F1412]"
                 type="submit"
               >
                 열기
@@ -107,13 +109,13 @@ export default async function StoreAdminPage({ params, searchParams }: PageProps
             </form>
 
             {keyParam ? (
-              <p className="mt-3 rounded-[12px] bg-[#FFEBEE] px-3 py-2 text-[12px] font-semibold text-[#B3261E]">
-                코드가 맞지 않습니다. 본사에 재발급을 요청해 주세요.
+              <p className="mt-3 rounded-[14px] bg-[#FFF2F2] px-3.5 py-2.5 text-[11.5px] font-semibold leading-[1.5] text-[#B3261E]">
+                코드가 맞지 않아요. 본사에 다시 발급을 요청해 주세요.
               </p>
             ) : null}
 
             {record.hasPin ? (
-              <p className="mt-3 text-center text-[11.5px] text-[#6B746D]">
+              <p className="mt-4 text-center text-[11.5px] font-medium text-[#8B948D]">
                 이미 PIN을 받았다면{" "}
                 <a className="font-bold text-[#0B5C2A] underline" href={`/store/${record.code}?lock=1`}>
                   4자리 PIN으로 열기
@@ -130,12 +132,14 @@ export default async function StoreAdminPage({ params, searchParams }: PageProps
     return (
       <main className="min-h-screen bg-[#F4F5F6]">
         <InternalHeader subtitle="점주 어드민" action={{ href: "/admin/stores", label: "본사" }} />
-        <div className="mx-auto w-full max-w-[430px] px-4 py-10">
-          <div className="rounded-[24px] border border-[#E6E9E7] bg-white p-6 text-center">
-            <p className="text-[13px] font-bold text-[#8A5A00]">일시정지된 매장</p>
-            <h1 className="mt-1 text-[20px] font-bold text-[#0F1412]">{record.label}</h1>
-            <p className="mt-2 text-[12.5px] leading-[1.6] text-[#6B746D]">
-              본사에서 매장을 일시정지했습니다. 다시 열려면 본사에 문의해 주세요.
+        <div className="mx-auto w-full max-w-[430px] px-5 py-10">
+          <div className="rounded-[24px] bg-white px-6 py-7 text-center shadow-[0_1px_2px_rgba(15,20,18,0.04)]">
+            <span className="inline-flex rounded-full bg-[#FFF6E0] px-2.5 py-1 text-[10.5px] font-bold text-[#8A5A00]">
+              일시정지된 매장
+            </span>
+            <h1 className="mt-3 text-[22px] font-bold tracking-[-0.02em] text-[#0F1412]">{record.label}</h1>
+            <p className="mt-2 text-[12.5px] font-medium leading-[1.6] text-[#8B948D]">
+              본사에서 매장을 잠시 멈췄어요. 다시 열려면 본사에 문의해 주세요.
             </p>
           </div>
         </div>

@@ -149,12 +149,12 @@ export function storePulse(input: { code: string; asOf: string; dailyRate?: numb
     dailySource: rate > 0 ? "estimated" : "none",
     dailyNote:
       rate > 0
-        ? "일별 실측이 아직 없어 커피 일평균으로 그린 값입니다(추정). 수집기가 하루씩 쌓으면 실측으로 바뀝니다."
-        : "일별 매출이 아직 수집되지 않았습니다.",
+        ? "일별 실측이 아직 없어 커피 일평균으로 그린 값이에요(추정). 하루씩 쌓이면 실측으로 바뀌어요."
+        : "일별 매출이 아직 수집되지 않았어요.",
     hourly: null,
     hourlyDate: null,
     hourlyTotal: null,
-    hourlyNote: "시간대 매출은 이 지점 포털에 아직 없습니다. 수집기가 시간대를 읽으면 여기에 채워집니다.",
+    hourlyNote: "시간대 매출은 이 지점 포털에 아직 없어요. 수집기가 읽으면 여기에 채워져요.",
   };
 }
 

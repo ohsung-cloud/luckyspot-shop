@@ -406,16 +406,16 @@ function buildOrderReason(input: {
   reached: boolean;
   partial: boolean;
 }): string {
-  const tail = input.partial ? " 프린트는 26일 정산 전이라 커피만 반영했습니다." : "";
+  const tail = input.partial ? " 프린트는 26일 정산 전이라 커피만 반영했어요." : "";
 
-  if (input.projectedNet === null) return `매출이 아직 없어 발주 모드를 정하지 않았습니다.${tail}`;
+  if (input.projectedNet === null) return `매출이 아직 없어 발주 모드를 정하지 않았어요.${tail}`;
   if (input.orderAmount <= 0) {
-    return `이번 발주 예정 없음 — 월말 예상 순수익 ${formatWon(input.projectedNet)}은 그대로 현금으로 남습니다.${tail}`;
+    return `이번 발주 예정 없음 — 월말 예상 순수익 ${formatWon(input.projectedNet)}은 그대로 현금으로 남아요.${tail}`;
   }
   if (input.mode === "bulk") {
-    return `월말 예상 순수익 ${formatWon(input.projectedNet)}이 3종 발주 ${formatWon(input.orderAmount)}을 덮습니다 — 한 번에 발주해 배송·결제를 한 번으로.${tail}`;
+    return `월말 예상 순수익 ${formatWon(input.projectedNet)}이 3종 발주 ${formatWon(input.orderAmount)}을 덮어요 — 한 번에 발주해 배송·결제를 한 번으로 끝내요.${tail}`;
   }
-  return `월말 예상 순수익 ${formatWon(input.projectedNet)} < 발주 ${formatWon(input.orderAmount)} — 급한 품목만 최소 수량으로 나눠 발주하고 나머지는 정산 뒤로.${tail}`;
+  return `월말 예상 순수익 ${formatWon(input.projectedNet)} < 발주 ${formatWon(input.orderAmount)} — 급한 품목만 최소 수량으로 나눠 발주하고 나머지는 정산 뒤로 미뤄요.${tail}`;
 }
 
 /**

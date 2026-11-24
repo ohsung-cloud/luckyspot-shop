@@ -1,9 +1,13 @@
 "use client";
 
+import { QUIET_BUTTON, Row, RowList } from "@/components/internal/card-ui";
 import type { SkuForecast, TelemetrySummary } from "@/features/auto-order/types";
 
 /**
- * 원두 · 토너 · 용지 3종 카드 — 자동발주·점주 화면 공통.
+ * 원두 · 토너 · 용지 3종 — 자동발주·점주 화면 공통.
+ *
+ * 토스식 한 줄 위계: 왼쪽 라벨 + 짧은 설명, 오른쪽 굵은 잔여일·상태 칩,
+ * 필요하면 오른쪽 끝에 '교체완료' 작은 버튼.
  *
  * 사용자 지시(2026-11-23): 발주는 토너·용지·원두만 핵심으로 본다.
  * 컵·뚜껑 등 나머지 품목은 '전체 품목 보기' 접이식으로 내린다.
@@ -15,17 +19,33 @@ const CORE = [
   { sku: "a4-paper", label: "용지", thresholdKey: "paper" as const },
 ];
 
+type Tone = "red" | "amber" | "ok" | "gray";
+
+const DOT: Record<Tone, string> = {
+  red: "bg-[#B3261E]",
+  amber: "bg-[#E0A800]",
+  ok: "bg-[#1D9F4C]",
+  gray: "bg-[#C9CFCB]",
+};
+
+const VALUE_TONE: Record<Tone, "red" | "amber" | "ink" | "muted"> = {
+  red: "red",
+  amber: "amber",
+  ok: "ink",
+  gray: "muted",
+};
+
 function daysLabel(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
   if (value >= 99) return "99일+";
   return `${value.toFixed(value < 10 ? 1 : 0)}일`;
 }
 
-function tone(value: number | null | undefined, threshold: number) {
-  if (value === null || value === undefined) return "border-[#E6E9E7] bg-white text-[#98A29B]";
-  if (value <= 2) return "border-[#F3D2D2] bg-[#FFF7F7] text-[#B3261E]";
-  if (value <= threshold) return "border-[#F0E1B8] bg-[#FFFBF0] text-[#8A5A00]";
-  return "border-[#D6EBDD] bg-white text-[#0F1412]";
+function tone(value: number | null | undefined, threshold: number): Tone {
+  if (value === null || value === undefined) return "gray";
+  if (value <= 2) return "red";
+  if (value <= threshold) return "amber";
+  return "ok";
 }
 
 export default function CoreStockCards({
@@ -46,11 +66,12 @@ export default function CoreStockCards({
   replacementNotes?: Record<string, string>;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-1.5">
+    <RowList>
       {CORE.map((item) => {
         const forecast = forecasts.find((entry) => entry.sku === item.sku);
         const limit = thresholds[`${item.thresholdKey}Days` as const];
         const due = Boolean(forecast?.due);
+        const status = tone(forecast?.remainingDays, limit);
 
         const sub =
           item.sku === "bean-10kg"
@@ -75,30 +96,30 @@ export default function CoreStockCards({
                   : "수집 전";
 
         return (
-          <div key={item.sku} className={`rounded-[16px] border p-2.5 ${tone(forecast?.remainingDays, limit)}`}>
-            <div className="flex items-center justify-between">
-              <span className="text-[11.5px] font-bold text-[#3B4740]">{item.label}</span>
-              {due ? (
-                <span className="rounded-full bg-[#0F1412] px-1.5 py-0.5 text-[9.5px] font-bold text-[#1DFF26]">발주</span>
-              ) : null}
-            </div>
-            <p className="mt-1.5 text-[19px] font-bold leading-none tabular-nums tracking-[-0.02em]">
-              {daysLabel(forecast?.remainingDays)}
-            </p>
-            <p className="mt-1 truncate text-[10px] text-[#6B746D]">{replacementNotes?.[item.sku] ?? sub}</p>
-            {onCalibrate && item.sku !== "toner-color" ? (
-              <button
-                className="mt-1.5 h-[22px] w-full rounded-full border border-[#C9CFCB] bg-white/70 text-[9px] font-bold text-[#3B4740] disabled:opacity-50"
-                disabled={calibrating === item.sku}
-                onClick={() => onCalibrate(item.sku)}
-                type="button"
-              >
-                {calibrating === item.sku ? "기록 중…" : "교체완료"}
-              </button>
-            ) : null}
-          </div>
+          <Row
+            key={item.sku}
+            chip={due ? "발주" : undefined}
+            chipTone="ink"
+            dot={DOT[status]}
+            label={item.label}
+            sub={replacementNotes?.[item.sku] ?? sub}
+            trailing={
+              onCalibrate && item.sku !== "toner-color" ? (
+                <button
+                  className={QUIET_BUTTON}
+                  disabled={calibrating === item.sku}
+                  onClick={() => onCalibrate(item.sku)}
+                  type="button"
+                >
+                  {calibrating === item.sku ? "기록 중" : "교체완료"}
+                </button>
+              ) : null
+            }
+            value={daysLabel(forecast?.remainingDays)}
+            valueTone={VALUE_TONE[status]}
+          />
         );
       })}
-    </div>
+    </RowList>
   );
 }

@@ -16,6 +16,8 @@ import InternalHeader from "@/components/internal/InternalHeader";
  * 보안
  *  - 원문은 localStorage에도 서버 DB에도 남기지 않는다(DB에는 별도 해시).
  *  - 10분에 10회로 제한된다(서버 rate limit).
+ *
+ * 화면: 토스 앱처럼 밝은 바탕 + 큰 숫자 키패드 + 점 4개.
  */
 
 const KEYPAD = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
@@ -42,7 +44,7 @@ export default function StorePinLock({
 }) {
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(wrongKey ? "접근 코드가 맞지 않습니다." : null);
+  const [error, setError] = useState<string | null>(wrongKey ? "접근 코드가 맞지 않아요." : null);
   const [known, setKnown] = useState(false);
   const [showKeyForm, setShowKeyForm] = useState(false);
 
@@ -80,9 +82,9 @@ export default function StorePinLock({
 
         if (!response.ok || !payload?.ok) {
           if (localMatch) {
-            setError("PIN은 기기에 맞지만 서버 확인이 필요합니다. 잠시 후 다시 시도해 주세요.");
+            setError("PIN은 기기에 맞지만 서버 확인이 필요해요. 잠시 후 다시 시도해 주세요.");
           } else {
-            setError(payload?.error ?? "PIN이 맞지 않습니다.");
+            setError(payload?.error ?? "PIN이 맞지 않아요.");
           }
           setPin("");
           return;
@@ -96,7 +98,7 @@ export default function StorePinLock({
 
         window.location.replace(`/store/${encodeURIComponent(code)}`);
       } catch {
-        setError("연결이 불안정합니다. 잠시 후 다시 시도해 주세요.");
+        setError("연결이 불안정해요. 잠시 후 다시 시도해 주세요.");
         setPin("");
       } finally {
         setBusy(false);
@@ -124,39 +126,37 @@ export default function StorePinLock({
   };
 
   return (
-    <main className="min-h-screen bg-[#0F1412] text-white">
-      <InternalHeader subtitle="점주 어드민" action={{ href: "/admin/stores", label: "본사" }} />
+    <main className="min-h-screen bg-[#F4F5F6]">
+      <InternalHeader action={{ href: "/admin/stores", label: "본사" }} subtitle="점주 어드민" />
 
-      <div className="mx-auto w-full max-w-[430px] px-5 pb-10 pt-6">
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-[#1DFF26] px-2.5 py-1 font-mono text-[10px] font-bold text-[#0F1412]">
-            {code}
+      <div className="mx-auto w-full max-w-[430px] px-5 pb-10 pt-8">
+        <div className="flex items-center gap-1.5">
+          <span className="rounded-full bg-[#0F1412] px-2.5 py-1 font-mono text-[10px] font-bold text-[#1DFF26]">{code}</span>
+          <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-[#8B948D]">
+            {known ? "이 기기에서 다시 여는 중" : "처음 여는 기기"}
           </span>
-          <span className="text-[10.5px] text-[#9AA39C]">{known ? "이 기기에서 다시 여는 중" : "처음 여는 기기"}</span>
         </div>
 
-        <h1 className="mt-2 text-[24px] font-bold leading-[1.25] tracking-[-0.02em]">{shortLabel}</h1>
-        <p className="mt-1 text-[12px] leading-[1.6] text-[#9AA39C]">
-          {label} · 4자리 PIN을 누르면 바로 열립니다.
+        <h1 className="mt-3 text-[26px] font-bold leading-[1.25] tracking-[-0.03em] text-[#0F1412]">{shortLabel}</h1>
+        <p className="mt-1.5 text-[12.5px] font-medium leading-[1.55] text-[#8B948D]">
+          {label} · 4자리 PIN을 누르면 바로 열려요.
         </p>
 
-        <div aria-label={`PIN ${pin.length}자리 입력됨`} className="mt-6 flex justify-center gap-3">
+        <div aria-label={`PIN ${pin.length}자리 입력됨`} className="mt-8 flex justify-center gap-3">
           {[0, 1, 2, 3].map((index) => (
             <span
               key={index}
-              className={`size-3.5 rounded-full transition-colors ${
-                index < pin.length ? "bg-[#1DFF26]" : "bg-white/20"
-              }`}
+              className={`size-3.5 rounded-full transition-colors ${index < pin.length ? "bg-[#0F1412]" : "bg-[#DDE3DF]"}`}
             />
           ))}
         </div>
 
         {error ? (
-          <p aria-live="polite" className="mt-4 rounded-[12px] bg-[#3A1414] px-3 py-2 text-center text-[12px] font-semibold text-[#FF8A8A]">
+          <p aria-live="polite" className="mt-5 rounded-[14px] bg-[#FFF2F2] px-3 py-2.5 text-center text-[11.5px] font-semibold leading-[1.5] text-[#B3261E]">
             {error}
           </p>
         ) : (
-          <p className="mt-4 text-center text-[11px] text-[#7E8A82]">{busy ? "확인 중…" : "숫자 4개"}</p>
+          <p className="mt-5 text-center text-[11px] font-medium text-[#A7AFA9]">{busy ? "확인하는 중…" : "숫자 4개"}</p>
         )}
 
         <div className="mt-5 grid grid-cols-3 gap-2.5">
@@ -164,11 +164,11 @@ export default function StorePinLock({
             <button
               key={`${key}-${index}`}
               aria-label={key === "⌫" ? "한 글자 지우기" : key ? `${key} 입력` : undefined}
-              className={`h-[62px] rounded-[16px] text-[24px] font-bold tabular-nums transition-colors ${
+              className={`h-[62px] rounded-[20px] text-[24px] font-bold tabular-nums transition-colors ${
                 key === "⌫"
-                  ? "bg-transparent text-[#9AA39C]"
+                  ? "bg-transparent text-[#8B948D]"
                   : key
-                    ? "bg-white/10 text-white active:bg-[#1DFF26] active:text-[#0F1412]"
+                    ? "bg-white text-[#0F1412] shadow-[0_1px_2px_rgba(15,20,18,0.04)] active:bg-[#E9ECEB]"
                     : "pointer-events-none bg-transparent"
               }`}
               disabled={busy || !key}
@@ -181,14 +181,14 @@ export default function StorePinLock({
         </div>
 
         {demoPin ? (
-          <p className="mt-4 rounded-[12px] bg-white/8 px-3 py-2 text-center text-[11px] leading-[1.6] text-[#C8D0CA]">
-            이 지점은 <span className="font-bold text-[#1DFF26]">데모 PIN {demoPin}</span> 으로 열 수 있습니다.
-            본사에서 PIN을 재발급하면 바뀝니다.
+          <p className="mt-5 rounded-[16px] bg-white px-4 py-3 text-center text-[11px] leading-[1.6] text-[#8B948D] shadow-[0_1px_2px_rgba(15,20,18,0.04)]">
+            이 지점은 <span className="font-bold text-[#0B5C2A]">데모 PIN {demoPin}</span> 으로 열 수 있어요. 본사에서
+            PIN을 다시 발급하면 바뀌어요.
           </p>
         ) : null}
 
         <button
-          className="mt-4 h-11 w-full rounded-[12px] border border-white/15 text-[12.5px] font-semibold text-[#C8D0CA]"
+          className="mt-4 h-12 w-full rounded-[14px] bg-white text-[12.5px] font-bold text-[#3B4740] shadow-[0_1px_2px_rgba(15,20,18,0.04)]"
           onClick={() => setShowKeyForm((prev) => !prev)}
           type="button"
         >
@@ -199,18 +199,18 @@ export default function StorePinLock({
           <form action={`/store/${code}`} className="mt-2" method="get">
             <input
               autoComplete="one-time-code"
-              className="h-12 w-full rounded-[12px] border border-white/20 bg-white/5 px-3 text-center font-mono text-[17px] font-bold tracking-[0.12em] text-white uppercase outline-none focus:border-[#1DFF26]"
+              className="h-12 w-full rounded-[14px] bg-white px-3 text-center font-mono text-[17px] font-bold tracking-[0.12em] text-[#0F1412] uppercase outline-none ring-1 ring-transparent focus:ring-[#0F1412]"
               name="key"
               placeholder="XXXX-XXXXXX"
             />
-            <button className="mt-2 h-12 w-full rounded-[12px] bg-[#1DFF26] text-[14px] font-bold text-[#0F1412]" type="submit">
+            <button className="mt-2 h-12 w-full rounded-[14px] bg-[#0F1412] text-[14px] font-bold text-white" type="submit">
               접근 코드로 열기
             </button>
           </form>
         ) : null}
 
-        <p className="mt-5 text-center text-[10px] leading-[1.6] text-[#6E7A72]">
-          PIN은 이 기기에 해시로만 남고, 30일 뒤 다시 물어봅니다.
+        <p className="mt-6 text-center text-[10px] leading-[1.6] text-[#A7AFA9]">
+          PIN은 이 기기에 해시로만 남고, 30일 뒤에 다시 물어봐요.
         </p>
       </div>
     </main>

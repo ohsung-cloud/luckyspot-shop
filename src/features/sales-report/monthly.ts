@@ -87,7 +87,7 @@ const PYEONGTAEK_SUMMARY: Record<MonthlyPeriod, MonthlySummary> = {
     print: UNCOLLECTED_PRINT_NOV,
     total: 586_500,
     partial: true,
-    note: "커피만 확인된 값입니다. 프린트 매출은 아직 확보하지 못했습니다.",
+    note: "커피만 확인된 값이에요. 프린트 매출은 아직 확보하지 못했어요.",
   },
   "2026-10": {
     period: "2026-10",
@@ -104,7 +104,7 @@ const PYEONGTAEK_SUMMARY: Record<MonthlyPeriod, MonthlySummary> = {
     print: UNCOLLECTED_PRINT_OCT,
     total: 601_000,
     partial: true,
-    note: "10월 커피만 확정입니다. 프린트 정산본은 아직 확보하지 못했습니다.",
+    note: "10월 커피만 확정이에요. 프린트 정산본은 아직 확보하지 못했어요.",
   },
 };
 
@@ -138,7 +138,7 @@ const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
       print: PENDING_PRINT,
       total: 1_059_700,
       partial: true,
-      note: "커피는 실시간, 프린트는 26일 정산 전이라 커피만 더한 값입니다.",
+      note: "커피는 실시간, 프린트는 26일 정산 전이라 커피만 더한 값이에요.",
     },
     "2026-10": {
       period: "2026-10",
@@ -162,7 +162,7 @@ const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
       },
       total: 2_220_800,
       partial: false,
-      note: "10월 확정: 커피 10/1~31 + 프린트 9/26~10/25 정산.",
+      note: "10월 확정 — 커피 10/1~31 + 프린트 9/26~10/25 정산이에요.",
     },
   },
   STORE_HYJ: {
@@ -181,7 +181,7 @@ const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
       print: PENDING_PRINT,
       total: 4_112_000,
       partial: true,
-      note: "커피는 실시간, 프린트는 26일 정산 전이라 커피만 더한 값입니다.",
+      note: "커피는 실시간, 프린트는 26일 정산 전이라 커피만 더한 값이에요.",
     },
     "2026-10": {
       period: "2026-10",
@@ -205,7 +205,7 @@ const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
       },
       total: 8_063_140,
       partial: false,
-      note: "10월 확정: 커피 10/1~31 + 프린트 9/26~10/25 정산.",
+      note: "10월 확정 — 커피 10/1~31 + 프린트 9/26~10/25 정산이에요.",
     },
   },
 };

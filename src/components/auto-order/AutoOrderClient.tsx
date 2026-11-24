@@ -71,7 +71,7 @@ export default function AutoOrderClient() {
         const payload = (await response.json().catch(() => null)) as (ProposalListResponse & { error?: string }) | null;
 
         if (!response.ok || !payload || payload.ok !== true) {
-          throw new Error(payload?.error ?? "예측을 불러오지 못했습니다.");
+          throw new Error(payload?.error ?? "예측을 불러오지 못했어요.");
         }
 
         setState(payload);
@@ -80,7 +80,7 @@ export default function AutoOrderClient() {
         setStoreLabel(payload.storeLabel);
         setNow(Date.now());
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "예측을 불러오지 못했습니다.");
+        setError(cause instanceof Error ? cause.message : "예측을 불러오지 못했어요.");
       } finally {
         setLoading(false);
       }
@@ -210,14 +210,14 @@ export default function AutoOrderClient() {
       const payload = (await response.json().catch(() => null)) as (ApproveResponse & { error?: string }) | null;
 
       if (!response.ok || !payload || payload.ok !== true) {
-        throw new Error(payload?.error ?? "승인하지 못했습니다.");
+        throw new Error(payload?.error ?? "승인하지 못했어요.");
       }
 
       setApproval(payload.approval);
       setNow(Date.now());
       setNotice(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "승인하지 못했습니다.");
+      setError(cause instanceof Error ? cause.message : "승인하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -248,7 +248,7 @@ export default function AutoOrderClient() {
       }
 
       if (!response.ok || !payload?.ok) {
-        throw new Error(payload?.error ?? "취소하지 못했습니다.");
+        throw new Error(payload?.error ?? "취소하지 못했어요.");
       }
 
       setApproval(null);
@@ -258,7 +258,7 @@ export default function AutoOrderClient() {
         "canceled",
       );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "취소하지 못했습니다.");
+      setError(cause instanceof Error ? cause.message : "취소하지 못했어요.");
     } finally {
       setBusy(false);
     }
@@ -344,7 +344,7 @@ export default function AutoOrderClient() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex rounded-[16px] bg-white p-1 shadow-[0_2px_10px_rgba(15,20,18,0.05)]" role="tablist">
+      <div className="flex gap-1 rounded-[16px] bg-[#EBEEF0] p-1" role="tablist">
         {(
           [
             { key: "overview", label: "통합 현황" },
@@ -355,8 +355,10 @@ export default function AutoOrderClient() {
           <button
             key={item.key}
             aria-selected={tab === item.key}
-            className={`h-12 flex-1 rounded-[12px] text-[13.5px] font-bold transition-colors ${
-              tab === item.key ? "bg-[#0F1412] text-white" : "text-[#6B746D]"
+            className={`h-11 flex-1 rounded-[13px] text-[13px] font-bold transition-colors ${
+              tab === item.key
+                ? "bg-white text-[#0F1412] shadow-[0_1px_3px_rgba(15,20,18,0.10)]"
+                : "text-[#8B948D]"
             }`}
             onClick={() => setTab(item.key)}
             role="tab"

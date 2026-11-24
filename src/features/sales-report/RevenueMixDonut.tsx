@@ -18,7 +18,7 @@ import { formatWon, type MonthlySummary } from "./monthly";
 export function RevenueMixMini({
   month,
   size = 60,
-  tone = "dark",
+  tone = "light",
 }: {
   month: MonthlySummary | null;
   size?: number;
@@ -85,7 +85,7 @@ export function RevenueMixMini({
               <span className={`block text-[7.5px] font-bold ${tone === "dark" ? "text-white" : "text-[#0F1412]"}`}>
                 커피 {Math.round(coffeePct)}%
               </span>
-              <span className="mt-[2px] block text-[7.5px] font-bold text-[#1DFF26]">
+              <span className={`mt-[2px] block text-[7.5px] font-bold ${tone === "dark" ? "text-[#1DFF26]" : "text-[#0B5C2A]"}`}>
                 프린트 {Math.round(printPct)}%
               </span>
             </>
@@ -102,7 +102,7 @@ export function RevenueMixDonut({ month, compact = false }: { month: MonthlySumm
   if (!month) {
     return (
       <p className="mt-2 rounded-[12px] bg-[#F8F9F9] px-3 py-3 text-[12px] leading-[1.6] text-[#6B746D]">
-        이 지점은 아직 수집된 매출이 없습니다. 포털 연동 후 첫 수집부터 표시됩니다.
+        이 지점은 아직 수집된 매출이 없어요. 포털을 연결하고 처음 수집되면 여기에 보여요.
       </p>
     );
   }
@@ -195,7 +195,7 @@ export function RevenueMixDonut({ month, compact = false }: { month: MonthlySumm
         </ul>
       </div>
 
-      <p className={`rounded-[10px] bg-[#F8F9F9] px-3 text-[#6B746D] ${compact ? "mt-1.5 py-1.5 text-[9px] leading-[1.5]" : "mt-2.5 py-2 text-[10.5px] leading-[1.6]"}`}>{month.note}</p>
+      <p className={`rounded-[14px] bg-[#F7F8F9] px-3 text-[#8B948D] ${compact ? "mt-2 py-2 text-[9.5px] leading-[1.5]" : "mt-3 py-2.5 text-[10.5px] leading-[1.6]"}`}>{month.note}</p>
     </div>
   );
 }

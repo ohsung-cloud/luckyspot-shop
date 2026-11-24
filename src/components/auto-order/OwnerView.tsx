@@ -1,10 +1,11 @@
 "use client";
 
+import { Card, CardBody, CardHead, CTA, Chip, Row, RowList, SUMMARY_ROW } from "@/components/internal/card-ui";
 import type { ApprovalView, ProposalListResponse } from "@/features/auto-order/types";
 
 import CoreStockCards from "./CoreStockCards";
 import SplitSlips from "./SplitSlips";
-import { clock, dateLabel, days, packUnit, pct, remainingTone, shortEvidence, won } from "./format";
+import { clock, dateLabel, days, packUnit, pct, shortEvidence, won } from "./format";
 
 type OwnerViewProps = {
   state: ProposalListResponse | null;
@@ -22,6 +23,14 @@ type OwnerViewProps = {
   calibrating?: string | null;
   replacementNotes?: Record<string, string>;
 };
+
+/**
+ * 발주 승인(점주) — 토스 앱식 카드 화면.
+ *
+ *  ① 채울 것: 원두·토너·용지 세 줄
+ *  ② 이번 발주: 총액 하나 크게 + 품목 줄 + 원터치 승인(5분 취소 유예)
+ *  ③ 접이식: 왜 이 발주가 나왔는지
+ */
 
 export default function OwnerView({
   state,
@@ -42,24 +51,20 @@ export default function OwnerView({
     return (
       <div className="grid gap-3">
         <div className="h-[120px] animate-pulse rounded-[24px] bg-white" />
-        <div className="h-[360px] animate-pulse rounded-[24px] bg-white" />
+        <div className="h-[320px] animate-pulse rounded-[24px] bg-white" />
       </div>
     );
   }
 
   if (error || !state) {
     return (
-      <div className="rounded-[24px] border border-[#E6E9E7] bg-white p-6 text-center">
-        <p className="text-[16px] font-semibold text-[#0F1412]">예측을 불러오지 못했어요.</p>
-        <p className="mt-2 text-[13px] text-[#6B746D]">{error ?? "잠시 후 다시 시도해 주세요."}</p>
-        <button
-          className="mt-4 h-12 w-full rounded-[14px] bg-[#0F1412] text-[15px] font-bold text-white"
-          onClick={onRefresh}
-          type="button"
-        >
+      <Card className="px-6 py-8 text-center">
+        <p className="text-[16px] font-bold text-[#0F1412]">발주 정보를 불러오지 못했어요</p>
+        <p className="mt-2 text-[12.5px] leading-[1.55] text-[#8B948D]">{error ?? "잠시 후 다시 시도해 주세요."}</p>
+        <button className="mt-4 h-12 w-full rounded-[14px] bg-[#0F1412] text-[14px] font-bold text-white" onClick={onRefresh} type="button">
           다시 불러오기
         </button>
-      </div>
+      </Card>
     );
   }
 
@@ -74,29 +79,31 @@ export default function OwnerView({
   });
   const coreCount = pending.filter((proposal) => CORE_ORDER.includes(proposal.sku)).length;
   const grace = approval?.status === "grace_cancel_window";
+  const showOrderCard = !state.hold && pending.length > 0 && !grace && !approval;
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       <header className="px-1">
-        <p className="text-[14px] font-semibold text-[#007A36]">{state.storeLabel}</p>
-        <h1 className="mt-1.5 text-[27px] font-bold leading-[1.3] tracking-[-0.02em] text-[#0F1412] sm:text-[31px]">
+        <p className="text-[12px] font-bold text-[#0B5C2A]">{state.storeLabel}</p>
+        <h1 className="mt-1.5 text-[24px] font-bold leading-[1.3] tracking-[-0.03em] text-[#0F1412] sm:text-[27px]">
           {state.hold
             ? "발주를 잠시 멈췄어요"
             : pending.length > 0
-              ? `이번 주에 채울 소모품이 ${pending.length}개 있어요`
-              : "지금은 채울 소모품이 없어요"}
+              ? `이번 주에 채울 게 ${pending.length}개 있어요`
+              : "지금은 채울 게 없어요"}
         </h1>
-        <p className="mt-1.5 text-[13px] text-[#6B746D]">
+        <p className="mt-1.5 text-[12px] font-medium leading-[1.5] text-[#8B948D]">
           {dateLabel(state.asOfDate)} 마감 기준 · 카페 매출과 프린트 출력을 함께 계산했어요
         </p>
       </header>
 
-      <section className="rounded-[22px] border-2 border-[#0F1412] bg-white p-3.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-bold text-[#0F1412]">지금 채울 3가지</h2>
-          <span className="text-[10.5px] text-[#6B746D]">원두 · 토너 · 용지</span>
-        </div>
-        <div className="mt-2">
+      <Card>
+        <CardHead
+          right={<Chip tone="gray">원두 · 토너 · 용지</Chip>}
+          sub="잔여일이 기준 안이면 발주를 제안해요"
+          title="채울 때가 됐어요"
+        />
+        <CardBody className="pt-2">
           <CoreStockCards
             calibrating={calibrating}
             forecasts={state.run.forecasts}
@@ -105,41 +112,55 @@ export default function OwnerView({
             telemetry={state.telemetry}
             thresholds={{ beanDays: 4, tonerDays: 5, paperDays: 4 }}
           />
-        </div>
-      </section>
+        </CardBody>
+      </Card>
 
       {state.dataQuality.sparse ? (
-        <p className="rounded-[14px] bg-[#FFF9EA] px-4 py-3 text-[12px] leading-[1.6] text-[#8A5A00]">
-          실측 {state.dataQuality.days}일치입니다. 7일 이상 쌓이면 예측이 안정됩니다.
+        <p className="rounded-[16px] bg-[#FFF8E6] px-4 py-3 text-[11.5px] font-medium leading-[1.55] text-[#8A5A00]">
+          실측 {state.dataQuality.days}일치로 계산했어요. 7일 이상 쌓이면 예측이 안정돼요.
         </p>
       ) : null}
 
       {notice ? (
-        <p className="rounded-[14px] bg-[#EDFBEF] px-4 py-3 text-[13.5px] font-semibold text-[#0B5C2A]">
+        <p className="rounded-[16px] bg-[#EDFBEF] px-4 py-3 text-[12.5px] font-semibold leading-[1.5] text-[#0B5C2A]">
           {notice}
         </p>
       ) : null}
 
       {state.hold ? (
-        <details className="rounded-[14px] border border-[#E6E9E7] bg-white px-3.5 py-2.5">
-          <summary className="flex cursor-pointer items-center justify-between text-[12px] font-bold text-[#3B4740]">
-            시스템 상태 · 알림 보기
-            <span className="rounded-full bg-[#FFF6E0] px-2 py-0.5 text-[9.5px] font-bold text-[#8A5A00]">보류</span>
-          </summary>
-          <p className="mt-1.5 text-[12px] font-bold text-[#8A5A00]">{state.anomalies[0]?.title}</p>
-          <p className="mt-0.5 text-[11px] leading-[1.55] text-[#3B4740]">{state.anomalies[0]?.message}</p>
-          <p className="mt-1 text-[10.5px] tabular-nums text-[#8A5A00]">
-            음료 {pct(state.run.cafeRecentRatio - 1)} · 프린트 {pct(state.run.printRecentRatio - 1)}
-          </p>
-        </details>
+        <Card>
+          <details className="group">
+            <summary className={SUMMARY_ROW}>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-bold text-[#0F1412]">발주를 멈춘 이유</span>
+                <span className="mt-0.5 block truncate text-[11.5px] font-medium text-[#8B948D]">
+                  {state.anomalies[0]?.title ?? "이상 감지"}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <Chip tone="amber">보류</Chip>
+                <span aria-hidden className="text-[16px] font-bold text-[#C2C9C4] transition-transform group-open:rotate-90">
+                  ›
+                </span>
+              </span>
+            </summary>
+            <div className="border-t border-[#F1F3F2] px-5 py-4">
+              <p className="text-[12px] font-bold text-[#8A5A00]">{state.anomalies[0]?.title}</p>
+              <p className="mt-1 text-[11.5px] leading-[1.6] text-[#3B4740]">{state.anomalies[0]?.message}</p>
+              <p className="mt-2 text-[10.5px] tabular-nums text-[#8A5A00]">
+                음료 {pct(state.run.cafeRecentRatio - 1)} · 프린트 {pct(state.run.printRecentRatio - 1)}
+              </p>
+            </div>
+          </details>
+        </Card>
       ) : null}
 
       {approval && grace ? (
-        <section className="rounded-[26px] border-2 border-[#0F1412] bg-[#0F1412] p-6 text-white">
-          <p className="text-[13px] font-semibold text-[#1DFF26]">발주를 잠갔어요</p>
-          <p className="mt-2 text-[15px] text-[#C8D0CA]">아직 주문되지 않았습니다. 5분 안이면 취소할 수 있어요.</p>
+        <div className="rounded-[24px] bg-[#0F1412] px-5 py-5 text-white">
+          <p className="text-[12.5px] font-bold text-[#1DFF26]">아직 주문 전이에요</p>
+          <p className="mt-1 text-[12px] leading-[1.5] text-[#C8D0CA]">5분 안이면 취소할 수 있어요</p>
 
-          <p className="mt-3 text-center text-[64px] font-bold leading-none tabular-nums tracking-[-0.03em] text-white">
+          <p className="mt-4 text-center text-[58px] font-bold leading-none tabular-nums tracking-[-0.04em]">
             {clock(remainingSeconds)}
           </p>
 
@@ -150,152 +171,142 @@ export default function OwnerView({
             />
           </div>
 
-          <p className="mt-4 text-center text-[13px] leading-[1.6] text-[#C8D0CA]">
+          <p className="mt-4 text-center text-[11.5px] leading-[1.6] text-[#C8D0CA]">
             5분이 지나면 점주 사업자와 본사 사업자로 나뉘어
             <br />
-            자동 확정되고, 세금계산서 발행 대상도 함께 지정됩니다.
+            자동으로 확정되고, 세금계산서 발행 대상도 함께 정해져요.
           </p>
 
           <button
-            className="mt-5 h-[66px] w-full rounded-[18px] border-2 border-[#FF6B6B] bg-transparent text-[19px] font-bold text-[#FF8A8A] transition-colors hover:bg-[#FF6B6B]/10 disabled:opacity-60"
+            className="mt-4 h-14 w-full rounded-[16px] border border-[#FF6B6B] text-[16px] font-bold text-[#FF8A8A] disabled:opacity-60"
             disabled={busy}
             onClick={onCancel}
             type="button"
           >
             {busy ? "취소하는 중…" : "발주 취소하기"}
           </button>
-        </section>
+        </div>
       ) : null}
 
       {approval && approval.status === "confirmed_split" ? (
-        <section className="rounded-[26px] border-2 border-[#007A36] bg-[#EDFBEF] p-5">
-          <p className="text-[13px] font-bold text-[#0B5C2A]">발주 확정 완료</p>
-          <h2 className="mt-1 text-[22px] font-bold text-[#0F1412]">
-            사업자별로 나뉘어 발주됐어요
+        <div className="rounded-[24px] bg-[#EDFBEF] px-5 py-5">
+          <p className="text-[12px] font-bold text-[#0B5C2A]">발주 확정 완료</p>
+          <h2 className="mt-1 text-[20px] font-bold leading-[1.3] tracking-[-0.02em] text-[#0F1412]">
+            사업자별로 나눠 담았어요
           </h2>
-          <p className="mt-1.5 text-[13.5px] text-[#3B4740]">
-            총 {won(approval.splitPreview.totalAmount)} · 세금계산서는 공급처가 각 사업자 앞으로 발행합니다.
+          <p className="mt-1.5 text-[11.5px] leading-[1.55] text-[#3B4740]">
+            총 {won(approval.splitPreview.totalAmount)} · 세금계산서는 공급처가 각 사업자 앞으로 발행해요.
           </p>
-          <div className="mt-4">
-            <SplitSlips split={approval.splitPreview} compact />
+          <div className="mt-3">
+            <SplitSlips compact split={approval.splitPreview} />
           </div>
           <button
-            className="mt-4 h-12 w-full rounded-[14px] border border-[#B7D9C2] bg-white text-[14px] font-bold text-[#0B5C2A]"
+            className="mt-3 h-12 w-full rounded-[14px] bg-white text-[13.5px] font-bold text-[#0B5C2A]"
             onClick={onRefresh}
             type="button"
           >
             다음 발주 확인
           </button>
-        </section>
+        </div>
       ) : null}
 
-      {!state.hold && pending.length > 0 && !grace && !approval ? (
-        <section className="overflow-hidden rounded-[26px] border-2 border-[#0F1412] bg-white shadow-[0_16px_40px_rgba(15,20,18,0.10)]">
-          <div className="bg-[#0F1412] px-5 py-4 text-white">
-            <div className="flex items-center justify-between">
-              <span className="rounded-full bg-[#1DFF26] px-2.5 py-1 text-[11.5px] font-bold text-[#0F1412]">
-                원터치 발주
-              </span>
-              <span className="text-[12px] text-[#9AA39C]">{dateLabel(state.asOfDate)} 기준</span>
-            </div>
-            <p className="mt-5 text-[40px] font-bold leading-none tabular-nums tracking-[-0.03em]">
+      {showOrderCard ? (
+        <Card>
+          <CardHead
+            right={<span className="text-[10.5px] font-semibold text-[#A7AFA9]">{dateLabel(state.asOfDate)} 기준</span>}
+            sub={`${pending.length}개 품목 · 3종 ${coreCount}개 포함`}
+            title="이번 발주"
+          />
+          <CardBody className="pt-3">
+            <p className="text-[34px] font-bold leading-none tabular-nums tracking-[-0.035em] text-[#0F1412]">
               {won(state.totals.totalAmount)}
             </p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5 text-[12px]">
-              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[#DDE4DF]">
-                점주 부담 {won(state.totals.cafeAmount)}
-              </span>
-              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[#DDE4DF]">
-                본사 부담 {won(state.totals.hqAmount)}
-              </span>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              <Chip tone="gray">점주 부담 {won(state.totals.cafeAmount)}</Chip>
+              <Chip tone="gray">본사 부담 {won(state.totals.hqAmount)}</Chip>
             </div>
-          </div>
 
-          <ul className="divide-y divide-[#EFF1F0]">
-            {sortedPending.slice(0, 4).map((proposal) => (
-              <li key={proposal.id} className="flex items-start gap-3 px-5 py-3.5">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[16.5px] font-bold text-[#0F1412]">{proposal.name}</p>
-                  <p className="mt-1 flex items-center gap-1.5 text-[12px] text-[#6B746D]">
-                    <span className={`rounded-full px-2 py-0.5 font-bold ${remainingTone(proposal.remainingDays)}`}>
-                      약 {days(proposal.remainingDays)} 남음
-                    </span>
-                    <span className="truncate">{shortEvidence(proposal.evidenceLine)}</span>
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[14px] font-bold tabular-nums text-[#0F1412]">{proposal.quantity}{packUnit(proposal.packLabel)}</p>
-                  <p className="mt-0.5 text-[12px] tabular-nums text-[#6B746D]">{won(proposal.amount)}</p>
-                </div>
-              </li>
-            ))}
+            <RowList className="mt-4 border-t border-[#F1F3F2]">
+              {sortedPending.slice(0, 4).map((proposal) => (
+                <Row
+                  key={proposal.id}
+                  label={proposal.name}
+                  sub={`약 ${days(proposal.remainingDays)} 남음 · ${shortEvidence(proposal.evidenceLine)}`}
+                  value={`${proposal.quantity}${packUnit(proposal.packLabel)}`}
+                  valueSub={won(proposal.amount)}
+                />
+              ))}
+            </RowList>
+
             {pending.length > 4 ? (
-              <li className="px-5 py-2.5 text-[11.5px] text-[#6B746D]">
-                원두·토너·용지 외 {pending.length - 4}종은 ‘발주 승인’ 상세에 있습니다
-              </li>
+              <p className="mt-2 text-[10.5px] font-medium text-[#A7AFA9]">
+                원두·토너·용지 외 {pending.length - 4}종은 아래 &lsquo;발주 승인&rsquo; 상세에 있어요.
+              </p>
             ) : null}
-          </ul>
-
-        </section>
+          </CardBody>
+        </Card>
       ) : null}
 
-      {!state.hold && pending.length > 0 && !grace && !approval ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#E6E9E7] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+      {showOrderCard ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#EBEEF0] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
           <div className="mx-auto w-full max-w-[760px] px-4 py-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-[13px] font-semibold text-[#3B4740]">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-[12px] font-semibold text-[#6B746D]">
                 총 <span className="text-[17px] font-bold tabular-nums text-[#0F1412]">{won(state.totals.totalAmount)}</span>
-                <span className="ml-1.5 text-[10.5px] text-[#6B746D]">3종 {coreCount}개 포함</span>
+                <span className="ml-1.5 text-[10.5px] text-[#A7AFA9]">3종 {coreCount}개 포함</span>
               </span>
-              <span className="text-[11.5px] text-[#6B746D]">누르면 5분 동안 취소할 수 있어요</span>
+              <span className="text-[10.5px] font-medium text-[#A7AFA9]">5분 동안 취소할 수 있어요</span>
             </div>
-            <button
-              className="mt-2 h-[62px] w-full rounded-[18px] bg-[#1DFF26] text-[20px] font-bold text-[#0F1412] shadow-[0_8px_20px_rgba(29,255,38,0.28)] transition-colors hover:bg-[#7CE785] disabled:opacity-60"
-              disabled={busy}
-              onClick={onApprove}
-              type="button"
-            >
-              {busy ? "승인하는 중…" : "이대로 발주하기"}
+            <button className={`${CTA} mt-2`} disabled={busy} onClick={onApprove} type="button">
+              {busy ? "발주하는 중…" : "이대로 발주하기"}
             </button>
           </div>
         </div>
       ) : null}
 
       {!state.hold && pending.length > 0 && !grace ? (
-        <details className="rounded-[18px] border border-[#E6E9E7] bg-white px-4 py-3">
-          <summary className="cursor-pointer text-[13.5px] font-semibold text-[#3B4740]">
-            왜 이 발주가 나왔나요?
-          </summary>
-          <ul className="mt-2 space-y-2 text-[12.5px] leading-[1.6] text-[#6B746D]">
-            {pending.map((proposal) => (
-              <li key={proposal.id}>
-                <span className="font-semibold text-[#0F1412]">{proposal.name}</span> — {proposal.reason}.{" "}
-                {proposal.evidenceLine}
-              </li>
-            ))}
-          </ul>
-        </details>
+        <Card>
+          <details className="group">
+            <summary className={SUMMARY_ROW}>
+              <span className="min-w-0">
+                <span className="block text-[15px] font-bold text-[#0F1412]">왜 이 발주가 나왔나요?</span>
+                <span className="mt-0.5 block truncate text-[11.5px] font-medium text-[#8B948D]">
+                  품목마다 계산 근거를 적어 뒀어요
+                </span>
+              </span>
+              <span aria-hidden className="text-[16px] font-bold text-[#C2C9C4] transition-transform group-open:rotate-90">
+                ›
+              </span>
+            </summary>
+            <ul className="divide-y divide-[#F1F3F2] border-t border-[#F1F3F2] px-5">
+              {pending.map((proposal) => (
+                <li key={proposal.id} className="py-3">
+                  <p className="text-[13px] font-bold text-[#0F1412]">{proposal.name}</p>
+                  <p className="mt-1 text-[11px] leading-[1.6] text-[#8B948D]">
+                    {proposal.reason} {proposal.evidenceLine}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </Card>
       ) : null}
 
       {!state.hold && pending.length === 0 && !approval ? (
-        <section className="rounded-[24px] border border-[#E6E9E7] bg-white p-6 text-center">
-          <p className="text-[15px] font-semibold text-[#0F1412]">다음 발주 시점을 계속 보고 있어요.</p>
-          <p className="mt-2 text-[13px] text-[#6B746D]">
-            잔여일이 리드타임 안으로 들어오면 이 화면에 카드가 먼저 나타납니다.
+        <Card className="px-6 py-8 text-center">
+          <p className="text-[15px] font-bold text-[#0F1412]">다음 발주 시점을 계속 보고 있어요</p>
+          <p className="mt-2 text-[12px] leading-[1.55] text-[#8B948D]">
+            잔여일이 리드타임 안으로 들어오면 이 화면에 카드가 먼저 나타나요.
           </p>
-          <button
-            className="mt-4 h-12 w-full rounded-[14px] bg-[#0F1412] text-[14px] font-bold text-white"
-            onClick={onRefresh}
-            type="button"
-          >
+          <button className="mt-4 h-12 w-full rounded-[14px] bg-[#0F1412] text-[13.5px] font-bold text-white" onClick={onRefresh} type="button">
             지금 다시 계산
           </button>
-        </section>
+        </Card>
       ) : null}
 
-      <div aria-hidden className={!state.hold && pending.length > 0 && !grace && !approval ? "h-24" : "h-0"} />
+      <div aria-hidden className={showOrderCard ? "h-24" : "h-0"} />
 
-      <p className="px-1 text-[11.5px] leading-[1.7] text-[#98A29B]">
+      <p className="px-1 text-[10px] leading-[1.6] text-[#B0B7B2]">
         데이터 출처:{" "}
         {state.dataSource === "supabase"
           ? "Supabase POS 마감"

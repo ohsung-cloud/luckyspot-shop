@@ -47,7 +47,7 @@ function Slider({
         </span>
       </span>
       <input
-        className="mt-1 h-9 w-full accent-[#0F1412]"
+        className="mt-1.5 h-9 w-full accent-[#0F1412]"
         max={max}
         min={min}
         onChange={(event) => onChange(Number(event.target.value))}
@@ -87,7 +87,7 @@ export default function CrossForecastLab() {
 
   return (
     <div className="grid gap-3">
-      <div className="rounded-[12px] bg-[#F8F9F9] px-3 py-2.5">
+      <div className="rounded-[18px] bg-[#F7F8F9] px-3.5 py-3">
         <Slider label="하루 음료" max={300} min={10} onChange={setDrinks} unit="잔" value={drinks} />
         <div className="mt-1.5">
           <Slider label="하루 출력" max={800} min={10} onChange={setSheets} unit="매" value={sheets} />
@@ -105,11 +105,11 @@ export default function CrossForecastLab() {
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-[12px] border border-[#E6E9E7]">
+      <div className="overflow-hidden rounded-[16px] bg-[#F7F8F9] px-1 py-1">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="bg-[#FAFBFB] text-[10.5px] text-[#6B746D]">
-              <th className="px-2 py-1.5 font-semibold">3종</th>
+            <tr className="text-[9.5px] font-bold text-[#A7AFA9]">
+              <th className="px-2 py-1.5 font-bold">3종</th>
               <th className="px-1 py-1.5 text-right font-semibold">기본/일</th>
               <th className="px-1 py-1.5 text-right font-semibold">교차</th>
               <th className="px-1 py-1.5 text-right font-semibold">보정/일</th>
@@ -118,7 +118,7 @@ export default function CrossForecastLab() {
           </thead>
           <tbody>
             {core.map((forecast) => (
-              <tr key={forecast.sku} className="border-t border-[#F4F5F6] text-[11.5px]">
+              <tr key={forecast.sku} className="border-t border-[#E9ECEA] text-[11px]">
                 <td className="px-2 py-1.5 font-semibold text-[#0F1412]">{forecast.name}</td>
                 <td className="px-1 py-1.5 text-right tabular-nums text-[#3B4740]">
                   {forecast.baseDailyConsumption.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}
