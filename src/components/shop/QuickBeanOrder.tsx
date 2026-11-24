@@ -491,7 +491,11 @@ export default function QuickBeanOrder({
         </div>
 
         {/* ③ 낼 금액과 발주 */}
-        <div className="mt-4 rounded-[18px] bg-[#F7F8F9] px-4 py-4">
+        <div className="mt-6">
+          <StepLabel step={3} title="낼 금액을 확인해 주세요" />
+        </div>
+
+        <div className="mt-2 rounded-[18px] bg-[#F7F8F9] px-4 py-4">
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[13px] font-bold text-[#8B948D]">낼 금액</p>
