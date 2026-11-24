@@ -11,6 +11,7 @@ import { RevenueMixMini } from "@/features/sales-report/RevenueMixDonut";
 import { SalesPulseTabs } from "@/features/sales-report/SalesPulseTabs";
 import {
   computeBepAndOrderMode,
+  fixedCostTotal,
   monthlyComparison,
   type ProfitEstimate,
 } from "@/features/sales-report/profit";
@@ -487,7 +488,15 @@ export default function StoreAdminView({
           <RevenueMixMini month={current} size={60} />
         </div>
 
-        <ProfitRow fixedCost={fixedCost} profit={profit.current} />
+        <ProfitRow
+          fixedCost={fixedCost}
+          note={
+            fixedCostTotal(fixedCost) === 0
+              ? "월 고정비가 등록되지 않아 고정비 없이 계산한 값입니다."
+              : undefined
+          }
+          profit={profit.current}
+        />
 
         <SalesPulseTabs comparison={comparison} month={current} pulse={pulse} />
 
