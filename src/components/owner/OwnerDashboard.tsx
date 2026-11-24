@@ -133,6 +133,7 @@ export default function OwnerDashboard({
 
   const month = data.current.month;
   const profit = data.current.profit;
+  const estimate = data.current.printEstimate;
   const fixed = data.current.fixedCost;
   const fixedTotal = fixed.rent + fixed.maintenance + fixed.internet + fixed.solution;
 
@@ -213,7 +214,13 @@ export default function OwnerDashboard({
               </p>
             </div>
             <Chip tone={month && !month.partial ? "green" : "gray"}>
-              {month ? (month.partial ? "확인된 항목" : "확정") : "수집 전"}
+              {month
+                ? month.printEstimated
+                  ? "프린트 추정 포함"
+                  : month.partial
+                    ? "확인된 항목"
+                    : "확정"
+                : "수집 전"}
             </Chip>
           </div>
 
@@ -222,6 +229,7 @@ export default function OwnerDashboard({
               <p className="mt-2 text-[11px] font-medium text-[#A7AFA9]">
                 커피 {month.coffee.range} · 프린트 {month.print.range}
                 {month.print.status === "pending" ? " (26일 정산 전)" : ""}
+                {month.printEstimated ? " (용지 소모 기준 추정)" : ""}
               </p>
 
               <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-[#EFF1F0]">
@@ -242,6 +250,32 @@ export default function OwnerDashboard({
                   {print && month.total ? ` · ${Math.round((print / month.total) * 100)}%` : ""}
                 </span>
               </div>
+
+              {/* 프린트는 정산 전 — 기기 카운터(종이 소모)로 되돌린 추정 근거를 그대로 보여 준다 */}
+              {month.printEstimated && estimate ? (
+                <div className="mt-3 rounded-[12px] border border-[#E6E9E7] bg-white px-3 py-2.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-[11px] font-bold text-[#3B4740]">프린트 예상 매출 · 용지 소모 기준</span>
+                    <span className="shrink-0 text-[13px] font-bold tabular-nums tracking-[0.02em] text-[#0F1412]">
+                      {formatWon(estimate.revenue)}
+                    </span>
+                  </div>
+                  <p className="mt-1 break-keep text-[10.5px] leading-[1.55] text-[#8B948D]">{estimate.basis}</p>
+                  {estimate.counterNote ? (
+                    <p className="mt-0.5 break-keep text-[10px] leading-[1.5] text-[#A7AFA9]">
+                      기기 카운터 {estimate.counterNote}
+                    </p>
+                  ) : null}
+                  {!estimate.counterNote && estimate.settlementNote ? (
+                    <p className="mt-0.5 break-keep text-[10px] leading-[1.5] text-[#A7AFA9]">
+                      기기 카운터 두 점이 없어 {estimate.settlementNote}
+                    </p>
+                  ) : null}
+                  <p className="mt-0.5 break-keep text-[10px] leading-[1.5] text-[#A7AFA9]">
+                    장당 {estimate.pricePerSheet}원 · {estimate.priceSource} · 26일 정산이 오면 정산값으로 바뀝니다.
+                  </p>
+                </div>
+              ) : null}
             </>
           ) : (
             <p className="mt-2 break-keep rounded-[12px] bg-[#F7F8F9] px-3 py-2.5 text-[11.5px] leading-[1.55] text-[#8B948D]">
@@ -310,8 +344,16 @@ export default function OwnerDashboard({
             {profit?.projectedNet !== null && profit?.projectedNet !== undefined && profit.prorated ? (
               <p className="mt-2 text-[10.5px] font-medium leading-[1.55] text-[#8B948D]">
                 지금 속도면 {month?.monthLabel} 말 예상 순이익 {formatWon(profit.projectedNet)}
-                {profit.partial ? " (프린트 정산 전이라 커피만 반영)" : ""}
+                {month?.printEstimated
+                  ? " (프린트는 용지 소모 기준 추정 포함)"
+                  : profit.partial
+                    ? " (프린트 정산 전이라 커피만 반영)"
+                    : ""}
               </p>
+            ) : null}
+
+            {profit?.note ? (
+              <p className="mt-1.5 break-keep text-[10px] leading-[1.55] text-[#A7AFA9]">{profit.note}</p>
             ) : null}
           </div>
           ) : (

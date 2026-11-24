@@ -223,7 +223,7 @@ export function estimateProfit(input: {
       note:
         printRevenue === null
           ? month.print.note ?? "정산 전"
-          : `${formatWon(printRevenue)} · 변동비·로열티 ${Math.round(PRINT_VARIABLE_RATE * 100)}% 제외`,
+          : `${formatWon(printRevenue)}${month.print.status === "estimated" ? "(추정)" : ""} · 변동비·로열티 ${Math.round(PRINT_VARIABLE_RATE * 100)}% 제외`,
       tone: "plus",
     },
     {
@@ -238,11 +238,15 @@ export function estimateProfit(input: {
   const note =
     net === null
       ? "매출이 아직 없어 순수익을 계산하지 않았습니다."
-      : month.partial
-        ? "프린트는 26일 정산 전이라 커피만 계산에 넣었습니다."
-        : ratio < 1
-          ? "이번 달 진행 중 — 고정비는 경과일만큼만 반영했습니다."
-          : "확정 매출 기준 예상 순수익입니다.";
+      : month.printEstimated
+        ? month.printEstimate?.method === "counter"
+          ? "프린트는 26일 정산 전이라 기기 카운터(용지 소모)로 되돌려 추정했습니다."
+          : "프린트는 26일 정산 전이라 직전 정산 일평균으로 추정했습니다."
+        : month.partial
+          ? "프린트는 26일 정산 전이라 커피만 계산에 넣었습니다."
+          : ratio < 1
+            ? "이번 달 진행 중 — 고정비는 경과일만큼만 반영했습니다."
+            : "확정 매출 기준 예상 순수익입니다.";
 
   return {
     period: month.period,
@@ -401,7 +405,15 @@ export function computeBepAndOrderMode(input: {
   let mode: OrderMode | null = null;
   if (orderAmount > 0 && freeCashFlow !== null) mode = freeCashFlow >= 0 ? "bulk" : "split_min";
 
-  const reason = buildOrderReason({ mode, projectedNet, orderAmount, freeCashFlow, reached, partial: month.partial });
+  const reason = buildOrderReason({
+    mode,
+    projectedNet,
+    orderAmount,
+    freeCashFlow,
+    reached,
+    partial: month.partial,
+    printEstimated: month.printEstimated,
+  });
 
   return {
     period: month.period,
@@ -437,8 +449,13 @@ function buildOrderReason(input: {
   freeCashFlow: number | null;
   reached: boolean;
   partial: boolean;
+  printEstimated?: boolean;
 }): string {
-  const tail = input.partial ? " 프린트는 26일 정산 전이라 커피만 반영했어요." : "";
+  const tail = input.printEstimated
+    ? " 프린트는 정산 전이라 용지 소모 기준 추정으로 넣었어요."
+    : input.partial
+      ? " 프린트는 26일 정산 전이라 커피만 반영했어요."
+      : "";
 
   if (input.projectedNet === null) return `매출이 아직 없어 발주 모드를 정하지 않았어요.${tail}`;
   if (input.orderAmount <= 0) {

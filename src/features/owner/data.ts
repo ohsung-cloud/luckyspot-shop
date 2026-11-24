@@ -1,5 +1,12 @@
 import { buildState } from "@/features/auto-order/service";
+import { loadTelemetryHistory } from "@/features/auto-order/store";
 import { monthlyForStore, type MonthlyPeriod, type MonthlySummary } from "@/features/sales-report/monthly";
+import {
+  applyPaperPrintEstimate,
+  estimatePrintFromPaper,
+  type PaperPrintEstimate,
+  type PrintCounterReading,
+} from "@/features/sales-report/print-paper";
 import { estimateProfit, type MonthlyFixedCost, type ProfitEstimate } from "@/features/sales-report/profit";
 import type { StoreRegistryRecord } from "@/features/stores/registry-types";
 
@@ -36,6 +43,8 @@ export type OwnerDashboardView = {
     month: MonthlySummary | null;
     profit: ProfitEstimate | null;
     fixedCost: MonthlyFixedCost;
+    /** 프린트 매출을 용지 소모(기기 카운터)로 되돌린 추정 — 정산 전인 달에만 채운다 */
+    printEstimate: PaperPrintEstimate | null;
   };
   previous: {
     month: MonthlySummary | null;
@@ -56,9 +65,21 @@ export async function loadOwnerDashboard(
   record: StoreRegistryRecord,
   now: Date = new Date(),
 ): Promise<OwnerDashboardView> {
-  const month = monthlyForStore(record.code, CURRENT_PERIOD);
-  const previousMonth = monthlyForStore(record.code, PREVIOUS_PERIOD);
   const fixedCost = record.monthlyFixedCost;
+
+  // 프린트는 26일 정산 전이라 매출이 비어 있다 → 기기 누적 출력 매수(종이 소모)로 되돌려 채운다.
+  //  · 수집기 텔레메트리(Supabase)에 카운터 두 점이 있으면 그것을, 없으면 포털에서 직접 읽어 둔 값을 쓴다.
+  const printEstimate = estimatePrintFromPaper({
+    storeCode: record.code,
+    period: CURRENT_PERIOD,
+    asOf: now,
+    readings: await loadTelemetryReadings(record.code),
+  });
+
+  const month = applyPaperPrintEstimate(monthlyForStore(record.code, CURRENT_PERIOD), printEstimate);
+  // 화면에는 실제로 반영된 추정만 넘긴다(확정·미수집 지점은 추정 카드를 띄우지 않음).
+  const appliedEstimate = month?.printEstimated ? printEstimate : null;
+  const previousMonth = monthlyForStore(record.code, PREVIOUS_PERIOD);
 
   const profit = estimateProfit({ month, fixedCost, asOf: now });
   const previousProfit = estimateProfit({ month: previousMonth, fixedCost, asOf: now });
@@ -100,10 +121,31 @@ export async function loadOwnerDashboard(
       region: record.region,
       storeType: record.storeType,
     },
-    current: { month, profit, fixedCost },
+    current: { month, profit, fixedCost, printEstimate: appliedEstimate },
     previous: { month: previousMonth, profit: previousProfit },
     stock,
     orders: await listOwnerOrders({ storeCode: record.code, limit: 5 }),
     generatedAt: now.toISOString(),
   };
+}
+
+/**
+ * 수집기가 쌓은 기기 누적 카운터 — 프린트 매출 역산의 실측 입력.
+ *  - Supabase 미설정·테이블 미적용이면 빈 배열(그때는 포털 수기 스냅샷으로 계산한다).
+ *  - 실패해도 매출·재고 화면은 그대로 떠야 하므로 예외를 삼킨다.
+ */
+async function loadTelemetryReadings(storeCode: string): Promise<PrintCounterReading[]> {
+  try {
+    const history = await loadTelemetryHistory(storeCode, 48);
+    return history
+      .filter((item) => typeof item.cumulativePrintCount === "number" && Number.isFinite(item.cumulativePrintCount))
+      .map((item) => ({
+        capturedAt: item.capturedAt,
+        cumulativePrintCount: item.cumulativePrintCount as number,
+        source: "수집기(Supabase) 기기 카운터",
+      }));
+  } catch (error) {
+    console.error("[owner] 기기 카운터를 읽지 못했습니다:", error instanceof Error ? error.message : error);
+    return [];
+  }
 }

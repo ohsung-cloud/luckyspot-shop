@@ -13,10 +13,18 @@ export type MonthlyPeriod = "2026-11" | "2026-10";
 
 export type MonthlySide = {
   amount: number | null;
+  /** 커피는 주문 건수, 프린트는 출력 매수(추정이면 매수 추정치) */
   orders: number | null;
   /** 기간 표기 (예: "10/1~10/31") */
   range: string;
-  status: "final" | "live" | "pending" | "missing";
+  /**
+   * final  = 정산·마감이 끝난 확정 값
+   * live   = 실시간 집계(오늘 포함)
+   * pending= 아직 정산 전(0원이 아니라 '모름')
+   * missing= 정산본 자체가 없는 지점(인쇄 메뉴 없음)
+   * estimated = 정산 전이지만 실소모(기기 카운터·용지)로 되돌려 추정한 값 — 화면에서 '추정'으로 밝힌다
+   */
+  status: "final" | "live" | "pending" | "missing" | "estimated";
   source: string;
   note?: string;
 };
@@ -34,6 +42,10 @@ export type MonthlySummary = {
   partial: boolean;
   /** 화면에 그대로 쓰는 한 줄 설명 */
   note: string;
+  /** 프린트를 용지 소모(기기 카운터) 기준으로 추정했나 — `/owner`에서 '추정' 표시에 쓴다 */
+  printEstimated?: boolean;
+  /** 추정 근거(카운터 두 점·하루 매수·장당 단가) — 화면에 그대로 보여 준다 */
+  printEstimate?: import("./print-paper").PaperPrintEstimate;
 };
 
 export const MONTHLY_PERIODS: { id: MonthlyPeriod; label: string; hint: string }[] = [
