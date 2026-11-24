@@ -132,7 +132,7 @@ export function StoreReport({
             value={formatWon(coffeeAmount)}
           />
           <Row
-            dot="bg-[#1D9F4C]"
+            dot={printAmount !== null ? "bg-[#1D9F4C]" : "bg-[#C9CFCB]"}
             label="프린트"
             sub={month ? `${month.print.range} · ${month.print.status === "pending" ? "매월 26일 정산" : month.print.source}` : "수집 전"}
             value={printAmount !== null ? formatWon(printAmount) : "26일 정산 전"}

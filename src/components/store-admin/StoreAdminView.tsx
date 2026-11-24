@@ -483,7 +483,7 @@ export default function StoreAdminView({
             value={current ? formatWon(current.coffee.amount) : "—"}
           />
           <Row
-            dot="bg-[#1D9F4C]"
+            dot={current?.print.amount !== null && current?.print.amount !== undefined ? "bg-[#1D9F4C]" : "bg-[#C9CFCB]"}
             label="프린트"
             sub={current ? `${current.print.range} · ${current.print.status === "pending" ? "매월 26일 정산" : current.print.source}` : "수집 전"}
             value={
