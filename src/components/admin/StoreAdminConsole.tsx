@@ -4,7 +4,11 @@ import { useCallback, useMemo, useState } from "react";
 
 import HqTabs from "@/components/internal/HqTabs";
 import StoreSettingsEditor from "@/components/admin/StoreSettingsEditor";
-import { previewByFixedCost } from "@/features/sales-report/profit";
+import {
+  COFFEE_CONTRIBUTION_PCT,
+  PRINT_CONTRIBUTION_PCT,
+  previewByFixedCost,
+} from "@/features/sales-report/profit";
 import type {
   PrintVendorType,
   StoreAdminListItem,
@@ -607,7 +611,7 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                   </div>
                 </div>
                 <p className="mt-1 text-[9px] leading-[1.5] text-[#98A29B]">
-                  커피 7 : 프린트 3 · 커피 공헌이익 68% · 프린트 75% 기준 참고값이에요. 실제 매출은 수집 후 바뀌어요.
+                  커피 7 : 프린트 3 · 커피 공헌이익 {COFFEE_CONTRIBUTION_PCT}% · 프린트 {PRINT_CONTRIBUTION_PCT}% 기준 참고값이에요. 실제 매출은 수집 후 바뀌어요.
                 </p>
               </div>
 

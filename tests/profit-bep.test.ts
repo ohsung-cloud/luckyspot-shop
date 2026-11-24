@@ -59,15 +59,15 @@ test("BEP — 강남구청역점 11월은 실제 월세 170만 기준에서 아�
   assert.ok(bep);
 
   const fixed = fixedCostTotal(defaultFixedCost("STORE_GNM"));
-  const contribution = Math.round((month.coffee.amount ?? 0) * 0.68);
+  const contribution = Math.round((month.coffee.amount ?? 0) * 0.78);
 
-  assert.equal(contribution, 720_596);
+  assert.equal(contribution, 826_566);
   assert.equal(bep.monthDays, 30);
   assert.equal(bep.elapsedDays, 23);
   assert.equal(bep.fixedCostTotal, fixed);
   assert.equal(bep.dailyFixedCost, Math.round(fixed / 30));
   assert.equal(bep.contribution, contribution);
-  // 720,596 < 1,908,000(월세 170만 포함) — 23일 시점 기준 달성률 38%이고,
+  // 826,566 < 1,908,000(월세 170만 포함) — 23일 시점 기준 달성률 43%이고,
   // 같은 속도면 61일이 걸려 11월 안에는 못 넘는다.
   assert.ok(bep.progressPct < 100);
   assert.equal(bep.reached, false);
@@ -84,7 +84,7 @@ test("BEP — 일할 고정비 = 월 고정비 ÷ 그 달 일수, BEP 일매출 
 
   assert.equal(bep.dailyFixedCost, Math.round(fixedCostTotal(fixed) / 30));
   assert.ok(bep.bepDailyRevenue !== null);
-  // BEP 일매출은 일할 고정비를 공헌이익률(커피만 있는 달은 68%)로 나눈 값이라 항상 더 크다.
+  // BEP 일매출은 일할 고정비를 공헌이익률(커피만 있는 달은 78%)로 나눈 값이라 항상 더 크다.
   assert.ok((bep.bepDailyRevenue as number) > bep.dailyFixedCost);
 });
 
