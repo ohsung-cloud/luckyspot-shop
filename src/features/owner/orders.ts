@@ -43,6 +43,23 @@ type OrderRow = {
 
 const SELECT = "order_number,item_text,items,total_amount,status,created_at,store_code,memo";
 
+/**
+ * 같은 매장의 예전 지점 코드 — 발주 폼(/api/stores)이 예전부터 쓰던 코드다.
+ *  · STORE_GNM(강남구청역점) = STORE_GNG
+ *  · STORE_PTK(평택점)      = STORE_PT
+ * 읽기 전용 이력에서만 함께 본다(같은 매장이라 다른 지점 정보가 섞이지 않는다).
+ * 새로 생기는 발주는 포털 지점 코드(STORE_GNM·STORE_PTK)로만 쌓인다.
+ */
+const LEGACY_STORE_CODES: Record<string, string[]> = {
+  STORE_GNM: ["STORE_GNG"],
+  STORE_PTK: ["STORE_PT"],
+};
+
+function codesFor(storeCode: string) {
+  const legacy = LEGACY_STORE_CODES[storeCode] ?? [];
+  return [storeCode, ...legacy].map((code) => code.toUpperCase());
+}
+
 function toPayment(memo: string | null | undefined): OwnerOrder["payment"] {
   if (!memo) return null;
 
@@ -76,11 +93,11 @@ function toItems(value: unknown) {
   });
 }
 
-function toOrder(row: OrderRow, storeCode: string): OwnerOrder | null {
+function toOrder(row: OrderRow, codes: string[]): OwnerOrder | null {
   const orderNumber = row.order_number?.trim();
   if (!orderNumber) return null;
   // 서버 필터를 걸었지만, 응답에 다른 지점 행이 섞이면 버린다(이중 확인).
-  if ((row.store_code ?? "").trim().toUpperCase() !== storeCode.toUpperCase()) return null;
+  if (!codes.includes((row.store_code ?? "").trim().toUpperCase())) return null;
 
   const items = toItems(row.items);
   const status: OrderStatus = isOrderStatus(row.status) ? row.status : "pending";
@@ -118,10 +135,13 @@ export async function listOwnerOrders(input: {
   if (!config) return { ok: false, reason: "not_configured" };
 
   const limit = Math.min(20, Math.max(1, input.limit ?? 5));
+  const codes = codesFor(storeCode);
+  const storeFilter =
+    codes.length > 1
+      ? `or=(${codes.map((code) => `store_code.eq.${encodeURIComponent(code)}`).join(",")})`
+      : `store_code=eq.${encodeURIComponent(storeCode)}`;
   const query =
-    `shop_orders?select=${SELECT}` +
-    `&store_code=eq.${encodeURIComponent(storeCode)}` +
-    `&order=created_at.desc&limit=${limit}`;
+    `shop_orders?select=${SELECT}` + `&${storeFilter}` + `&order=created_at.desc&limit=${limit}`;
 
   try {
     const response = await fetch(`${config.url}/rest/v1/${query}`, {
@@ -143,7 +163,7 @@ export async function listOwnerOrders(input: {
     return {
       ok: true,
       orders: rows.flatMap((row) => {
-        const order = toOrder(row, storeCode);
+        const order = toOrder(row, codes);
         return order ? [order] : [];
       }),
     };
