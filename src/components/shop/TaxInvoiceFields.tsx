@@ -45,11 +45,11 @@ export default function TaxInvoiceFields({
   );
 
   const inputClass =
-    "ls-focus h-12 w-full rounded-[10px] border border-[var(--ls-line-strong)] bg-white px-3.5 text-[15.5px] text-[#0F1412] outline-none placeholder:text-[#6B746D]";
-  const labelClass = "text-[13.5px] font-semibold text-[#3B4740]";
+    "ls-focus h-12 w-full rounded-[12px] bg-white px-3.5 text-[15.5px] text-[#0F1412] shadow-[0_1px_2px_rgba(15,20,18,0.04)] outline-none ring-0 transition-shadow placeholder:text-[#98A29B] focus:ring-2 focus:ring-[#0F1412]";
+  const labelClass = "text-[13px] font-bold text-[#3B4740]";
 
   return (
-    <div className="rounded-[14px] border border-[var(--ls-line)] bg-[#FAFBFB] p-3.5">
+    <div className="rounded-[16px] bg-white/70 p-3.5">
       <label className="flex cursor-pointer items-start gap-2.5" htmlFor={`${idPrefix}-tax-toggle`}>
         <input
           checked={value.requested}
@@ -89,7 +89,7 @@ export default function TaxInvoiceFields({
               aria-invalid={businessNoInvalid}
               autoComplete="off"
               className={`${inputClass} mt-1 tabular-nums ${
-                businessNoInvalid ? "border-[#E4B4B4]" : ""
+                businessNoInvalid ? "bg-[#FFF7F7] ring-2 ring-[#E4B4B4]" : ""
               }`}
               id={`${idPrefix}-tax-business-no`}
               inputMode="numeric"
