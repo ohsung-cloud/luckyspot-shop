@@ -43,7 +43,7 @@ export function SalesPulseTabs({
     tab === "daily" ? pulse.hourlyDate?.slice(5).replace("-", "/") ?? "수집 전" : tab === "weekly" ? "최근 7일" : month?.monthLabel ?? "—";
 
   return (
-    <div className="mt-2.5 rounded-[14px] bg-white p-2.5 text-[#0F1412]">
+    <div className="mt-2.5 min-w-0 rounded-[14px] bg-white p-2.5 text-[#0F1412]">
       <div className="flex items-center gap-1">
         {TABS.map((item) => (
           <button

@@ -89,7 +89,7 @@ function warnOnce(message: string) {
 }
 
 /* ------------------------------------------------------------------------- */
-/* 시드 매장 — 이미 수집·리포트가 돌고 있는 두 지점                                */
+/* 시드 매장 — 이미 수집·리포트가 돌고 있는 세 지점                                */
 /* ------------------------------------------------------------------------- */
 
 function seed(input: {
@@ -172,6 +172,13 @@ const SEED_STORES: StoreRegistryRecord[] = [
     label: "럭키스팟 한예종점",
     shortLabel: "한예종점",
     region: "서울 성북",
+    storeType: "미지정",
+  }),
+  seed({
+    code: "STORE_PTK",
+    label: "럭키스팟 평택점",
+    shortLabel: "평택점",
+    region: "경기 평택",
     storeType: "미지정",
   }),
 ];

@@ -478,7 +478,9 @@ export default function StoreAdminView({
                 프린트{" "}
                 {current?.print.amount !== null && current?.print.amount !== undefined
                   ? formatWon(current.print.amount)
-                  : "26일 정산 전"}
+                  : current?.print.status === "missing"
+                    ? "미확보"
+                    : "26일 정산 전"}
               </span>
             </div>
           </div>

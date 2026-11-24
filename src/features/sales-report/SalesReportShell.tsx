@@ -12,6 +12,7 @@ import { defaultFixedCost, estimateProfit } from "./profit";
 import { storePulse } from "./trend";
 import { StoreCompare } from "./StoreCompare";
 import { StoreReport } from "./StoreReport";
+import { StoreSalesOnly } from "./StoreSalesOnly";
 import { STORES, autoOrderHref, findStore, type StoreId } from "./stores";
 
 /**
@@ -19,19 +20,34 @@ import { STORES, autoOrderHref, findStore, type StoreId } from "./stores";
  *
  * 조작부는 두 줄뿐이다.
  *  1) 기간: [이번달 11월] [저번달 10월]
- *  2) 지점: [강남구청역점] [한예종점] [지점 비교] + 새 지점 등록
+ *  2) 지점: [강남구청역점] [한예종점] [평택점] [지점 비교]
  * 고른 지점·고른 달의 숫자만 아래에 그린다(지점별 완전 분리, 합산 없음).
  */
 
 type Tab = StoreId | "compare";
 
+/** 지점 탭은 STORES 목록에서 그대로 만든다 — 지점을 늘리면 탭도 같이 늘어난다. */
+const STORE_SUB: Record<StoreId, string> = {
+  gangnam: "프린트 중심",
+  hanyeojong: "대학 상권",
+  pyeongtaek: "아파트 상가",
+};
+
+const STORE_TAB_CLASS: Record<StoreId, string> = {
+  gangnam: "data-[on=true]:bg-[#0F1412] data-[on=true]:text-white",
+  hanyeojong: "data-[on=true]:bg-[#0F7A3E] data-[on=true]:text-white",
+  pyeongtaek: "data-[on=true]:bg-[#8A5A00] data-[on=true]:text-white",
+};
+
 const TABS: { id: Tab; label: string; sub: string; className: string }[] = [
-  { id: "gangnam", label: "강남구청역점", sub: "프린트 중심", className: "data-[on=true]:bg-[#0F1412] data-[on=true]:text-white" },
-  { id: "hanyeojong", label: "한예종점", sub: "대학 상권", className: "data-[on=true]:bg-[#0F7A3E] data-[on=true]:text-white" },
+  ...STORES.map((store) => ({
+    id: store.id as Tab,
+    label: store.shortLabel,
+    sub: STORE_SUB[store.id],
+    className: STORE_TAB_CLASS[store.id],
+  })),
   { id: "compare", label: "지점 비교", sub: "합산 없음", className: "data-[on=true]:bg-[#243B8F] data-[on=true]:text-white" },
 ];
-
-const CORE_PATTERN = /원두|토너|A4|용지/i;
 
 export function SalesReportShell({ fixedCosts = {} }: { fixedCosts?: Record<string, StoreFixedCost> }) {
   const [tab, setTab] = useState<Tab>("gangnam");
@@ -46,16 +62,17 @@ export function SalesReportShell({ fixedCosts = {} }: { fixedCosts?: Record<stri
   }, []);
 
   const store = findStore(tab === "compare" ? null : tab);
+  const snapshot = store.snapshot;
   const month = monthlyForStore(store.code, period);
   const fixedCost = fixedCosts[store.code] ?? defaultFixedCost(store.code);
   const profit = estimateProfit({ month, fixedCost });
   const pulse = storePulse({
     code: store.code,
-    asOf: store.snapshot.today,
-    dailyRate: store.snapshot.revenue.coffee.dailyRate,
+    asOf: snapshot?.today ?? "2026-11-24",
+    dailyRate: snapshot?.revenue.coffee.dailyRate ?? null,
   });
-  const coreAmount = store.snapshot.orders.proposals
-    .filter((proposal) => CORE_PATTERN.test(proposal.material) && proposal.amount !== null)
+  const coreAmount = (snapshot?.orders.proposals ?? [])
+    .filter((proposal) => /원두|토너|A4|용지/i.test(proposal.material) && proposal.amount !== null)
     .reduce((sum, proposal) => sum + (proposal.amount ?? 0), 0);
 
   const select = (next: Tab) => {
@@ -115,12 +132,11 @@ export function SalesReportShell({ fixedCosts = {} }: { fixedCosts?: Record<stri
                 <span className="mt-0.5 block text-[9px] font-semibold opacity-70">{item.sub}</span>
               </button>
             ))}
-            <a
-              className="flex flex-col items-center justify-center rounded-[12px] border border-dashed border-[#C9CFCB] bg-white/60 px-1 py-2 text-center text-[#007A36]"
-              href="/admin/stores"
-            >
-              <span className="text-[11.5px] font-bold leading-tight">＋ 등록</span>
-              <span className="mt-0.5 block text-[9px] font-semibold text-[#98A29B]">새 지점</span>
+          </div>
+
+          <div className="mt-1 flex justify-end">
+            <a className="text-[10px] font-semibold text-[#007A36]" href="/admin/stores">
+              ＋ 새 지점 등록
             </a>
           </div>
         </div>
@@ -129,15 +145,17 @@ export function SalesReportShell({ fixedCosts = {} }: { fixedCosts?: Record<stri
       <div className="mx-auto w-full max-w-[760px] px-4 py-4 pb-28 sm:px-6 sm:py-6 sm:pb-28">
         {tab === "compare" ? (
           <StoreCompare period={period} />
-        ) : (
+        ) : snapshot ? (
           <StoreReport
             key={`${store.id}-${period}`}
             fixedCost={fixedCost}
             period={period}
             profit={profit}
             pulse={pulse}
-            store={store}
+            store={{ ...store, snapshot }}
           />
+        ) : (
+          <StoreSalesOnly key={`${store.id}-${period}`} period={period} store={store} />
         )}
       </div>
 
@@ -147,11 +165,13 @@ export function SalesReportShell({ fixedCosts = {} }: { fixedCosts?: Record<stri
             <div className="min-w-0 flex-1">
               <p className="truncate text-[10px] text-[#6B746D]">
                 {store.shortLabel} · {month ? `${month.monthLabel} ${month.partial ? "부분" : "확정"}` : "수집 전"} ·{" "}
-                {capturedLabel(store.snapshot.capturedAt)}
+                {snapshot ? capturedLabel(snapshot.capturedAt) : "재고 수집 전"}
               </p>
               <p className="text-[14.5px] font-bold tabular-nums text-[#0F1412]">
                 {month?.total ? won(month.total) : "—"}
-                <span className="ml-1.5 text-[10.5px] font-semibold text-[#6B746D]">3종 발주 {won(coreAmount)}</span>
+                <span className="ml-1.5 text-[10.5px] font-semibold text-[#6B746D]">
+                  {snapshot ? `3종 발주 ${won(coreAmount)}` : "3종 발주 — 재고 수집 전"}
+                </span>
               </p>
             </div>
             <a

@@ -115,3 +115,30 @@ test("월별 매출 — 지점별로 따로, 모르는 값은 null(부분 집계
   assert.equal(monthlyForStore("STORE_UNKNOWN", "2026-10"), null);
   assert.equal(monthOverMonth("STORE_GNM"), null);
 });
+
+test("평택점 10·11월 커피는 로얄선즈 실측값으로 채우고, 프린트는 미확보로 둔다", () => {
+  // 2026-11-24 로얄선즈 판매정보 직접 조회(바디코드 2021092321)
+  const oct = monthlyForStore("STORE_PTK", "2026-10");
+  assert.ok(oct);
+  assert.equal(oct.coffee.amount, 601_000);
+  assert.equal(oct.coffee.orders, 304);
+  assert.equal(oct.coffee.status, "final");
+  assert.equal(oct.coffee.range, "10/1~10/31");
+  // 프린트는 0원이 아니라 null + missing — 모르는 값을 0으로 채우지 않는다.
+  assert.equal(oct.print.amount, null);
+  assert.equal(oct.print.status, "missing");
+  assert.equal(oct.total, 601_000);
+  assert.equal(oct.partial, true);
+
+  const nov = monthlyForStore("STORE_PTK", "2026-11");
+  assert.ok(nov);
+  assert.equal(nov.coffee.amount, 586_500);
+  assert.equal(nov.coffee.range, "11/1~11/24");
+  assert.equal(nov.coffee.status, "live");
+  assert.equal(nov.print.amount, null);
+  assert.equal(nov.total, 586_500);
+  assert.equal(nov.partial, true);
+
+  // 지점 하나 안에서만 값이 나온다 — 다른 지점 값과 섞이지 않는다.
+  assert.equal(monthlyForStore("STORE_HYJ", "2026-10")?.coffee.amount, 6_099_900);
+});

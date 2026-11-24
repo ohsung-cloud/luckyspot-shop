@@ -8,7 +8,7 @@ import { RevenueMixMini } from "./RevenueMixDonut";
 import { SalesPulseTabs } from "./SalesPulseTabs";
 import { storePulse, type StorePulse } from "./trend";
 import type { SalesReportSnapshot } from "./types";
-import { autoOrderHref, type StoreEntry } from "./stores";
+import { autoOrderHref, type StoreEntryWithSnapshot } from "./stores";
 
 /**
  * 지점 하나의 매출 리포트 — 모바일 2~2.5화면 안에 끝나는 3단 구성.
@@ -42,7 +42,7 @@ export function StoreReport({
   pulse,
   fixedCost,
 }: {
-  store: StoreEntry;
+  store: StoreEntryWithSnapshot;
   period: MonthlyPeriod;
   profit?: ProfitEstimate | null;
   pulse?: StorePulse;
@@ -88,7 +88,7 @@ export function StoreReport({
       </p>
 
       {/* ① 매출 — 최상위 위계 */}
-      <section className="rounded-[22px] bg-[#0F1412] p-4 text-white">
+      <section className="min-w-0 rounded-[22px] bg-[#0F1412] p-4 text-white">
         <div className="flex items-center justify-between">
           <span className="rounded-full bg-[#1DFF26] px-2.5 py-1 text-[11px] font-bold text-[#0F1412]">
             {month ? `${month.monthLabel} 매출` : "매출"}

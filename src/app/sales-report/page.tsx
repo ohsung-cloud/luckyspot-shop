@@ -18,14 +18,17 @@ import { STORES } from "@/features/sales-report/stores";
 
 export const metadata: Metadata = {
   title: "지점별 매출 리포트 | 럭키스팟",
-  description: "강남구청역점·한예종점의 매출과 소모품·발주 리포트(내부용). 지점별로 따로 집계합니다.",
+  description: "강남구청역점·한예종점·평택점의 매출과 소모품·발주 리포트(내부용). 지점별로 따로 집계합니다.",
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function SalesReportPage() {
-  const latest = STORES.map((store) => store.snapshot.capturedAt).sort().at(-1);
+  const latest = STORES.map((store) => store.snapshot?.capturedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1);
 
   // 지점별 월 고정비 — 본사(/admin/stores)에서 고친 값이 그대로 순수익 계산에 쓰인다.
   const fixedCosts: Record<string, StoreFixedCost> = {};

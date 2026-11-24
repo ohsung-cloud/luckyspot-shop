@@ -51,14 +51,77 @@ const PENDING_PRINT: MonthlySide = {
 };
 
 /**
+ * 프린트 정산본을 아직 받지 못한 지점 — 0원이 아니라 '미확보'로 둔다.
+ */
+const UNCOLLECTED_PRINT_OCT: MonthlySide = {
+  amount: null,
+  orders: null,
+  range: "9/26~10/25",
+  status: "missing",
+  source: "에스칼프린트",
+  note: "정산본 미확보 — 인쇄 메뉴가 없는 지점",
+};
+
+const UNCOLLECTED_PRINT_NOV: MonthlySide = {
+  amount: null,
+  orders: null,
+  range: "10/26~11/25",
+  status: "missing",
+  source: "에스칼프린트",
+  note: "정산본 미확보 — 인쇄 메뉴가 없는 지점",
+};
+
+const PYEONGTAEK_SUMMARY: Record<MonthlyPeriod, MonthlySummary> = {
+  "2026-11": {
+    period: "2026-11",
+    monthLabel: "11월",
+    role: "이번달",
+    coffee: {
+      amount: 586_500,
+      orders: null,
+      range: "11/1~11/24",
+      status: "live",
+      source: "로얄선즈",
+      note: "실측 · 오늘 12,000원 포함(11-24 기준)",
+    },
+    print: UNCOLLECTED_PRINT_NOV,
+    total: 586_500,
+    partial: true,
+    note: "커피만 확인된 값입니다. 프린트 매출은 아직 확보하지 못했습니다.",
+  },
+  "2026-10": {
+    period: "2026-10",
+    monthLabel: "10월",
+    role: "저번달",
+    coffee: {
+      amount: 601_000,
+      orders: 304,
+      range: "10/1~10/31",
+      status: "final",
+      source: "로얄선즈",
+      note: "판매정보 직접 조회 304건",
+    },
+    print: UNCOLLECTED_PRINT_OCT,
+    total: 601_000,
+    partial: true,
+    note: "10월 커피만 확정입니다. 프린트 정산본은 아직 확보하지 못했습니다.",
+  },
+};
+
+/**
  * 지점 코드별 월 요약.
  *
  * 강남구청역점 10월 커피는 로얄선즈 판매정보에서 직접 조회한 값이다
  * (2026-10-01~10-31 624건 1,720,600원 / 로열티 기준 09-26~10-25 616건 1,691,100원).
  * 한예종점 커피는 2026-11-24 계정 로그인 후 로얄선즈 판매정보에서 직접 조회했다
  * (10월 10-01~10-31 1,813건 6,099,900원 / 11월 11-01~11-24 1,242건 4,112,000원, 11-24 10:25 기준).
+ * 평택점 커피는 2026-11-24 로얄선즈 판매정보(바디코드 2021092321)에서 직접 조회했다
+ * (10월 10-01~10-31 304건 601,000원 / 11월 11-01~11-24 586,500원, 오늘 12,000원·어제 34,500원 포함).
+ *   누적 실주문 10,030,100원·4,900건·환불 0건.
+ *   프린트는 이 지점의 정산본을 아직 받지 못해 null + missing으로 둔다(0원으로 채우지 않는다).
  */
 const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
+  STORE_PTK: PYEONGTAEK_SUMMARY,
   STORE_GNM: {
     "2026-11": {
       period: "2026-11",

@@ -232,7 +232,7 @@ export default async function StoreAdminPage({ params, searchParams }: PageProps
   );
 }
 
-type Snapshot = NonNullable<ReturnType<typeof findStoreByCode>>["snapshot"];
+type Snapshot = NonNullable<NonNullable<ReturnType<typeof findStoreByCode>>["snapshot"]>;
 
 function buildAlerts(data: Snapshot, thresholds: { beanDays: number; tonerDays: number; paperDays: number }) {
   const alerts: { title: string; detail: string; tone: "red" | "amber" | "blue" }[] = [];

@@ -1,7 +1,7 @@
 import { days, manwon, pct, won } from "./format";
 import { formatWon, monthlyForStore, type MonthlyPeriod } from "./monthly";
 import type { SalesReportSnapshot } from "./types";
-import { STORES } from "./stores";
+import { STORES_WITH_SNAPSHOT } from "./stores";
 
 /**
  * 두 지점을 **나란히** 놓고 보는 화면.
@@ -51,7 +51,8 @@ function metrics(snapshot: SalesReportSnapshot, period: MonthlyPeriod) {
 }
 
 export function StoreCompare({ period }: { period: MonthlyPeriod }) {
-  const columns = STORES.map((store) => ({ store, rows: metrics(store.snapshot, period) }));
+  // 재고·토너 스냅샷이 있는 지점만 나란히 놓는다 — 평택점은 매출 탭에서 본다(0으로 채우지 않음).
+  const columns = STORES_WITH_SNAPSHOT.map((store) => ({ store, rows: metrics(store.snapshot, period) }));
   const keys = columns[0].rows.map((row) => row.key);
 
   return (
@@ -67,8 +68,8 @@ export function StoreCompare({ period }: { period: MonthlyPeriod }) {
           좌우에서 봅니다
         </h1>
         <p className="mt-1.5 text-[12.5px] leading-[1.6] text-[#6B746D]">
-          위 매출은 지점별 숫자이고, 두 지점을 더한 값은 이 화면 어디에도 없습니다. 매출 구조가 달라 합계보다 항목 비교가
-          판단에 쓸모가 있습니다.
+          재고·토너 스냅샷이 있는 두 지점(강남구청역·한예종)을 같은 항목으로 놓습니다. 두 지점을 더한 값은 이 화면 어디에도
+          없고, 평택점은 재고 스냅샷이 들어오면 여기에 함께 놓습니다.
         </p>
       </header>
 
