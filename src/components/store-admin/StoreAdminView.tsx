@@ -7,8 +7,13 @@ import { clock, won as wonShort } from "@/components/auto-order/format";
 import type { ApprovalView, ProposalListResponse, SplitResult } from "@/features/auto-order/types";
 import type { CalibrationEntry } from "@/features/auto-order/calibration";
 import { ProfitRow } from "@/features/sales-report/ProfitRow";
+import { RevenueMixMini } from "@/features/sales-report/RevenueMixDonut";
 import { SalesPulseTabs } from "@/features/sales-report/SalesPulseTabs";
-import type { ProfitEstimate } from "@/features/sales-report/profit";
+import {
+  computeBepAndOrderMode,
+  monthlyComparison,
+  type ProfitEstimate,
+} from "@/features/sales-report/profit";
 import { formatWon, type MonthlySummary } from "@/features/sales-report/monthly";
 import type { StorePulse } from "@/features/sales-report/trend";
 import type { PrintVendorType, StoreFixedCost } from "@/features/stores/registry-types";
@@ -377,6 +382,11 @@ export default function StoreAdminView({
   const corePending = pending.filter((proposal) => CORE_SKUS.includes(proposal.sku));
   const otherPending = pending.filter((proposal) => !CORE_SKUS.includes(proposal.sku));
   const coreAmount = corePending.reduce((sum, proposal) => sum + proposal.amount, 0);
+
+  // [월간] 탭 비교행 · 접힘 패널의 BEP/발주 모드 — 이 지점 하나의 숫자만.
+  const comparison = monthlyComparison({ previous: profit.previous, current: profit.current });
+  const bep = computeBepAndOrderMode({ month: current, fixedCost, orderAmount: coreAmount });
+
   const grace = approval?.status === "grace_cancel_window";
   const remainingSeconds = approval
     ? Math.max(0, Math.ceil((new Date(approval.expiresAt).getTime() - now) / 1000))
@@ -452,20 +462,33 @@ export default function StoreAdminView({
           <span className="text-[10px] tabular-nums text-[#9AA39C]">{current?.coffee.range ?? "수집 전"}</span>
         </div>
 
-        <p className="mt-2.5 text-[33px] font-bold leading-none tabular-nums tracking-[-0.03em]">
-          {current ? formatWon(current.total) : "—"}
-        </p>
+        <div className="mt-2.5 flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[33px] font-bold leading-none tabular-nums tracking-[-0.03em]">
+              {current ? formatWon(current.total) : "—"}
+            </p>
 
-        <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-[#C8D0CA]">
-          <span className="rounded-full bg-white/10 px-2 py-0.5">커피 {current ? formatWon(current.coffee.amount) : "—"}</span>
-          <span className="rounded-full bg-white/10 px-2 py-0.5">
-            프린트 {current?.print.amount !== null && current?.print.amount !== undefined ? formatWon(current.print.amount) : "26일 정산 전"}
-          </span>
+            <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-[#C8D0CA]">
+              <span className="rounded-full bg-white/10 px-2 py-0.5">
+                <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-white align-middle" />
+                커피 {mixPct(current, "coffee")}
+                {current ? formatWon(current.coffee.amount) : "—"}
+              </span>
+              <span className="rounded-full bg-white/10 px-2 py-0.5">
+                <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-[#1DFF26] align-middle" />
+                프린트 {mixPct(current, "print")}
+                {current?.print.amount !== null && current?.print.amount !== undefined
+                  ? formatWon(current.print.amount)
+                  : "26일 정산 전"}
+              </span>
+            </div>
+          </div>
+          <RevenueMixMini month={current} size={60} />
         </div>
 
         <ProfitRow fixedCost={fixedCost} profit={profit.current} />
 
-        <SalesPulseTabs month={current} pulse={pulse} />
+        <SalesPulseTabs comparison={comparison} month={current} pulse={pulse} />
 
         <p className="mt-2 text-[9.5px] tabular-nums text-[#8A948C]">
           지난달 커피 {previous ? formatWon(previous.coffee.amount) : "—"} · 프린트{" "}
@@ -604,6 +627,44 @@ export default function StoreAdminView({
             </span>
           ))}
         </div>
+
+        {/* 손익분기(BEP) · 발주 모드 — 접힘 패널 안에서만. */}
+        {bep ? (
+          <div className="mt-2 rounded-[10px] bg-[#0F1412] px-2.5 py-2 text-white">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold text-[#C8D0CA]">손익분기(BEP) · 발주 모드</p>
+              <span className="shrink-0 rounded-full bg-[#1DFF26] px-1.5 py-0.5 text-[8.5px] font-bold text-[#0F1412]">
+                {bep.modeLabel}
+              </span>
+            </div>
+
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
+              <div
+                className={`h-full rounded-full ${bep.reached ? "bg-[#1DFF26]" : "bg-[#EFC94C]"}`}
+                style={{ width: `${Math.min(100, Math.max(0, bep.progressPct))}%` }}
+              />
+            </div>
+
+            <div className="mt-1 flex items-baseline justify-between gap-2 text-[9.5px]">
+              <span className="text-[#C8D0CA]">
+                BEP 달성률{" "}
+                <span className="font-bold tabular-nums text-white">{Math.round(bep.progressPct)}%</span>
+              </span>
+              <span className={`shrink-0 font-bold ${bep.reached ? "text-[#1DFF26]" : "text-[#EFC94C]"}`}>
+                {bep.bepLabel}
+              </span>
+            </div>
+
+            <p className="mt-1 text-[8.5px] leading-[1.5] text-[#8A948C]">
+              일할 고정비 {formatWon(bep.dailyFixedCost)} · 하루 공헌이익 {formatWon(bep.dailyContribution)} · BEP 일매출{" "}
+              {formatWon(bep.bepDailyRevenue)}
+            </p>
+            <p className="text-[8.5px] leading-[1.5] text-[#8A948C]">
+              여유 현금 {formatWon(bep.freeCashFlow)} (월말 예상 순수익 − 3종 발주 {formatWon(bep.orderAmount)})
+            </p>
+            <p className="mt-1 text-[8.5px] leading-[1.5] text-[#9AA39C]">{bep.reason}</p>
+          </div>
+        ) : null}
 
         <ul className="mt-2 divide-y divide-[#F4F5F6]">
           {forecasts.map((forecast) => (
@@ -798,6 +859,16 @@ function shortDate(iso: string) {
 function average(values: number[]) {
   if (values.length === 0) return null;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+/** 매출 비중(%) — 커피·프린트 둘 다 확인된 달에만 숫자를 붙인다(정산 전이면 비운다). */
+function mixPct(month: MonthlySummary | null, side: "coffee" | "print") {
+  const coffee = month?.coffee.amount ?? null;
+  const print = month?.print.amount ?? null;
+  if (coffee === null || print === null) return "";
+  const total = coffee + print;
+  if (total <= 0) return "";
+  return `${Math.round(((side === "coffee" ? coffee : print) / total) * 100)}% · `;
 }
 
 function daysShort(value: number | null | undefined) {

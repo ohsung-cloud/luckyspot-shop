@@ -8,6 +8,87 @@ import { formatWon, type MonthlySummary } from "./monthly";
  * (예: 11월 프린트는 26일 정산 전 → 커피 100%로 보이지 않게 별도 표기)
  */
 
+/**
+ * 히어로 카드용 미니 도넛 — 매출 숫자 옆에 붙여 세로 길이를 늘이지 않는다.
+ *
+ * 큰 원(RevenueMixDonut)은 [월간] 탭에서 범례·근거와 함께 그대로 보여 주고,
+ * 첫 화면에는 "지금 커피·프린트 비중이 이렇게 생겼다"는 그림만 60px로 둔다.
+ * 비중(%)은 바로 위 칩에 숫자로 적히므로 원 안에는 달 이름만 넣는다.
+ */
+export function RevenueMixMini({
+  month,
+  size = 60,
+  tone = "dark",
+}: {
+  month: MonthlySummary | null;
+  size?: number;
+  /** dark = 검은 히어로 카드 위, light = 흰 카드 위 */
+  tone?: "dark" | "light";
+}) {
+  if (!month) return null;
+
+  const coffee = month.coffee.amount;
+  const print = month.print.amount;
+  const known = (coffee ?? 0) + (print ?? 0);
+  if (known <= 0) return null;
+
+  const coffeePct = coffee ? (coffee / known) * 100 : 0;
+  const printPct = print ? (print / known) * 100 : 0;
+
+  const R = 45;
+  const CIRC = 2 * Math.PI * R;
+  const GAP = 2.4;
+
+  const track = tone === "dark" ? "#2A332E" : "#EFF1F0";
+  const coffeeColor = tone === "dark" ? "#FFFFFF" : "#0F1412";
+  const printColor = tone === "dark" ? "#1DFF26" : "#1D9F4C";
+  const labelColor = tone === "dark" ? "text-[#9AA39C]" : "text-[#98A29B]";
+
+  return (
+    <div
+      aria-label={`${month.monthLabel} 매출 비중 — 커피 ${Math.round(coffeePct)}%, 프린트 ${print ? `${Math.round(printPct)}%` : "정산 전"}`}
+      className="relative shrink-0"
+      data-testid="revenue-mix-mini"
+      role="img"
+      style={{ height: size, width: size }}
+    >
+      <svg aria-hidden className="size-full -rotate-90" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" fill="none" r={R} stroke={track} strokeWidth="13" />
+        {coffee ? (
+          <circle
+            cx="60"
+            cy="60"
+            fill="none"
+            r={R}
+            stroke={coffeeColor}
+            strokeDasharray={`${Math.max(0, (coffeePct / 100) * CIRC - GAP)} ${CIRC}`}
+            strokeWidth="13"
+          />
+        ) : null}
+        {print ? (
+          <circle
+            cx="60"
+            cy="60"
+            fill="none"
+            r={R}
+            stroke={printColor}
+            strokeDasharray={`${Math.max(0, (printPct / 100) * CIRC - GAP)} ${CIRC}`}
+            strokeDashoffset={-((coffeePct / 100) * CIRC)}
+            strokeWidth="13"
+          />
+        ) : null}
+      </svg>
+
+      <span className="pointer-events-none absolute inset-0 grid place-items-center text-center leading-none">
+        <span>
+          <span className={`block text-[7.5px] font-bold ${labelColor}`}>{month.monthLabel}</span>
+          {month.partial ? <span className="mt-0.5 block text-[7px] font-bold text-[#E8C97A]">부분</span> : null}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export function RevenueMixDonut({ month, compact = false }: { month: MonthlySummary | null; compact?: boolean }) {
   if (!month) {
     return (
@@ -69,7 +150,7 @@ export function RevenueMixDonut({ month, compact = false }: { month: MonthlySumm
               <p className={`font-semibold text-[#98A29B] ${compact ? "text-[8px]" : "text-[9.5px]"}`}>
                 {month.monthLabel} 합계
               </p>
-              <p className={`mt-0.5 font-bold leading-none tabular-nums text-[#0F1412] ${compact ? "text-[10px]" : "text-[12px]"}`}>
+              <p className={`mt-0.5 font-bold leading-none tabular-nums text-[#0F1412] ${compact ? "text-[9px]" : "text-[12px]"}`}>
                 {formatWon(month.total)}
               </p>
               {month.partial ? (

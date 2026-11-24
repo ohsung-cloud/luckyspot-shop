@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import HqTabs from "@/components/internal/HqTabs";
 import StoreSettingsEditor from "@/components/admin/StoreSettingsEditor";
+import { previewByFixedCost } from "@/features/sales-report/profit";
 import type {
   PrintVendorType,
   StoreAdminListItem,
@@ -114,6 +115,7 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [advanced, setAdvanced] = useState(false);
+  const [fixedDetail, setFixedDetail] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<{ field: string; message: string }[]>([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -127,6 +129,19 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const activeCount = useMemo(() => stores.filter((store) => store.status === "active").length, [stores]);
+
+  // 월세(＋세부 고정비)만으로도 손익분기·예상 순수익을 바로 보여 준다.
+  const preview = previewByFixedCost({
+    rent: Number(form.rent.replace(/\D/g, "")) || 0,
+    maintenance: Number(form.maintenance.replace(/\D/g, "")) || 0,
+    internet: Number(form.internet.replace(/\D/g, "")) || 0,
+    solution: Number(form.solution.replace(/\D/g, "")) || 0,
+  });
+  const detailFixed = [
+    Number(form.maintenance.replace(/\D/g, "")) || 0,
+    Number(form.internet.replace(/\D/g, "")) || 0,
+    Number(form.solution.replace(/\D/g, "")) || 0,
+  ].reduce((sum, value) => sum + value, 0);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -559,6 +574,88 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                 </div>
               </div>
 
+              {/* 월세만 입력하면 끝 — 나머지 고정비는 기본값으로 채워 둔다. */}
+              <Field label="월세(임대료)" hint="월세만 넣으면 손익분기와 예상 순수익이 바로 계산됩니다.">
+                <input
+                  className={`${inputClass} text-[17px] font-bold tabular-nums`}
+                  inputMode="numeric"
+                  onChange={(event) => update("rent", event.target.value)}
+                  placeholder="예: 800000"
+                  value={form.rent}
+                />
+              </Field>
+
+              <div className="rounded-[14px] border border-[#E6E9E7] bg-white px-3 py-2.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-[11.5px] font-bold text-[#3B4740]">예상 순수익 미리보기</p>
+                  <span className="text-[9.5px] text-[#98A29B]">
+                    월 고정비 {preview.fixedTotal.toLocaleString("ko-KR")}원
+                  </span>
+                </div>
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                  <div className="rounded-[10px] bg-[#F8F9F9] px-2.5 py-2">
+                    <p className="text-[9.5px] text-[#6B746D]">손익분기 월 매출</p>
+                    <p className="mt-0.5 text-[15px] font-bold tabular-nums text-[#0F1412]">
+                      {preview.bepRevenue.toLocaleString("ko-KR")}원
+                    </p>
+                  </div>
+                  <div className="rounded-[10px] bg-[#F8F9F9] px-2.5 py-2">
+                    <p className="text-[9.5px] text-[#6B746D]">월 매출 300만이면</p>
+                    <p className="mt-0.5 text-[15px] font-bold tabular-nums text-[#0F1412]">
+                      {preview.referenceNet.toLocaleString("ko-KR")}원
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-1 text-[9px] leading-[1.5] text-[#98A29B]">
+                  커피 7 : 프린트 3 · 커피 원가 15.8% · 프린트 변동비 28% 기준 참고값입니다. 실제 매출은 수집 후 바뀝니다.
+                </p>
+              </div>
+
+              <button
+                className="flex h-11 items-center justify-between rounded-[12px] bg-white px-3 text-[13px] font-semibold text-[#3B4740]"
+                onClick={() => setFixedDetail((prev) => !prev)}
+                type="button"
+              >
+                세부 고정비 조정 · 관리비 · 인터넷 · 솔루션
+                <span className="text-[11px] text-[#98A29B]">
+                  {fixedDetail ? "접기" : `기본 ${detailFixed.toLocaleString("ko-KR")}원 채움`}
+                </span>
+              </button>
+
+              {fixedDetail ? (
+                <div className="grid gap-2.5 rounded-[16px] bg-white p-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    <Field label="관리비">
+                      <input
+                        className={`${inputClass} text-center`}
+                        inputMode="numeric"
+                        onChange={(event) => update("maintenance", event.target.value)}
+                        value={form.maintenance}
+                      />
+                    </Field>
+                    <Field label="인터넷">
+                      <input
+                        className={`${inputClass} text-center`}
+                        inputMode="numeric"
+                        onChange={(event) => update("internet", event.target.value)}
+                        value={form.internet}
+                      />
+                    </Field>
+                    <Field label="솔루션">
+                      <input
+                        className={`${inputClass} text-center`}
+                        inputMode="numeric"
+                        onChange={(event) => update("solution", event.target.value)}
+                        value={form.solution}
+                      />
+                    </Field>
+                  </div>
+                  <p className="text-[9px] leading-[1.5] text-[#98A29B]">
+                    비우지 않아도 됩니다. 기본값으로 두면 월세만으로 계산되고, 실제 고지서를 받으면 본사 설정에서 언제든 고칠 수 있습니다.
+                  </p>
+                </div>
+              ) : null}
+
               <button
                 className="flex h-11 items-center justify-between rounded-[12px] bg-white px-3 text-[13px] font-semibold text-[#3B4740]"
                 onClick={() => setAdvanced((prev) => !prev)}
@@ -659,44 +756,6 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                       value={form.escalprintBranch}
                     />
                   </Field>
-
-                  <div>
-                    <span className="text-[12.5px] font-semibold text-[#3B4740]">월 고정비(원)</span>
-                    <div className="mt-1 grid grid-cols-2 gap-2">
-                      <Field label="임대료">
-                        <input
-                          className={`${inputClass} text-center`}
-                          inputMode="numeric"
-                          onChange={(event) => update("rent", event.target.value)}
-                          value={form.rent}
-                        />
-                      </Field>
-                      <Field label="관리비">
-                        <input
-                          className={`${inputClass} text-center`}
-                          inputMode="numeric"
-                          onChange={(event) => update("maintenance", event.target.value)}
-                          value={form.maintenance}
-                        />
-                      </Field>
-                      <Field label="인터넷">
-                        <input
-                          className={`${inputClass} text-center`}
-                          inputMode="numeric"
-                          onChange={(event) => update("internet", event.target.value)}
-                          value={form.internet}
-                        />
-                      </Field>
-                      <Field label="솔루션">
-                        <input
-                          className={`${inputClass} text-center`}
-                          inputMode="numeric"
-                          onChange={(event) => update("solution", event.target.value)}
-                          value={form.solution}
-                        />
-                      </Field>
-                    </div>
-                  </div>
 
                   <Field label="4자리 PIN (선택)" hint="비우면 자동 발급. 발급값은 저장 후 한 번만 보입니다.">
                     <input

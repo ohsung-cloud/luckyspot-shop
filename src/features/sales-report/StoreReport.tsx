@@ -3,7 +3,8 @@ import type { StoreFixedCost } from "@/features/stores/registry-types";
 import { capturedLabel, days, manwon, pct, won } from "./format";
 import { monthlyForStore, formatWon, type MonthlyPeriod } from "./monthly";
 import { ProfitRow } from "./ProfitRow";
-import type { ProfitEstimate } from "./profit";
+import { computeBepAndOrderMode, estimateProfit, monthlyComparison, type ProfitEstimate } from "./profit";
+import { RevenueMixMini } from "./RevenueMixDonut";
 import { SalesPulseTabs } from "./SalesPulseTabs";
 import { storePulse, type StorePulse } from "./trend";
 import type { SalesReportSnapshot } from "./types";
@@ -52,6 +53,19 @@ export function StoreReport({
   const chart = pulse ?? storePulse({ code: store.code, asOf: data.today, dailyRate: data.revenue.coffee.dailyRate });
   const burst = data.burst;
 
+  // [월간] 탭 전용 — 저번달(확정)·이번달(진행 중) 두 줄 비교. 지점 하나 안에서만.
+  const comparison = monthlyComparison({
+    previous: estimateProfit({ month: monthlyForStore(store.code, "2026-10"), fixedCost }),
+    current: estimateProfit({ month: monthlyForStore(store.code, "2026-11"), fixedCost }),
+  });
+
+  const coffeeAmount = month?.coffee.amount ?? null;
+  const printAmount = month?.print.amount ?? null;
+  const mixKnown = (coffeeAmount ?? 0) + (printAmount ?? 0);
+  const bothKnown = coffeeAmount !== null && printAmount !== null && mixKnown > 0;
+  const coffeePct = bothKnown ? Math.round((coffeeAmount / mixKnown) * 100) : null;
+  const printPct = bothKnown ? Math.round((printAmount / mixKnown) * 100) : null;
+
   const tonerMin = Math.min(data.print.toner.k, data.print.toner.c, data.print.toner.m, data.print.toner.y);
   const trayAvg = data.print.trayAvgPct;
 
@@ -60,6 +74,10 @@ export function StoreReport({
   );
   const coreAmount = coreOrders.reduce((sum, proposal) => sum + (proposal.amount ?? 0), 0);
   const coreLabels = coreOrders.map((proposal) => proposal.material).join(" · ");
+
+  // BEP·발주 모드 — 접힘 패널 안에서만 보인다(첫 화면에는 올리지 않는다).
+  // 기준일은 위 순수익(estimateProfit)과 같은 '오늘'로 맞춘다 — 같은 카드 안에서 숫자가 엇갈리지 않게.
+  const bep = computeBepAndOrderMode({ month, fixedCost, orderAmount: coreAmount });
 
   const problemStock = data.stock
     .filter((item) => item.status !== "ok")
@@ -84,19 +102,31 @@ export function StoreReport({
           </span>
         </div>
 
-        <p className="mt-2.5 text-[34px] font-bold leading-none tabular-nums tracking-[-0.03em]">
-          {month ? formatWon(month.total) : "—"}
-        </p>
-        <p className="mt-1.5 flex flex-wrap gap-1.5 text-[10.5px] text-[#C8D0CA]">
-          <span className="rounded-full bg-white/10 px-2 py-0.5">커피 {month ? formatWon(month.coffee.amount) : "—"}</span>
-          <span className="rounded-full bg-white/10 px-2 py-0.5">
-            프린트 {month?.print.amount !== null && month?.print.amount !== undefined ? formatWon(month.print.amount) : "26일 정산 전"}
-          </span>
-        </p>
+        <div className="mt-2.5 flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[34px] font-bold leading-none tabular-nums tracking-[-0.03em]">
+              {month ? formatWon(month.total) : "—"}
+            </p>
+            <p className="mt-1.5 flex flex-wrap gap-1.5 text-[10.5px] text-[#C8D0CA]">
+              <span className="rounded-full bg-white/10 px-2 py-0.5">
+                <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-white align-middle" />
+                커피 {coffeePct !== null ? `${coffeePct}% · ` : ""}{month ? formatWon(month.coffee.amount) : "—"}
+              </span>
+              <span className="rounded-full bg-white/10 px-2 py-0.5">
+                <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full bg-[#1DFF26] align-middle" />
+                프린트{" "}
+                {printAmount !== null
+                  ? `${printPct !== null ? `${printPct}% · ` : ""}${formatWon(printAmount)}`
+                  : "26일 정산 전"}
+              </span>
+            </p>
+          </div>
+          <RevenueMixMini month={month} size={62} />
+        </div>
 
         <ProfitRow fixedCost={fixedCost} profit={profit ?? null} />
 
-        <SalesPulseTabs month={month} pulse={chart} />
+        <SalesPulseTabs comparison={comparison} month={month} pulse={chart} />
       </section>
 
       {/* ② 원두 · 토너 · 용지 + 원터치 발주 */}
@@ -181,6 +211,44 @@ export function StoreReport({
             </span>
           ))}
         </div>
+
+        {/* 손익분기(BEP) · 발주 모드 — 특허 1호 종속항. 접힘 패널 안에서만 보인다. */}
+        {bep ? (
+          <div className="mt-2 rounded-[10px] bg-[#0F1412] px-2.5 py-2 text-white">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold text-[#C8D0CA]">손익분기(BEP) · 발주 모드</p>
+              <span className="shrink-0 rounded-full bg-[#1DFF26] px-1.5 py-0.5 text-[8.5px] font-bold text-[#0F1412]">
+                {bep.modeLabel}
+              </span>
+            </div>
+
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
+              <div
+                className={`h-full rounded-full ${bep.reached ? "bg-[#1DFF26]" : "bg-[#EFC94C]"}`}
+                style={{ width: `${Math.min(100, Math.max(0, bep.progressPct))}%` }}
+              />
+            </div>
+
+            <div className="mt-1 flex items-baseline justify-between gap-2 text-[9.5px]">
+              <span className="text-[#C8D0CA]">
+                BEP 달성률{" "}
+                <span className="font-bold tabular-nums text-white">{Math.round(bep.progressPct)}%</span>
+              </span>
+              <span className={`shrink-0 font-bold ${bep.reached ? "text-[#1DFF26]" : "text-[#EFC94C]"}`}>
+                {bep.bepLabel}
+              </span>
+            </div>
+
+            <p className="mt-1 text-[8.5px] leading-[1.5] text-[#8A948C]">
+              일할 고정비 {won(bep.dailyFixedCost)} · 하루 공헌이익 {won(bep.dailyContribution)} · BEP 일매출{" "}
+              {won(bep.bepDailyRevenue)}
+            </p>
+            <p className="text-[8.5px] leading-[1.5] text-[#8A948C]">
+              여유 현금 {won(bep.freeCashFlow)} (월말 예상 순수익 − 3종 발주 {won(bep.orderAmount)})
+            </p>
+            <p className="mt-1 text-[8.5px] leading-[1.5] text-[#9AA39C]">{bep.reason}</p>
+          </div>
+        ) : null}
 
         <ul className="mt-2 space-y-1 text-[10.5px] leading-[1.6] text-[#6B746D]">
           <li>

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { RevenueMixDonut } from "./RevenueMixDonut";
 import { formatWon, type MonthlySummary } from "./monthly";
+import type { MonthlyCompareRow } from "./profit";
 import { shortWon, type StorePulse } from "./trend";
 
 /**
@@ -11,7 +12,7 @@ import { shortWon, type StorePulse } from "./trend";
  *
  *  - 일간: 하루 6구간(새벽·아침·점심·오후·저녁·밤) 매출 비중
  *  - 주간: 최근 7일 일별 막대 + **평균 점선**
- *  - 월간: 커피 vs 프린트 비중 도넛(기존 그림 그대로)
+ *  - 월간: 커피 vs 프린트 비중 도넛 + **월별(저번달 확정 / 이번달 진행 중) 매출·예상 순수익·마진 비교행**
  *
  * 카드 높이를 늘리지 않는 이유: 세 그림을 세로로 쌓으면 1,200px짜리 리포트가 1,600px가 된다.
  * 점주가 익숙한 그림은 그대로 두되, 한 번에 하나만 보여 준다(탭).
@@ -28,10 +29,13 @@ const TABS: { key: Tab; label: string }[] = [
 export function SalesPulseTabs({
   pulse,
   month,
+  comparison,
   initialTab = "weekly",
 }: {
   pulse: StorePulse;
   month: MonthlySummary | null;
+  /** [월간] 탭에서만 쓰는 월별 비교행(이번달·저번달). */
+  comparison?: MonthlyCompareRow[];
   initialTab?: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -61,7 +65,7 @@ export function SalesPulseTabs({
       <div className="mt-2 min-h-[152px]">
         {tab === "daily" ? <DailyPanel pulse={pulse} /> : null}
         {tab === "weekly" ? <WeeklyPanel pulse={pulse} /> : null}
-        {tab === "monthly" ? <MonthlyPanel month={month} /> : null}
+        {tab === "monthly" ? <MonthlyPanel comparison={comparison} month={month} /> : null}
       </div>
     </div>
   );
@@ -171,6 +175,62 @@ function DailyPanel({ pulse }: { pulse: StorePulse }) {
   );
 }
 
-function MonthlyPanel({ month }: { month: MonthlySummary | null }) {
-  return <RevenueMixDonut compact month={month} />;
+function MonthlyPanel({
+  month,
+  comparison,
+}: {
+  month: MonthlySummary | null;
+  comparison?: MonthlyCompareRow[];
+}) {
+  return (
+    <div>
+      {comparison && comparison.length > 0 ? <MonthlyCompareTable rows={comparison} /> : null}
+      <RevenueMixDonut compact month={month} />
+    </div>
+  );
+}
+
+/** 월별 비교행 — [월간] 탭 안에서만. 두 줄 × 세 숫자로 끝낸다. */
+function MonthlyCompareTable({ rows }: { rows: MonthlyCompareRow[] }) {
+  return (
+    <div className="mt-1.5 overflow-hidden rounded-[10px] border border-[#E6E9E7]">      <div className="grid grid-cols-[1.35fr_auto_auto_auto] items-center gap-x-1.5 bg-[#F8F9F9] px-2 py-1 text-[8.5px] font-bold text-[#6B746D]">
+        <span>월별 비교</span>
+        <span className="w-[54px] text-right">매출</span>
+        <span className="w-[54px] text-right">예상 순수익</span>
+        <span className="w-[34px] text-right">마진</span>
+      </div>
+      {rows.map((row) => (
+        <div
+          key={row.period}
+          className="grid grid-cols-[1.35fr_auto_auto_auto] items-center gap-x-1.5 border-t border-[#F1F2F2] px-2 py-1.5"
+        >
+          <span className="min-w-0">
+            <span className="block truncate text-[10px] font-bold text-[#0F1412]">{row.label}</span>
+            <span className="block truncate text-[8px] text-[#98A29B]">{row.note}</span>
+          </span>
+          <span className="w-[54px] text-right text-[9.5px] tabular-nums text-[#3B4740]">
+            {compactWon(row.revenue)}
+          </span>
+          <span className="w-[54px] text-right text-[9.5px] font-bold tabular-nums text-[#0F1412]">
+            {compactWon(row.net)}
+          </span>
+          <span className="w-[34px] text-right text-[9.5px] font-bold tabular-nums text-[#007A36]">
+            {row.marginRate === null ? "—" : `${Math.round(row.marginRate)}%`}
+          </span>
+        </div>
+      ))}
+      <p className="border-t border-[#F1F2F2] bg-white px-2 py-1 text-[8px] leading-[1.5] text-[#98A29B]">
+        지점 하나 안에서만 비교 · 커피 원가 15.8% · 프린트 변동비 28% · 고정비 차감
+      </p>
+    </div>
+  );
+}
+
+/** "2,221천" / "−120천" — 좌우 폭이 흔들리지 않게 짧게. */
+function compactWon(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "—";
+  const sign = value < 0 ? "−" : "";
+  const abs = Math.abs(value);
+  if (abs >= 10_000) return `${sign}${Math.round(abs / 1_000).toLocaleString("ko-KR")}천`;
+  return `${sign}${Math.round(abs).toLocaleString("ko-KR")}`;
 }
