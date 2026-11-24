@@ -51,7 +51,7 @@ function tinyMonth(): MonthlySummary {
   };
 }
 
-test("BEP — 11월 강남구청역점은 고정비를 이미 넘겨 도달일이 지난 날짜로 계산된다", () => {
+test("BEP — 11월 강남구청역점은 새 공헌이익 기준(커피 48%)에서 월말 도달로 계산된다", () => {
   const month = monthlyForStore("STORE_GNM", "2026-11");
   assert.ok(month);
 
@@ -59,17 +59,19 @@ test("BEP — 11월 강남구청역점은 고정비를 이미 넘겨 도달일�
   assert.ok(bep);
 
   const fixed = fixedCostTotal(defaultFixedCost("STORE_GNM"));
-  const contribution = Math.round((month.coffee.amount ?? 0) * (1 - 0.158));
+  const contribution = Math.round((month.coffee.amount ?? 0) * 0.48);
 
+  assert.equal(contribution, 508_656);
   assert.equal(bep.monthDays, 30);
   assert.equal(bep.elapsedDays, 23);
   assert.equal(bep.fixedCostTotal, fixed);
   assert.equal(bep.dailyFixedCost, Math.round(fixed / 30));
   assert.equal(bep.contribution, contribution);
-  assert.ok(bep.progressPct > 100);
-  assert.equal(bep.reached, true);
-  assert.ok(bep.bepDay !== null && bep.bepDay < 23);
-  assert.match(bep.bepLabel, /달성/);
+  // 508,656 < 658,000 — 23일 시점에는 아직 고정비를 못 넘고, 같은 속도면 30일경 도달한다.
+  assert.ok(bep.progressPct > 0 && bep.progressPct < 100);
+  assert.equal(bep.reached, false);
+  assert.equal(bep.bepDay, 30);
+  assert.match(bep.bepLabel, /예상/);
 });
 
 test("BEP — 일할 고정비 = 월 고정비 ÷ 그 달 일수, BEP 일매출 = 일할 고정비 ÷ 공헌이익률", () => {
@@ -80,7 +82,7 @@ test("BEP — 일할 고정비 = 월 고정비 ÷ 그 달 일수, BEP 일매출 
 
   assert.equal(bep.dailyFixedCost, Math.round(fixedCostTotal(fixed) / 30));
   assert.ok(bep.bepDailyRevenue !== null);
-  // BEP 일매출은 일할 고정비를 공헌이익률(≈84%)로 나눈 값이라 항상 더 크다.
+  // BEP 일매출은 일할 고정비를 공헌이익률(커피만 있는 달은 48%)로 나눈 값이라 항상 더 크다.
   assert.ok((bep.bepDailyRevenue as number) > bep.dailyFixedCost);
 });
 

@@ -179,7 +179,7 @@ export function RevenueMixDonut({ month, compact = false }: { month: MonthlySumm
               </span>
             </div>
             <p className={`pl-4 font-semibold tabular-nums text-[#3B4740] ${compact ? "text-[10.5px]" : "text-[12px]"}`}>{formatWon(coffee)}</p>
-            <p className={`pl-4 text-[#98A29B] ${compact ? "text-[8.5px]" : "text-[10px]"}`}>{month.coffee.range} · {month.coffee.source}</p>
+            <p className={`pl-4 text-[#98A29B] ${compact ? "text-[8.5px]" : "text-[10px]"}`}>{month.coffee.range}</p>
           </li>
           <li>
             <div className="flex items-center gap-1.5">
@@ -190,7 +190,7 @@ export function RevenueMixDonut({ month, compact = false }: { month: MonthlySumm
               </span>
             </div>
             <p className={`pl-4 font-semibold tabular-nums text-[#3B4740] ${compact ? "text-[10.5px]" : "text-[12px]"}`}>{formatWon(print)}</p>
-            <p className={`pl-4 text-[#98A29B] ${compact ? "text-[8.5px]" : "text-[10px]"}`}>{month.print.range} · {month.print.source}</p>
+            <p className={`pl-4 text-[#98A29B] ${compact ? "text-[8.5px]" : "text-[10px]"}`}>{month.print.range}</p>
           </li>
         </ul>
       </div>

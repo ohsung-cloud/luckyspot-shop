@@ -462,7 +462,7 @@ export default function StoreAdminView({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[13px] font-semibold text-[#6B746D]">이번 달 매출</p>
-            <p className="mt-2 text-[32px] font-bold leading-none tabular-nums tracking-[-0.035em] text-[#0F1412]">
+            <p className="mt-2 text-[32px] font-bold leading-none tabular-nums tracking-[0.03em] text-[#0F1412]">
               {current ? formatWon(current.total) : "—"}
             </p>
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -479,13 +479,17 @@ export default function StoreAdminView({
           <Row
             dot="bg-[#0F1412]"
             label="커피"
-            sub={current ? `${current.coffee.range} · ${current.coffee.source}` : "수집 전"}
+            sub={current ? current.coffee.range : "수집 전"}
             value={current ? formatWon(current.coffee.amount) : "—"}
           />
           <Row
             dot={current?.print.amount !== null && current?.print.amount !== undefined ? "bg-[#1D9F4C]" : "bg-[#C9CFCB]"}
             label="프린트"
-            sub={current ? `${current.print.range} · ${current.print.status === "pending" ? "매월 26일 정산" : current.print.source}` : "수집 전"}
+            sub={
+              current
+                ? `${current.print.range}${current.print.status === "pending" ? " · 매월 26일 정산" : ""}`
+                : "수집 전"
+            }
             value={
               current?.print.amount !== null && current?.print.amount !== undefined
                 ? formatWon(current.print.amount)
@@ -872,7 +876,11 @@ export default function StoreAdminView({
               {snapshot
                 ? ` · 실측 ${new Date(snapshot.capturedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}`
                 : ""}
-              {" · "}프린트 벤더 {store.printVendor === "yupisoft" ? "유피소프트" : store.printVendor === "generic_webhook" ? "타사 복합기(공용)" : "에스칼프린트"}
+              {store.printVendor === "yupisoft"
+                ? " · 프린트 벤더 유피소프트"
+                : store.printVendor === "generic_webhook"
+                  ? " · 프린트 벤더 타사 복합기(공용)"
+                  : ""}
             </p>
           </div>
         </details>

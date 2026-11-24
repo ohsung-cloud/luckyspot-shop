@@ -30,7 +30,7 @@ export function StoreSalesOnly({ store, period }: { store: StoreEntry; period: M
       <p className="px-1 text-[11.5px] font-medium leading-[1.55] text-[#8B948D]">
         {store.label} · {store.tagline}
         <span className="mt-1 block text-[10.5px] text-[#A7AFA9]">
-          커피 매출은 로얄선즈 판매정보 실측 · {capturedLabel("2026-11-24T14:00:00+09:00")} 조회 · 재고는 아직 수집 전이에요
+          커피 매출은 판매정보 실측 · {capturedLabel("2026-11-24T14:00:00+09:00")} 조회 · 재고는 아직 수집 전이에요
         </span>
       </p>
 
@@ -39,7 +39,7 @@ export function StoreSalesOnly({ store, period }: { store: StoreEntry; period: M
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[13px] font-semibold text-[#6B746D]">{month ? `${month.monthLabel} 매출` : "매출"}</p>
-            <p className="mt-2 text-[34px] font-bold leading-none tabular-nums tracking-[-0.035em] text-[#0F1412]">
+            <p className="mt-2 text-[34px] font-bold leading-none tabular-nums tracking-[0.03em] text-[#0F1412]">
               {formatWon(month?.total ?? null)}
             </p>
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -54,13 +54,13 @@ export function StoreSalesOnly({ store, period }: { store: StoreEntry; period: M
           <Row
             dot="bg-[#0F1412]"
             label="커피"
-            sub={month ? `${month.coffee.range} · ${month.coffee.source}` : "수집 전"}
+            sub={month ? month.coffee.range : "수집 전"}
             value={formatWon(month?.coffee.amount ?? null)}
           />
           <Row
             dot="bg-[#C9CFCB]"
             label="프린트"
-            sub="에스칼프린트 정산본을 아직 못 받았어요"
+            sub="정산본을 아직 못 받았어요"
             value="미확보"
             valueTone="muted"
           />
@@ -89,7 +89,7 @@ export function StoreSalesOnly({ store, period }: { store: StoreEntry; period: M
         <CardBody className="pt-2">
           <ul className="space-y-2 text-[11.5px] leading-[1.6] text-[#3B4740]">
             <li className="rounded-[14px] bg-[#F7F8F9] px-3.5 py-3">
-              <span className="font-bold">프린트 매출</span> — 에스칼프린트 정산본을 아직 못 받았어요. 이 지점은 네이버
+              <span className="font-bold">프린트 매출</span> — 정산본을 아직 못 받았어요. 이 지점은 네이버
               플레이스에 인쇄 메뉴가 없어요.
             </li>
             <li className="rounded-[14px] bg-[#F7F8F9] px-3.5 py-3">
@@ -111,7 +111,7 @@ export function StoreSalesOnly({ store, period }: { store: StoreEntry; period: M
       </Card>
 
       <p className="px-1 pb-2 text-[9.5px] leading-[1.6] text-[#B0B7B2]">
-        {store.label} 단독 · 매출은 로얄선즈 판매정보 실측 · 재고·프린트는 수집 전 · 내부용
+        {store.label} 단독 · 매출은 판매정보 실측 · 재고·프린트는 수집 전 · 내부용
       </p>
     </div>
   );

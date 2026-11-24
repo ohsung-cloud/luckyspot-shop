@@ -109,7 +109,7 @@ export function StoreReport({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[13px] font-semibold text-[#6B746D]">{month ? `${month.monthLabel} 매출` : "매출"}</p>
-            <p className="mt-2 text-[34px] font-bold leading-none tabular-nums tracking-[-0.035em] text-[#0F1412]">
+            <p className="mt-2 text-[34px] font-bold leading-none tabular-nums tracking-[0.03em] text-[#0F1412]">
               {month ? formatWon(month.total) : "—"}
             </p>
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -128,13 +128,17 @@ export function StoreReport({
           <Row
             dot="bg-[#0F1412]"
             label="커피"
-            sub={month ? `${month.coffee.range} · ${month.coffee.source}` : "수집 전"}
+            sub={month ? month.coffee.range : "수집 전"}
             value={formatWon(coffeeAmount)}
           />
           <Row
             dot={printAmount !== null ? "bg-[#1D9F4C]" : "bg-[#C9CFCB]"}
             label="프린트"
-            sub={month ? `${month.print.range} · ${month.print.status === "pending" ? "매월 26일 정산" : month.print.source}` : "수집 전"}
+            sub={
+              month
+                ? `${month.print.range}${month.print.status === "pending" ? " · 매월 26일 정산" : ""}`
+                : "수집 전"
+            }
             value={printAmount !== null ? formatWon(printAmount) : "26일 정산 전"}
             valueTone={printAmount !== null ? "ink" : "muted"}
           />

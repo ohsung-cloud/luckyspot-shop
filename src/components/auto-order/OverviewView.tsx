@@ -134,7 +134,7 @@ export default function OverviewView({ state, loading, error, onGoOrder, onGoHq,
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[13px] font-semibold text-[#6B746D]">오늘 카페 매출</p>
-            <p className="mt-2 text-[30px] font-bold leading-none tabular-nums tracking-[-0.035em] text-[#0F1412]">
+            <p className="mt-2 text-[30px] font-bold leading-none tabular-nums tracking-[0.03em] text-[#0F1412]">
               {revenue?.cafeToday != null ? won(revenue.cafeToday) : "—"}
             </p>
             <div className="mt-2.5 flex flex-wrap gap-1.5">

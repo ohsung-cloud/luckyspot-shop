@@ -173,7 +173,7 @@ export default async function StoreAdminPage({ params, searchParams }: PageProps
           {
             at: snapshotData.capturedAt,
             kind: "수집" as const,
-            title: "에스칼프린트 · 로얄선즈 스냅샷",
+            title: "매출·재고 실측 스냅샷",
             detail: `토너·용지·원두 실측 · 매출 ${snapshotData.revenue.coffee.today.toLocaleString("ko-KR")}원(오늘)`,
           },
         ]

@@ -177,7 +177,7 @@ function ComparisonCardRow({ label, value, hint }: { label: string; value: strin
         <span className="block truncate text-[12px] font-semibold text-[#3B4740]">{label}</span>
         <span className="mt-0.5 block truncate text-[10px] leading-[1.4] text-[#A7AFA9]">{hint}</span>
       </span>
-      <span className="shrink-0 text-[15px] font-bold tabular-nums tracking-[-0.02em] text-[#0F1412]">{value}</span>
+      <span className="shrink-0 text-[15px] font-bold tabular-nums tracking-[0.02em] text-[#0F1412]">{value}</span>
     </div>
   );
 }

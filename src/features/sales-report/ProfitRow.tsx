@@ -1,7 +1,14 @@
 import { Chip } from "@/components/internal/card-ui";
 
 import { formatWon } from "./monthly";
-import { FIXED_COST_LABELS, type ProfitEstimate } from "./profit";
+import {
+  COFFEE_CONTRIBUTION_PCT,
+  COFFEE_MATERIAL_RATE,
+  FIXED_COST_LABELS,
+  PRINT_CONTRIBUTION_PCT,
+  PRINT_VARIABLE_RATE,
+  type ProfitEstimate,
+} from "./profit";
 
 /**
  * 매출 카드 안의 '예상 순수익' — 토스식 한 줄 요약 + 탭하면 내역.
@@ -57,7 +64,7 @@ export function ProfitRow({
           <span className="mt-1 block text-[11.5px] font-medium leading-[1.45] text-[#8B948D]">{subline}</span>
         </span>
         <span className="flex shrink-0 items-center gap-2">
-          <span className={`text-[22px] font-bold leading-none tabular-nums tracking-[-0.03em] ${profit.net !== null && profit.net < 0 ? "text-[#B3261E]" : "text-[#0B5C2A]"}`}>
+          <span className={`text-[22px] font-bold leading-none tabular-nums tracking-[0.02em] ${profit.net !== null && profit.net < 0 ? "text-[#B3261E]" : "text-[#0B5C2A]"}`}>
             {formatWon(profit.net)}
           </span>
           <span aria-hidden className="text-[15px] font-bold text-[#C2C9C4] transition-transform group-open:rotate-90">
@@ -72,7 +79,7 @@ export function ProfitRow({
           sub={
             profit.coffeeRevenue === null
               ? "이번 달 커피 매출이 아직 없어요"
-              : `매출 ${formatWon(profit.coffeeRevenue)}에서 원가 15.8%를 뺐어요`
+              : `매출 ${formatWon(profit.coffeeRevenue)}에서 원가·변동비 ${Math.round(COFFEE_MATERIAL_RATE * 100)}%를 뺐어요`
           }
           value={formatWon(profit.coffeeProfit)}
         />
@@ -81,7 +88,7 @@ export function ProfitRow({
           sub={
             profit.printRevenue === null
               ? "26일 정산 전이라 아직 비어 있어요"
-              : `매출 ${formatWon(profit.printRevenue)}에서 변동비·로열티 28%를 뺐어요`
+              : `매출 ${formatWon(profit.printRevenue)}에서 변동비·로열티 ${Math.round(PRINT_VARIABLE_RATE * 100)}%를 뺐어요`
           }
           value={formatWon(profit.printProfit)}
           valueTone={profit.printProfit === null ? "muted" : "ink"}
@@ -101,7 +108,7 @@ export function ProfitRow({
 
         <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-[#EDF0EE] pt-3">
           <span className="text-[13.5px] font-bold text-[#0F1412]">예상 순수익</span>
-          <span className="text-[18px] font-bold tabular-nums tracking-[-0.02em] text-[#0B5C2A]">{formatWon(profit.net)}</span>
+          <span className="text-[18px] font-bold tabular-nums tracking-[0.02em] text-[#0B5C2A]">{formatWon(profit.net)}</span>
         </div>
 
         {previousNet !== undefined && previousNet !== null ? (
@@ -109,7 +116,7 @@ export function ProfitRow({
         ) : null}
 
         <p className="mt-2 text-[10.5px] leading-[1.55] text-[#A7AFA9]">
-          커피 원가 15.8% · 프린트 변동비·로열티 28% 기준이에요.
+          커피 공헌이익 {COFFEE_CONTRIBUTION_PCT}% · 프린트 공헌이익 {PRINT_CONTRIBUTION_PCT}% 기준이에요.
           {fixedText ? ` 월 고정비 ${fixedText}.` : ""}
         </p>
         {note ? <p className="mt-1 text-[10.5px] leading-[1.55] text-[#A7AFA9]">{note}</p> : null}
@@ -141,7 +148,7 @@ function Row({
         <p className="text-[12.5px] font-semibold text-[#3B4740]">{label}</p>
         <p className="mt-0.5 text-[10.5px] leading-[1.45] text-[#A7AFA9]">{sub}</p>
       </div>
-      <p className={`shrink-0 text-[13px] font-bold tabular-nums ${tone}`}>{value}</p>
+      <p className={`shrink-0 text-[13px] font-bold tabular-nums tracking-[0.01em] ${tone}`}>{value}</p>
     </div>
   );
 }

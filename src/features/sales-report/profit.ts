@@ -7,9 +7,9 @@ import { formatWon, type MonthlySummary } from "./monthly";
  *  - 매출만 보이면 "이번 달 얼마 벌었나"를 점주가 직접 계산해야 한다.
  *    매출 히어로 카드에 **한 줄 요약**만 얹고, 탭하면 계산 내역을 펼친다(기본 화면 과밀 없음).
  *
- * 계산식(사용자 지정, 2026-11-23)
- *   커피 매출 × (1 − 원가율 15.8%)
- * + 프린트 매출 × (1 − 변동비·로열티 28%)
+ * 계산식(사용자 지정, 2026-11-25)
+ *   커피 매출 × 48%   (원가·변동비 52% 제외 — 카페 기준 공헌이익률 48%)
+ * + 프린트 매출 × 75%  (변동비·로열티 25% 제외 — 프린트 매출 기준 공헌이익률 75%)
  * − 월 고정비 × (이번달은 경과일 비율, 저번달은 전액)
  * = 예상 순수익, 마진율 = 순수익 ÷ 매출
  *
@@ -19,11 +19,21 @@ import { formatWon, type MonthlySummary } from "./monthly";
  *    `partial`로 표시해 "확인된 항목만" 계산했음을 밝힌다.
  */
 
-/** 커피 원재료 원가율 — 매출 대비. (사용자 지정값) */
-export const COFFEE_MATERIAL_RATE = 0.158;
+/**
+ * 커피 원가·변동비 비율 — 매출 대비.
+ * 사용자 지정(2026-11-25): "카페기준 48%" → 공헌이익률 48%, 원가·변동비 52%.
+ */
+export const COFFEE_MATERIAL_RATE = 0.52;
 
-/** 프린트 변동비 + 로열티 비율 — 매출 대비. */
-export const PRINT_VARIABLE_RATE = 0.28;
+/**
+ * 프린트 변동비 + 로열티 비율 — 매출 대비.
+ * 사용자 지정(2026-11-25): "프린트 매출기준 75%" → 공헌이익률 75%, 변동비·로열티 25%.
+ */
+export const PRINT_VARIABLE_RATE = 0.25;
+
+/** 화면 표기용 공헌이익률(%) — 커피 48 · 프린트 75 */
+export const COFFEE_CONTRIBUTION_PCT = Math.round((1 - COFFEE_MATERIAL_RATE) * 100);
+export const PRINT_CONTRIBUTION_PCT = Math.round((1 - PRINT_VARIABLE_RATE) * 100);
 
 export type MonthlyFixedCost = {
   /** 임대료 */
@@ -183,15 +193,21 @@ export function estimateProfit(input: {
 
   const lines: ProfitLine[] = [
     {
-      label: `커피 매출 × (1 − 원가 ${(COFFEE_MATERIAL_RATE * 100).toFixed(1)}%)`,
+      label: `커피 매출 × 공헌이익 ${COFFEE_CONTRIBUTION_PCT}%`,
       amount: coffeeProfit,
-      note: coffeeRevenue === null ? "이번 달 커피 미수집" : formatWon(coffeeRevenue),
+      note:
+        coffeeRevenue === null
+          ? "이번 달 커피 미수집"
+          : `${formatWon(coffeeRevenue)} · 원가·변동비 ${Math.round(COFFEE_MATERIAL_RATE * 100)}% 제외`,
       tone: "plus",
     },
     {
-      label: `프린트 매출 × (1 − 변동비·로열티 ${Math.round(PRINT_VARIABLE_RATE * 100)}%)`,
+      label: `프린트 매출 × 공헌이익 ${PRINT_CONTRIBUTION_PCT}%`,
       amount: printProfit,
-      note: printRevenue === null ? month.print.note ?? "정산 전" : formatWon(printRevenue),
+      note:
+        printRevenue === null
+          ? month.print.note ?? "정산 전"
+          : `${formatWon(printRevenue)} · 변동비·로열티 ${Math.round(PRINT_VARIABLE_RATE * 100)}% 제외`,
       tone: "plus",
     },
     {
@@ -242,8 +258,8 @@ export function estimateProfit(input: {
  *  - 점주가 진짜 궁금한 건 "이번 달 언제부터 남는 장사인가"와 "지금 발주를 한 번에 넣어도 되나"다.
  *  - 매출은 커피(POS)와 프린트(복합기)로 사업자가 다르지만, 고정비(월세·관리비…)는 대표 한 사람 몫이다.
  *    그래서 두 사업자의 실소모 원가를 뺀 **공헌이익**을 합쳐 고정비와 비교한다.
- *    - 커피 공헌이익 = 커피 매출 × (1 − 원가율 15.8%)
- *    - 프린트 공헌이익 = 프린트 매출 × (1 − 변동비·로열티 28%)
+ *    - 커피 공헌이익 = 커피 매출 × 48%  (원가·변동비 52% 제외)
+ *    - 프린트 공헌이익 = 프린트 매출 × 75%  (변동비·로열티 25% 제외)
  *    - 월 고정비 = 일할(그 달 일수로 나눔)로 매일 조금씩 소진된다
  *  - BEP 도달일 = 누적 공헌이익이 월 고정비를 넘는 날.
  *  - 발주 모드 = 월말까지 남는 현금(예상 순수익)이 이번 발주액을 덮으면 `일괄 발주`,
@@ -269,7 +285,7 @@ export const ORDER_MODE_LABELS: Record<OrderMode, string> = {
  */
 export const REFERENCE_MIX = { coffee: 0.7, print: 0.3 } as const;
 
-/** 참고 매출 구성 기준 평균 공헌이익률(≈80.5%) */
+/** 참고 매출 구성 기준 평균 공헌이익률(≈56.1%) */
 export const REFERENCE_CONTRIBUTION_RATE =
   REFERENCE_MIX.coffee * (1 - COFFEE_MATERIAL_RATE) + REFERENCE_MIX.print * (1 - PRINT_VARIABLE_RATE);
 
@@ -420,7 +436,7 @@ function buildOrderReason(input: {
 
 /**
  * 월세만 넣고도 순수익을 가늠하는 계산 — `/admin/stores` 신규 매장 폼 미리보기 전용.
- *  - 손익분기 월 매출 = 월 고정비 ÷ 참고 공헌이익률(80.5%)
+ *  - 손익분기 월 매출 = 월 고정비 ÷ 참고 공헌이익률(≈56.1%)
  *  - 예상 순수익 = 매출 × 참고 공헌이익률 − 월 고정비
  *  실측 매출이 없는 신규 매장이므로 **가정값**임을 화면에 밝힌다.
  */

@@ -218,7 +218,7 @@ export default function OwnerView({
             title="이번 발주"
           />
           <CardBody className="pt-3">
-            <p className="text-[34px] font-bold leading-none tabular-nums tracking-[-0.035em] text-[#0F1412]">
+            <p className="text-[34px] font-bold leading-none tabular-nums tracking-[0.03em] text-[#0F1412]">
               {won(state.totals.totalAmount)}
             </p>
             <div className="mt-2.5 flex flex-wrap gap-1.5">

@@ -183,7 +183,7 @@ export function SalesReportShell({ fixedCosts = {} }: { fixedCosts?: Record<stri
                 {store.shortLabel} · {month ? `${month.monthLabel} ${month.partial ? "진행 중" : "확정"}` : "수집 전"} ·{" "}
                 {snapshot ? capturedLabel(snapshot.capturedAt) : "재고 수집 전"}
               </p>
-              <p className="mt-0.5 truncate text-[16px] font-bold tabular-nums tracking-[-0.02em] text-[#0F1412]">
+              <p className="mt-0.5 truncate text-[16px] font-bold tabular-nums tracking-[0.02em] text-[#0F1412]">
                 {month?.total ? won(month.total) : "—"}
                 <span className="ml-1.5 text-[10.5px] font-semibold text-[#8B948D]">
                   {snapshot ? `· 3종 발주 ${won(coreAmount)}` : "· 3종 발주 — 재고 수집 전"}

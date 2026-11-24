@@ -27,7 +27,7 @@ export default function SplitSlips({ split, compact = false }: { split: SplitRes
             <Chip tone={slip.entityType === "franchisee_cafe" ? "green" : "blue"}>
               {ENTITY_LABEL[slip.entityType]}
             </Chip>
-            <span className="text-[19px] font-bold tabular-nums tracking-[-0.02em] text-[#0F1412]">{won(slip.totalAmount)}</span>
+            <span className="text-[19px] font-bold tabular-nums tracking-[0.02em] text-[#0F1412]">{won(slip.totalAmount)}</span>
           </div>
 
           <p className="mt-2.5 text-[12.5px] font-bold text-[#0F1412]">{slip.entityName}</p>

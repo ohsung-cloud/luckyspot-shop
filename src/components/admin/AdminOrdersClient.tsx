@@ -252,7 +252,7 @@ export default function AdminOrdersClient({
               <dt className="text-[10.5px] font-medium text-[var(--ls-muted)]">
                 {ORDER_STATUS_LABELS[status]}
               </dt>
-              <dd className="mt-1 text-[22px] font-semibold tabular-nums tracking-[-0.03em] text-[#0F1412]">
+              <dd className="mt-1 text-[22px] font-semibold tabular-nums tracking-[0.02em] text-[#0F1412]">
                 {counts[status]}
                 <span className="ml-1 text-[11px] font-medium text-[var(--ls-muted)]">건</span>
               </dd>
@@ -382,7 +382,7 @@ export default function AdminOrdersClient({
                     </div>
 
                     <div className="flex items-center justify-between gap-3 md:flex-col md:items-end">
-                      <p className="text-[16px] font-semibold tabular-nums tracking-[-0.02em] text-[#0F1412]">
+                      <p className="text-[16px] font-semibold tabular-nums tracking-[0.02em] text-[#0F1412]">
                         {formatPrice(order.totalAmount)}
                       </p>
                       <div className="flex gap-1.5">

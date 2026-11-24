@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { RevenueMixDonut } from "./RevenueMixDonut";
 import { formatWon, type MonthlySummary } from "./monthly";
-import type { MonthlyCompareRow } from "./profit";
+import { COFFEE_CONTRIBUTION_PCT, PRINT_CONTRIBUTION_PCT, type MonthlyCompareRow } from "./profit";
 import { shortWon, type StorePulse } from "./trend";
 
 /**
@@ -224,7 +224,7 @@ function MonthlyCompareRows({ rows }: { rows: MonthlyCompareRow[] }) {
             <p className="mt-0.5 truncate text-[10px] leading-[1.45] text-[#A7AFA9]">{row.note}</p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[14px] font-bold tabular-nums tracking-[-0.02em] text-[#0B5C2A]">
+            <p className="text-[14px] font-bold tabular-nums tracking-[0.02em] text-[#0B5C2A]">
               {compactWon(row.net)}
             </p>
             <p className="mt-0.5 text-[10px] font-medium tabular-nums text-[#A7AFA9]">
@@ -234,7 +234,7 @@ function MonthlyCompareRows({ rows }: { rows: MonthlyCompareRow[] }) {
         </div>
       ))}
       <p className="pt-1.5 text-[9.5px] leading-[1.5] text-[#A7AFA9]">
-        지점 하나 안에서만 비교해요 · 커피 원가 15.8% · 프린트 변동비 28% · 고정비 차감
+        지점 하나 안에서만 비교해요 · 커피 공헌이익 {COFFEE_CONTRIBUTION_PCT}% · 프린트 {PRINT_CONTRIBUTION_PCT}% · 고정비 차감
       </p>
     </div>
   );

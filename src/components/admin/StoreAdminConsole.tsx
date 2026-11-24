@@ -433,11 +433,11 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                     <dd className="text-right">{store.printEntity.name || "미등록"}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-[#6B746D]">로얄선즈 매장 ID</dt>
+                    <dt className="text-[#6B746D]">커피 포털 매장 ID</dt>
                     <dd className="text-right font-mono">{store.portals.loyalsunsStoreId || "미입력"}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-[#6B746D]">에스칼프린트 지점명</dt>
+                    <dt className="text-[#6B746D]">프린트 포털 지점명</dt>
                     <dd className="text-right font-mono">{store.portals.escalprintBranch || "미입력"}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
@@ -607,7 +607,7 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                   </div>
                 </div>
                 <p className="mt-1 text-[9px] leading-[1.5] text-[#98A29B]">
-                  커피 7 : 프린트 3 · 커피 원가 15.8% · 프린트 변동비 28% 기준 참고값입니다. 실제 매출은 수집 후 바뀝니다.
+                  커피 7 : 프린트 3 · 커피 공헌이익 48% · 프린트 75% 기준 참고값입니다. 실제 매출은 수집 후 바뀝니다.
                 </p>
               </div>
 
@@ -720,7 +720,7 @@ export default function StoreAdminConsole({ initialStores }: { initialStores: St
                     </Field>
                   </div>
 
-                  <Field label="로얄선즈 매장 ID" hint="아이디만. 비밀번호는 GitHub Secrets에만.">
+                  <Field label="커피 포털 매장 ID" hint="아이디만. 비밀번호는 GitHub Secrets에만.">
                     <input
                       className={inputClass}
                       onChange={(event) => update("loyalsunsStoreId", event.target.value)}

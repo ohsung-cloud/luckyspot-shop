@@ -125,7 +125,7 @@ export function Row({
       </span>
       {value !== undefined ? (
         <span className="shrink-0 text-right">
-          <span className={`block text-[17px] font-bold leading-[1.25] tabular-nums tracking-[-0.02em] ${VALUE_TONE[valueTone]}`}>
+          <span className={`block text-[17px] font-bold leading-[1.25] tabular-nums tracking-[0.01em] ${VALUE_TONE[valueTone]}`}>
             {value}
           </span>
           {valueSub ? (

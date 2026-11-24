@@ -203,13 +203,13 @@ export const BUSINESS_ENTITIES = {
     name: "점주 사업자 (카페)",
     businessNoMasked: "***-**-*****",
     paymentOwner: "점주 사업자 — 지점 정산 계좌",
-    costShareNote: "음료 원가율 15.8% · 카페 소모품 원가 100% 점주 부담",
+    costShareNote: "음료 원가·변동비 52% · 카페 소모품 원가 100% 점주 부담",
   },
   hq_print: {
     type: "hq_print" as const,
     name: "주식회사 럭키스팟 (본사·샵인샵 프린트)",
     businessNoMasked: "***-**-*****",
     paymentOwner: "본사 사업자 — 샵인샵 프린트 정산 계좌",
-    costShareNote: "프린트 변동비 35.8% · 프린트 소모품 원가 100% 본사 부담",
+    costShareNote: "프린트 변동비·로열티 25% · 프린트 소모품 원가 100% 본사 부담",
   },
 };

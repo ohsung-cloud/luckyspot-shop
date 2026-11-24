@@ -34,7 +34,7 @@ import { getPrintVendorAdapter, normalizeVendorPayload, previewVendorCsv, vendor
 /* 1) 실마진                                                           */
 /* ------------------------------------------------------------------ */
 
-test("예상 순수익 — 커피 원가 15.8% · 프린트 변동비 28% · 고정비 차감", () => {
+test("예상 순수익 — 커피 공헌이익 48% · 프린트 공헌이익 75% · 고정비 차감", () => {
   const month = monthlyForStore("STORE_GNM", "2026-10");
   assert.ok(month);
 
@@ -50,6 +50,25 @@ test("예상 순수익 — 커피 원가 15.8% · 프린트 변동비 28% · 고
   assert.equal(profit.fixedCostApplied, fixed); // 저번달(확정)은 전액
   assert.equal(profit.net, Math.round(coffee) + Math.round(print) - fixed);
   assert.ok((profit.marginRate ?? 0) > 0 && (profit.marginRate ?? 0) < 100);
+});
+
+test("예상 순수익 — 한예종점 10월은 새 기준에서 2,912,382원 · 마진 36.1%", () => {
+  // 커피 6,099,900 × 48% + 프린트 1,963,240 × 75% − 월 고정비 1,488,000 = 2,912,382
+  const month = monthlyForStore("STORE_HYJ", "2026-10");
+  assert.ok(month);
+
+  const profit = estimateProfit({
+    month,
+    fixedCost: defaultFixedCost("STORE_HYJ"),
+    asOf: new Date("2026-11-25T00:20:00+09:00"),
+  });
+  assert.ok(profit);
+
+  assert.equal(profit.coffeeProfit, Math.round(6_099_900 * 0.48));
+  assert.equal(profit.printProfit, Math.round(1_963_240 * 0.75));
+  assert.equal(profit.fixedCostApplied, 1_488_000);
+  assert.equal(profit.net, 2_912_382);
+  assert.equal(Math.round((profit.marginRate ?? 0) * 10) / 10, 36.1);
 });
 
 test("이번달은 고정비를 경과일만큼만 반영한다", () => {
