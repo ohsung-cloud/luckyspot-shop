@@ -111,7 +111,8 @@ function WeeklyPanel({ pulse }: { pulse: StorePulse }) {
       <div className="relative mt-2 h-[92px]">
         <div aria-hidden className="absolute inset-x-0 border-t border-dashed border-[#1D9F4C]" style={{ bottom: averagePx }} />
 
-        <div className="flex h-full items-end gap-1.5">
+        {/* 막대와 숫자는 기준선(평균 점선) 위에 그린다 — 점선이 숫자를 가로지르지 않게. */}
+        <div className="relative flex h-full items-end gap-1.5">
           {pulse.daily.map((day) => {
             const height = Math.max(6, Math.round((day.total / max) * BAR_MAX_PX));
             const peak = day.total === max && pulse.dailySource === "measured";
