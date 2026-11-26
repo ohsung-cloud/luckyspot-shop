@@ -10,9 +10,10 @@
  *  - 시간대 데이터가 없는 지점은 그림을 지어내지 않고 "수집 전"이라고 적는다.
  *
  * 출처
- *  - 강남구청역점 일별 7일·시간대 6구간: 사용자가 보내 준 기존 POS(비즐) 매출분석보고서
- *    (2026-11-16~11-22, 11/22 전체매출 55,700원 / 시간대 2,100·6,800·19,400·5,300·10,500·11,600원).
- *    화면의 막대는 천원 단위로 반올림된 값이다.
+ *  - 강남구청역점 일별 7일·시간대 6구간: 로얄선즈 판매정보 기간조회(2026-11-20~11-26)의 주문 생성시간·실제 주문금액
+ *    집계(2026-11-26 16:11 내보내기). 일별 50,800 / 32,200 / 57,800 / 14,600 / 58,900 / 33,500 / 25,100원,
+ *    시간대는 마지막으로 끝난 하루인 11-25(33,500원)의 6구간 6,800 · 2,100 · 9,900 · 6,900 · 0 · 7,800원.
+ *    (2026-11-23까지 이 자리에 있던 값은 사용자가 보내 준 기존 POS(비즐) 매출분석보고서 11/16~11/22였다.)
  *  - 한예종점: 일별 실측이 아직 없어 월 커피 일평균으로만 그린다(추정 표시).
  */
 
@@ -55,20 +56,20 @@ export const HOUR_LABELS: { key: HourBucket["key"]; label: string; range: string
   { key: "night", label: "밤", range: "21~24" },
 ];
 
-/** 기존 POS(비즐) 리포트에서 확인된 강남구청역점 값 — 천원 단위. */
+/** 포털 판매정보에서 확인된 강남구청역점 최근 7일 — 원 단위. */
 const GANGNAM_DAILY = [
-  { date: "2026-11-16", total: 69_000 },
-  { date: "2026-11-17", total: 73_000 },
-  { date: "2026-11-18", total: 51_000 },
-  { date: "2026-11-19", total: 59_000 },
-  { date: "2026-11-20", total: 56_000 },
-  { date: "2026-11-21", total: 32_000 },
-  { date: "2026-11-22", total: 56_000 },
+  { date: "2026-11-20", total: 50_800 },
+  { date: "2026-11-21", total: 32_200 },
+  { date: "2026-11-22", total: 57_800 },
+  { date: "2026-11-23", total: 14_600 },
+  { date: "2026-11-24", total: 58_900 },
+  { date: "2026-11-25", total: 33_500 },
+  { date: "2026-11-26", total: 25_100 },
 ];
 
-/** 2026-11-22(일) 시간대 매출 — 합계 55,700원(비즐 리포트). */
-const GANGNAM_HOURLY = [2_100, 6_800, 19_400, 5_300, 10_500, 11_600];
-const GANGNAM_HOURLY_DATE = "2026-11-22";
+/** 2026-11-25(수) 시간대 매출 — 합계 33,500원(포털 판매정보, 마지막으로 끝난 하루). */
+const GANGNAM_HOURLY = [6_800, 2_100, 9_900, 6_900, 0, 7_800];
+const GANGNAM_HOURLY_DATE = "2026-11-25";
 
 function labelOf(date: string) {
   const value = new Date(`${date}T12:00:00+09:00`);
@@ -120,7 +121,7 @@ export function storePulse(input: { code: string; asOf: string; dailyRate?: numb
       daily,
       dailyAverage: Math.round(average(daily.map((row) => row.total))),
       dailySource: "measured",
-      dailyNote: "기존 POS(비즐) 매출분석보고서 11/16~11/22 · 막대는 천원 단위",
+      dailyNote: "포털 판매정보 실측 11/20~11/26 · 막대 숫자는 천원 단위 반올림",
       hourly: HOUR_LABELS.map((bucket, index) => ({
         key: bucket.key,
         label: bucket.label,
@@ -130,7 +131,7 @@ export function storePulse(input: { code: string; asOf: string; dailyRate?: numb
       })),
       hourlyDate: GANGNAM_HOURLY_DATE,
       hourlyTotal: total,
-      hourlyNote: `기존 POS(비즐) 리포트 ${labelOf(GANGNAM_HOURLY_DATE)} 실측 · 합계 ${total.toLocaleString("ko-KR")}원`,
+      hourlyNote: `포털 판매정보 ${labelOf(GANGNAM_HOURLY_DATE)} 실측(마지막으로 끝난 하루) · 합계 ${total.toLocaleString("ko-KR")}원`,
     };
   }
 

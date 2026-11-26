@@ -92,11 +92,13 @@ test("월별 매출 — 지점별로 따로, 모르는 값은 null(부분 집계
 
   const gangnamNov = monthlyForStore("stORE_gnm".toUpperCase(), "2026-11");
   assert.ok(gangnamNov);
-  assert.equal(gangnamNov.coffee.amount, 1_059_700);
+  assert.equal(gangnamNov.coffee.amount, 1_177_200);
+  assert.equal(gangnamNov.coffee.orders, 433);
+  assert.equal(gangnamNov.coffee.range, "11/1~11/26");
   assert.equal(gangnamNov.print.amount, null);
   assert.equal(gangnamNov.print.status, "pending");
   assert.equal(gangnamNov.partial, true);
-  assert.equal(gangnamNov.total, 1_059_700);
+  assert.equal(gangnamNov.total, 1_177_200);
 
   const hanyeojongOct = monthlyForStore("STORE_HYJ", "2026-10");
   assert.ok(hanyeojongOct);
@@ -107,7 +109,7 @@ test("월별 매출 — 지점별로 따로, 모르는 값은 null(부분 집계
 
   const hanyeojongNov = monthlyForStore("STORE_HYJ", "2026-11");
   assert.ok(hanyeojongNov);
-  assert.equal(hanyeojongNov.coffee.amount, 4_112_000);
+  assert.equal(hanyeojongNov.coffee.amount, 4_493_800);
   assert.equal(hanyeojongNov.print.amount, null);
   assert.equal(hanyeojongNov.partial, true);
 

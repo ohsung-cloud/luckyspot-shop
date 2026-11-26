@@ -126,8 +126,8 @@ test("정산 전(pending) 달만 추정값으로 채우고, 확정·인쇄 없�
   assert.equal(nov?.print.status, "estimated");
   assert.equal(nov?.print.amount, estimate.revenue);
   assert.equal(nov?.printEstimated, true);
-  assert.equal(nov?.coffee.amount, 1_059_700);
-  assert.equal(nov?.total, 1_059_700 + (estimate.revenue as number));
+  assert.equal(nov?.coffee.amount, 1_177_200);
+  assert.equal(nov?.total, 1_177_200 + (estimate.revenue as number));
 
   // 10월은 이미 확정 — 추정이 덮어쓰면 안 된다.
   const oct = applyPaperPrintEstimate(monthlyForStore("STORE_GNM", "2026-10"), estimate);

@@ -109,13 +109,14 @@ test("한예종점 10·11월 커피는 로얄선즈 실측값으로 채워진다
   assert.equal(oct.total, 6_099_900 + 1_963_240);
   assert.equal(oct.partial, false);
 
-  // 11/1~11/24 1,242건 4,112,000원 — 프린트는 26일 정산 전이라 부분값
+  // 11/1~11/26 4,493,800원(2026-11-26 16:08 기준) — 프린트는 26일 정산 전이라 부분값.
+  // 건수는 1,242건이 11/1~11/24 실측이라 11/26 범위에 늘려 적지 않고 비워 둔다.
   const nov = monthlyForStore("STORE_HYJ", "2026-11");
   assert.ok(nov);
-  assert.equal(nov.coffee.amount, 4_112_000);
-  assert.equal(nov.coffee.orders, 1_242);
-  assert.equal(nov.coffee.range, "11/1~11/24");
-  assert.equal(nov.total, 4_112_000);
+  assert.equal(nov.coffee.amount, 4_493_800);
+  assert.equal(nov.coffee.orders, null);
+  assert.equal(nov.coffee.range, "11/1~11/26");
+  assert.equal(nov.total, 4_493_800);
   assert.equal(nov.partial, true);
 });
 
@@ -364,18 +365,18 @@ test("PIN — 4자리만 받고, 해시는 지점마다 다르며 원문을 담�
 /* 5) 매출 펄스(일간·주간·월간)                                        */
 /* ------------------------------------------------------------------ */
 
-test("주간 막대 — 강남구청역점은 기존 POS 실측 7일을 쓴다", () => {
-  const pulse = storePulse({ code: "STORE_GNM", asOf: "2026-11-23", dailyRate: 14600 });
+test("주간 막대 — 강남구청역점은 포털 판매정보 실측 7일을 쓴다", () => {
+  const pulse = storePulse({ code: "STORE_GNM", asOf: "2026-11-26", dailyRate: 25100 });
   assert.equal(pulse.daily.length, 7);
   assert.equal(pulse.dailySource, "measured");
-  assert.equal(pulse.daily[0].date, "2026-11-16");
-  assert.equal(pulse.daily[6].total, 56_000);
-  assert.equal(pulse.dailyAverage, 56_571);
+  assert.equal(pulse.daily[0].date, "2026-11-20");
+  assert.equal(pulse.daily[6].total, 25_100);
+  assert.equal(pulse.dailyAverage, 38_986);
 
   assert.ok(pulse.hourly);
-  assert.equal(pulse.hourlyTotal, 55_700);
-  assert.equal(pulse.hourly?.[0].amount, 2_100);
-  assert.equal(Math.round(pulse.hourly?.[2].share ?? 0), 35);
+  assert.equal(pulse.hourlyTotal, 33_500);
+  assert.equal(pulse.hourly?.[0].amount, 6_800);
+  assert.equal(Math.round(pulse.hourly?.[2].share ?? 0), 30);
 });
 
 test("주간 막대 — 실측이 없는 지점은 추정임을 밝히고 시간대는 비워 둔다", () => {

@@ -61,14 +61,14 @@ test("BEP — 강남구청역점 11월은 실제 월세 170만 기준에서 아�
   const fixed = fixedCostTotal(defaultFixedCost("STORE_GNM"));
   const contribution = Math.round((month.coffee.amount ?? 0) * 0.78);
 
-  assert.equal(contribution, 826_566);
+  assert.equal(contribution, 918_216);
   assert.equal(bep.monthDays, 30);
   assert.equal(bep.elapsedDays, 23);
   assert.equal(bep.fixedCostTotal, fixed);
   assert.equal(bep.dailyFixedCost, Math.round(fixed / 30));
   assert.equal(bep.contribution, contribution);
-  // 826,566 < 1,908,000(월세 170만 포함) — 23일 시점 기준 달성률 43%이고,
-  // 같은 속도면 61일이 걸려 11월 안에는 못 넘는다.
+  // 918,216 < 1,908,000(월세 170만 포함) — 23일 시점 기준 달성률 48%이고,
+  // 같은 속도면 48일이 걸려 11월 안에는 못 넘는다.
   assert.ok(bep.progressPct < 100);
   assert.equal(bep.reached, false);
   assert.equal(bep.bepDay, null);
