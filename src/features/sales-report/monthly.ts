@@ -83,6 +83,34 @@ const UNCOLLECTED_PRINT_NOV: MonthlySide = {
   note: "정산본 미확보 — 인쇄 메뉴가 없는 지점",
 };
 
+/** 인쇄 메뉴가 아예 없는 지점 — '미확보'가 아니라 '없음'이다(0원으로 채우지 않는다). */
+const NO_PRINT: MonthlySide = {
+  amount: null,
+  orders: null,
+  range: "—",
+  status: "missing",
+  source: "인쇄 없음",
+  note: "인쇄 메뉴가 없는 매장이라 프린트 매출이 없어요",
+};
+
+/**
+ * 영등포시장역점 — 프린트 2대를 운영하지만 에스칼프린트 계정이 아직 연결되지 않아
+ * 정산본을 읽지 못했다. 0원이 아니라 '미확보'로 둔다.
+ */
+const YEONGDEUNGPO_PRINT_OCT: MonthlySide = {
+  amount: null,
+  orders: null,
+  range: "9/26~10/25",
+  status: "missing",
+  source: "에스칼프린트",
+  note: "정산본 미확보 — 프린트 2대 운영 · 계정 연결 필요",
+};
+
+const YEONGDEUNGPO_PRINT_NOV: MonthlySide = {
+  ...YEONGDEUNGPO_PRINT_OCT,
+  range: "10/26~11/25",
+};
+
 const PYEONGTAEK_SUMMARY: Record<MonthlyPeriod, MonthlySummary> = {
   "2026-11": {
     period: "2026-11",
@@ -138,9 +166,95 @@ const PYEONGTAEK_SUMMARY: Record<MonthlyPeriod, MonthlySummary> = {
  * (10월 10-01~10-31 304건 601,000원 / 11월 11-01~11-24 586,500원, 오늘 12,000원·어제 34,500원 포함).
  *   누적 실주문 10,030,100원·4,900건·환불 0건.
  *   프린트는 이 지점의 정산본을 아직 받지 못해 null + missing으로 둔다(0원으로 채우지 않는다).
+ *
+ * 영등포시장역점 커피는 2026-11-26 22:35 메일빈(휴니크) 관리자웹에서 직접 읽었다.
+ *   당월 매출 931,200원 · 당일 18,800원 · 전일 36,600원 · 전월 274,000원.
+ *   매출 → 당월(11-01~11-30) 조회 통계: 총 매출 931,200원, 건별 362건, 판매량 416잔
+ *   (음료 930,000원·370잔 + 기타 1,200원·1건 / 0원 테스트 결제 2건 포함).
+ *   일별 대시보드: 11/20 31,500 · 11/21 45,600 · 11/22 39,500 · 11/23 21,600 · 11/24 26,700 · 11/25 36,600 · 11/26 18,800원.
+ *   월별 대시보드: 6~9월 0원(개점 전) · 10월 274,000원 · 11월 931,200원.
+ *   원두는 기기 재고 %만 있고 잔량(g)이 없어 역산하지 않는다. 프린트 2대의 에스칼프린트 정산본은 계정 미연결로 미확보.
+ * 선유로점 커피는 2026-11-26 22:37 유로커피머신 VCMS 관리 페이지에서 직접 읽었다.
+ *   이번달 1,810,709원·26,591P · 오늘 53,500원 · 연간 16,781,471원.
+ *   일별: 11/20 49,900 · 11/21 115,674 · 11/22 59,600 · 11/23 33,500 · 11/24 66,938 · 11/25 64,259 · 11/26 53,500원
+ *   (그 앞 11/17 53,980 · 11/18 86,919 · 11/19 39,100원).
+ *   월별: 05월 1,480,600 · 06월 3,010,796 · 07월 2,811,400 · 08월 2,636,597 · 09월 2,567,462 · 10월 2,463,907 · 11월 1,810,709원.
+ *   인쇄 메뉴가 없는 매장이라 프린트 자체가 없다(null + '인쇄 없음').
  */
 const SUMMARY: Record<string, Record<MonthlyPeriod, MonthlySummary>> = {
   STORE_PTK: PYEONGTAEK_SUMMARY,
+  STORE_YDP: {
+    "2026-11": {
+      period: "2026-11",
+      monthLabel: "11월",
+      role: "이번달",
+      coffee: {
+        amount: 931_200,
+        orders: 362,
+        range: "11/1~11/26",
+        status: "live",
+        source: "메일빈",
+        note: "건별 362건 · 판매량 416잔 · 오늘 18,800원 포함(22:35 기준)",
+      },
+      print: YEONGDEUNGPO_PRINT_NOV,
+      total: 931_200,
+      partial: true,
+      note: "커피만 확인된 값이에요. 프린트 2대 정산본은 아직 확보하지 못했어요.",
+    },
+    "2026-10": {
+      period: "2026-10",
+      monthLabel: "10월",
+      role: "저번달",
+      coffee: {
+        amount: 274_000,
+        orders: null,
+        range: "10/1~10/31",
+        status: "final",
+        source: "메일빈",
+        note: "개점 첫 달 — 9월까지는 0원",
+      },
+      print: YEONGDEUNGPO_PRINT_OCT,
+      total: 274_000,
+      partial: true,
+      note: "10월은 개점 첫 달이에요. 프린트 정산본은 확보하지 못했어요.",
+    },
+  },
+  STORE_SYU: {
+    "2026-11": {
+      period: "2026-11",
+      monthLabel: "11월",
+      role: "이번달",
+      coffee: {
+        amount: 1_810_709,
+        orders: null,
+        range: "11/1~11/26",
+        status: "live",
+        source: "유로커피",
+        note: "오늘 53,500원 포함(22:37 기준) · 마일리지 26,591P",
+      },
+      print: NO_PRINT,
+      total: 1_810_709,
+      partial: false,
+      note: "인쇄 메뉴가 없는 매장이라 커피 매출만 있어요.",
+    },
+    "2026-10": {
+      period: "2026-10",
+      monthLabel: "10월",
+      role: "저번달",
+      coffee: {
+        amount: 2_463_907,
+        orders: null,
+        range: "10/1~10/31",
+        status: "final",
+        source: "유로커피",
+        note: "마일리지 60,793P · 9월 2,567,462원",
+      },
+      print: NO_PRINT,
+      total: 2_463_907,
+      partial: false,
+      note: "인쇄 메뉴가 없는 매장이라 커피 매출만 있어요.",
+    },
+  },
   STORE_GNM: {
     "2026-11": {
       period: "2026-11",

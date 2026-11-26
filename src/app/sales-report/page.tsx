@@ -18,7 +18,7 @@ import { STORES } from "@/features/sales-report/stores";
 
 export const metadata: Metadata = {
   title: "지점별 매출 리포트 | 럭키스팟",
-  description: "강남구청역점·한예종점·평택점의 매출과 소모품·발주 리포트(내부용). 지점별로 따로 집계합니다.",
+  description: "강남구청역점·한예종점·평택점·영등포시장역점·선유로점의 매출과 소모품·발주 리포트(내부용). 지점별로 따로 집계합니다.",
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
 };
 

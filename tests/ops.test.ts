@@ -20,6 +20,7 @@ import {
   proratedRatio,
 } from "../src/features/sales-report/profit";
 import { monthlyForStore } from "../src/features/sales-report/monthly";
+import { findStoreByCode, STORES, STORES_WITH_SNAPSHOT } from "../src/features/sales-report/stores";
 import { storePulse } from "../src/features/sales-report/trend";
 import { generatePin, hashStorePin, isValidPin, matchesStorePin, normalizePin } from "../src/features/stores/pin";
 import { parseSalesCsv } from "../src/lib/vendors/generic-webhook";
@@ -118,6 +119,60 @@ test("한예종점 10·11월 커피는 로얄선즈 실측값으로 채워진다
   assert.equal(nov.coffee.range, "11/1~11/26");
   assert.equal(nov.total, 4_493_800);
   assert.equal(nov.partial, true);
+});
+
+test("영등포시장역점·선유로점 11월 매출은 11-26 포털 실측으로 채워진다", () => {
+  // 메일빈(휴니크) 관리자웹 2026-11-26 22:35 — 당월 매출 931,200원, 건별 362건.
+  const ydp = monthlyForStore("STORE_YDP", "2026-11");
+  assert.ok(ydp);
+  assert.equal(ydp.coffee.amount, 931_200);
+  assert.equal(ydp.coffee.orders, 362);
+  assert.equal(ydp.coffee.range, "11/1~11/26");
+  assert.equal(ydp.total, 931_200);
+  // 프린트 2대는 에스칼프린트 계정 미연결 — 0원이 아니라 미확보(null).
+  assert.equal(ydp.print.amount, null);
+  assert.equal(ydp.print.status, "missing");
+  assert.equal(ydp.partial, true);
+
+  // 10월은 개점 첫 달 — 6개월 월별 매출에서 9월까지 0원이었다.
+  const ydpOct = monthlyForStore("STORE_YDP", "2026-10");
+  assert.ok(ydpOct);
+  assert.equal(ydpOct.coffee.amount, 274_000);
+  assert.equal(ydpOct.print.amount, null);
+
+  // 유로커피 VCMS 2026-11-26 22:37 — 이번달 1,810,709원(마일리지 26,591P).
+  const syu = monthlyForStore("STORE_SYU", "2026-11");
+  assert.ok(syu);
+  assert.equal(syu.coffee.amount, 1_810_709);
+  assert.equal(syu.total, 1_810_709);
+  // 인쇄 메뉴가 없는 매장이라 프린트가 '빠진' 것이 아니다 — 부분 집계로 표시하지 않는다.
+  assert.equal(syu.print.amount, null);
+  assert.equal(syu.print.status, "missing");
+  assert.equal(syu.partial, false);
+
+  const syuOct = monthlyForStore("STORE_SYU", "2026-10");
+  assert.ok(syuOct);
+  assert.equal(syuOct.coffee.amount, 2_463_907);
+  assert.equal(syuOct.partial, false);
+});
+
+test("영등포·선유로 예상 순수익 — 등록된 월세(80만·70만)로 고정비를 빼고 계산한다", () => {
+  const asOf = new Date("2026-11-26T22:40:00+09:00");
+  // 영등포: 931,200 × 78% = 726,336 − (800,000 × 26/30 = 693,333) = 33,003
+  const ydp = estimateProfit({ month: monthlyForStore("STORE_YDP", "2026-11"), fixedCost: defaultFixedCost("STORE_YDP"), asOf });
+  assert.ok(ydp);
+  assert.equal(ydp.coffeeProfit, 726_336);
+  assert.equal(ydp.printProfit, null);
+  assert.equal(ydp.fixedCostTotal, 800_000);
+  assert.equal(ydp.fixedCostApplied, 693_333);
+  assert.equal(ydp.net, 33_003);
+
+  // 선유로: 1,810,709 × 78% = 1,412,353 − (700,000 × 26/30 = 606,667) = 805,686
+  const syu = estimateProfit({ month: monthlyForStore("STORE_SYU", "2026-11"), fixedCost: defaultFixedCost("STORE_SYU"), asOf });
+  assert.ok(syu);
+  assert.equal(syu.coffeeProfit, 1_412_353);
+  assert.equal(syu.fixedCostApplied, 606_667);
+  assert.equal(syu.net, 805_686);
 });
 
 /* ------------------------------------------------------------------ */
@@ -388,4 +443,39 @@ test("주간 막대 — 실측이 없는 지점은 추정임을 밝히고 시간
 
   const empty = storePulse({ code: "STORE_NEW", asOf: "2026-11-23", dailyRate: null });
   assert.equal(empty.dailySource, "none");
+});
+
+test("주간 막대 — 영등포·선유로는 각 포털 대시보드 실측 7일을 쓴다", () => {
+  const ydp = storePulse({ code: "STORE_YDP", asOf: "2026-11-26", dailyRate: null });
+  assert.equal(ydp.dailySource, "measured");
+  assert.equal(ydp.daily[0].date, "2026-11-20");
+  assert.equal(ydp.daily[6].total, 18_800);
+  assert.equal(ydp.dailyAverage, 31_471);
+  assert.match(ydp.dailyNote, /메일빈/);
+  assert.equal(ydp.hourly, null);
+
+  const syu = storePulse({ code: "STORE_SYU", asOf: "2026-11-26", dailyRate: null });
+  assert.equal(syu.dailySource, "measured");
+  assert.equal(syu.daily[1].total, 115_674);
+  assert.equal(syu.dailyAverage, 63_339);
+  assert.equal(syu.hourly, null);
+
+  // 10월을 보는 화면에서는 11월 막대를 그리지 않고 월 일평균으로 추정한다.
+  const october = storePulse({ code: "STORE_SYU", asOf: "2026-10-31", dailyRate: 79_481 });
+  assert.equal(october.dailySource, "estimated");
+});
+
+test("지점 탭 — 매출 리포트는 5개 지점을 싣고, 재고 스냅샷이 있는 지점만 비교에 놓는다", () => {
+  assert.deepEqual(
+    STORES.map((store) => store.code),
+    ["STORE_GNM", "STORE_HYJ", "STORE_PTK", "STORE_YDP", "STORE_SYU"],
+  );
+  assert.deepEqual(
+    STORES_WITH_SNAPSHOT.map((store) => store.code),
+    ["STORE_GNM", "STORE_HYJ"],
+  );
+  // 새 지점은 스냅샷 대신 '마지막 조회 시각'을 남긴다 — 오래된 값을 오늘 값으로 읽지 않게.
+  assert.equal(findStoreByCode("STORE_YDP")?.snapshot, null);
+  assert.equal(findStoreByCode("STORE_YDP")?.latestReadAt, "2026-11-26T22:35:00+09:00");
+  assert.equal(findStoreByCode("STORE_SYU")?.latestReadAt, "2026-11-26T22:37:00+09:00");
 });

@@ -14,7 +14,9 @@
  *    집계(2026-11-26 16:11 내보내기). 일별 50,800 / 32,200 / 57,800 / 14,600 / 58,900 / 33,500 / 25,100원,
  *    시간대는 마지막으로 끝난 하루인 11-25(33,500원)의 6구간 6,800 · 2,100 · 9,900 · 6,900 · 0 · 7,800원.
  *    (2026-11-23까지 이 자리에 있던 값은 사용자가 보내 준 기존 POS(비즐) 매출분석보고서 11/16~11/22였다.)
- *  - 한예종점: 일별 실측이 아직 없어 월 커피 일평균으로만 그린다(추정 표시).
+ *  - 영등포시장역점·선유로점: 각 포털 대시보드의 '일별 매출'(7일)을 2026-11-26 22:35·22:37에 직접 읽은 값.
+ *    두 지점 모두 시간대 집계는 포털에 없어 비워 둔다(지어내지 않는다).
+ *  - 한예종점·평택점: 일별 실측이 아직 없어 월 커피 일평균으로만 그린다(추정 표시).
  */
 
 export type ChartDay = {
@@ -56,20 +58,73 @@ export const HOUR_LABELS: { key: HourBucket["key"]; label: string; range: string
   { key: "night", label: "밤", range: "21~24" },
 ];
 
-/** 포털 판매정보에서 확인된 강남구청역점 최근 7일 — 원 단위. */
-const GANGNAM_DAILY = [
-  { date: "2026-11-20", total: 50_800 },
-  { date: "2026-11-21", total: 32_200 },
-  { date: "2026-11-22", total: 57_800 },
-  { date: "2026-11-23", total: 14_600 },
-  { date: "2026-11-24", total: 58_900 },
-  { date: "2026-11-25", total: 33_500 },
-  { date: "2026-11-26", total: 25_100 },
-];
+/**
+ * 포털 대시보드에서 확인된 지점별 최근 7일 — 원 단위.
+ * 지점 코드별로 달을 함께 적어 둔다. 10월을 보는 화면에서 11월 막대를 그리지 않기 위해서다.
+ */
+type MeasuredDaily = {
+  /** 이 시리즈가 속한 달 (YYYY-MM) */
+  month: string;
+  /** 화면에 그대로 쓰는 출처 한 줄 */
+  note: string;
+  days: { date: string; total: number }[];
+};
 
-/** 2026-11-25(수) 시간대 매출 — 합계 33,500원(포털 판매정보, 마지막으로 끝난 하루). */
-const GANGNAM_HOURLY = [6_800, 2_100, 9_900, 6_900, 0, 7_800];
-const GANGNAM_HOURLY_DATE = "2026-11-25";
+const MEASURED_DAILY: Record<string, MeasuredDaily> = {
+  STORE_GNM: {
+    month: "2026-11",
+    note: "포털 판매정보 실측 11/20~11/26 · 막대 숫자는 천원 단위 반올림",
+    days: [
+      { date: "2026-11-20", total: 50_800 },
+      { date: "2026-11-21", total: 32_200 },
+      { date: "2026-11-22", total: 57_800 },
+      { date: "2026-11-23", total: 14_600 },
+      { date: "2026-11-24", total: 58_900 },
+      { date: "2026-11-25", total: 33_500 },
+      { date: "2026-11-26", total: 25_100 },
+    ],
+  },
+  // 2026-11-26 22:35 메일빈(휴니크) 관리자웹 → 대시보드 일별 매출(7일)
+  STORE_YDP: {
+    month: "2026-11",
+    note: "메일빈 대시보드 실측 11/20~11/26",
+    days: [
+      { date: "2026-11-20", total: 31_500 },
+      { date: "2026-11-21", total: 45_600 },
+      { date: "2026-11-22", total: 39_500 },
+      { date: "2026-11-23", total: 21_600 },
+      { date: "2026-11-24", total: 26_700 },
+      { date: "2026-11-25", total: 36_600 },
+      { date: "2026-11-26", total: 18_800 },
+    ],
+  },
+  // 2026-11-26 22:37 유로커피머신 VCMS → 대시보드 일별 매출
+  STORE_SYU: {
+    month: "2026-11",
+    note: "유로커피 대시보드 실측 11/20~11/26",
+    days: [
+      { date: "2026-11-20", total: 49_900 },
+      { date: "2026-11-21", total: 115_674 },
+      { date: "2026-11-22", total: 59_600 },
+      { date: "2026-11-23", total: 33_500 },
+      { date: "2026-11-24", total: 66_938 },
+      { date: "2026-11-25", total: 64_259 },
+      { date: "2026-11-26", total: 53_500 },
+    ],
+  },
+};
+
+/** 하루 시간대 6구간 실측 — 포털에 시간대가 있는 지점만 둔다. */
+const MEASURED_HOURLY: Record<string, { date: string; amounts: number[]; note: string }> = {
+  // 2026-11-25(수) 시간대 매출 — 합계 33,500원(포털 판매정보, 마지막으로 끝난 하루).
+  STORE_GNM: {
+    date: "2026-11-25",
+    amounts: [6_800, 2_100, 9_900, 6_900, 0, 7_800],
+    note: "포털 판매정보 11.25(수) 실측(마지막으로 끝난 하루)",
+  },
+};
+
+const NO_HOURLY_NOTE = "시간대 매출은 이 지점 포털에 아직 없어요. 수집기가 읽으면 여기에 채워져요.";
 
 function labelOf(date: string) {
   const value = new Date(`${date}T12:00:00+09:00`);
@@ -112,26 +167,37 @@ export function lastSevenDays(asOf: string): string[] {
  */
 export function storePulse(input: { code: string; asOf: string; dailyRate?: number | null }): StorePulse {
   const code = input.code.toUpperCase();
+  const month = input.asOf.slice(0, 7);
+  const measured = MEASURED_DAILY[code];
+  const hourly = MEASURED_HOURLY[code];
 
-  if (code === "STORE_GNM") {
-    const daily = GANGNAM_DAILY.map((row) => ({ ...row, label: labelOf(row.date) }));
-    const total = GANGNAM_HOURLY.reduce((sum, value) => sum + value, 0);
+  // 실측 일별이 있고, 보고 있는 달이 그 시리즈의 달과 같을 때만 실측으로 그린다.
+  if (measured && measured.month === month) {
+    const daily = measured.days.map((row) => ({ ...row, label: labelOf(row.date) }));
+    const hourlySeries = hourly && hourly.date.slice(0, 7) === month ? hourly : null;
+    const hourlyTotal = hourlySeries
+      ? hourlySeries.amounts.reduce((sum, value) => sum + value, 0)
+      : null;
 
     return {
       daily,
       dailyAverage: Math.round(average(daily.map((row) => row.total))),
       dailySource: "measured",
-      dailyNote: "포털 판매정보 실측 11/20~11/26 · 막대 숫자는 천원 단위 반올림",
-      hourly: HOUR_LABELS.map((bucket, index) => ({
-        key: bucket.key,
-        label: bucket.label,
-        range: bucket.range,
-        amount: GANGNAM_HOURLY[index],
-        share: total > 0 ? (GANGNAM_HOURLY[index] / total) * 100 : 0,
-      })),
-      hourlyDate: GANGNAM_HOURLY_DATE,
-      hourlyTotal: total,
-      hourlyNote: `포털 판매정보 ${labelOf(GANGNAM_HOURLY_DATE)} 실측(마지막으로 끝난 하루) · 합계 ${total.toLocaleString("ko-KR")}원`,
+      dailyNote: measured.note,
+      hourly:
+        hourlySeries && hourlyTotal !== null
+          ? HOUR_LABELS.map((bucket, index) => ({
+              key: bucket.key,
+              label: bucket.label,
+              range: bucket.range,
+              amount: hourlySeries.amounts[index],
+              share: hourlyTotal > 0 ? (hourlySeries.amounts[index] / hourlyTotal) * 100 : 0,
+            }))
+          : null,
+      hourlyDate: hourlySeries?.date ?? null,
+      hourlyTotal,
+      hourlyNote:
+        hourlySeries && hourlyTotal !== null ? `${hourlySeries.note} · 합계 ${hourlyTotal.toLocaleString("ko-KR")}원` : NO_HOURLY_NOTE,
     };
   }
 
@@ -155,7 +221,7 @@ export function storePulse(input: { code: string; asOf: string; dailyRate?: numb
     hourly: null,
     hourlyDate: null,
     hourlyTotal: null,
-    hourlyNote: "시간대 매출은 이 지점 포털에 아직 없어요. 수집기가 읽으면 여기에 채워져요.",
+    hourlyNote: NO_HOURLY_NOTE,
   };
 }
 

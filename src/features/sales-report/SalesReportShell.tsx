@@ -34,10 +34,12 @@ const STORE_SUB: Record<StoreId, string> = {
   gangnam: "프린트 중심",
   hanyeojong: "대학 상권",
   pyeongtaek: "아파트 상가",
+  yeongdeungpo: "프린트 2대",
+  seonyuro: "인쇄 없음",
 };
 
 const TABS: { id: Tab; label: string; sub: string }[] = [
-  ...STORES.map((store) => ({ id: store.id as Tab, label: store.shortLabel, sub: STORE_SUB[store.id] })),
+  ...STORES.map((store) => ({ id: store.id as Tab, label: store.tabLabel ?? store.shortLabel, sub: STORE_SUB[store.id] })),
   { id: "compare", label: "지점 비교", sub: "합산 없음" },
 ];
 
@@ -171,7 +173,7 @@ export function SalesReportShell({ fixedCosts = {} }: { fixedCosts?: Record<stri
             store={{ ...store, snapshot }}
           />
         ) : (
-          <StoreSalesOnly key={`${store.id}-${period}`} period={period} store={store} />
+          <StoreSalesOnly key={`${store.id}-${period}`} fixedCost={fixedCost} period={period} profit={profit} store={store} />
         )}
       </div>
 
@@ -180,8 +182,9 @@ export function SalesReportShell({ fixedCosts = {} }: { fixedCosts?: Record<stri
           <div className="mx-auto flex w-full max-w-[760px] items-center gap-2 px-4 py-2.5">
             <div className="min-w-0 flex-1">
               <p className="truncate text-[11px] font-semibold text-[#98A29B]">
-                {store.shortLabel} · {month ? `${month.monthLabel} ${month.partial ? "진행 중" : "확정"}` : "수집 전"} ·{" "}
-                {snapshot ? capturedLabel(snapshot.capturedAt) : "재고 수집 전"}
+                {store.shortLabel} ·{" "}
+                {month ? `${month.monthLabel} ${month.coffee.status === "live" ? "진행 중" : month.partial ? "부분 확정" : "확정"}` : "수집 전"} ·{" "}
+                {snapshot ? capturedLabel(snapshot.capturedAt) : store.latestReadAt ? capturedLabel(store.latestReadAt) : "재고 수집 전"}
               </p>
               <p className="mt-0.5 truncate text-[16px] font-bold tabular-nums tracking-[0.02em] text-[#0F1412]">
                 {month?.total ? won(month.total) : "—"}
