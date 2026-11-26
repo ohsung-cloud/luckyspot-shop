@@ -109,6 +109,7 @@ export function RevenueMixDonut({ month, compact = false }: { month: MonthlySumm
 
   const coffee = month.coffee.amount;
   const print = month.print.amount;
+  const printable = month.print.source !== "인쇄 없음";
   const known = (coffee ?? 0) + (print ?? 0);
   const safe = known || 1;
   const coffeePct = coffee ? (coffee / safe) * 100 : 0;
@@ -186,11 +187,19 @@ export function RevenueMixDonut({ month, compact = false }: { month: MonthlySumm
               <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-[#1D9F4C]" />
               <span className={`font-bold text-[#0F1412] ${compact ? "text-[11px]" : "text-[12px]"}`}>프린트</span>
               <span className={`ml-auto shrink-0 font-bold tabular-nums text-[#0F1412] ${compact ? "text-[13px]" : "text-[15px]"}`}>
-                {print ? `${Math.round(printPct)}%` : month.print.status === "pending" ? "정산 전" : "미집계"}
+                {print
+                  ? `${Math.round(printPct)}%`
+                  : !printable
+                    ? "인쇄 없음"
+                    : month.print.status === "pending"
+                      ? "정산 전"
+                      : "미집계"}
               </span>
             </div>
             <p className={`pl-4 font-semibold tabular-nums text-[#3B4740] ${compact ? "text-[10.5px]" : "text-[12px]"}`}>{formatWon(print)}</p>
-            <p className={`pl-4 text-[#98A29B] ${compact ? "text-[8.5px]" : "text-[10px]"}`}>{month.print.range}</p>
+            <p className={`pl-4 text-[#98A29B] ${compact ? "text-[8.5px]" : "text-[10px]"}`}>
+              {printable ? month.print.range : "프린트가 없는 매장이에요"}
+            </p>
           </li>
         </ul>
       </div>
