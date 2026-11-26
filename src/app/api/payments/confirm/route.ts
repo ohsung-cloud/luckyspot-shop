@@ -10,7 +10,7 @@ import {
 } from "@/features/http/guard";
 import { resolveOrderRecipient } from "@/features/order/intake";
 import { relayOrderToGas } from "@/features/order/gas";
-import { NO_TAX_INVOICE, validateTaxInvoice } from "@/features/tax-invoice";
+import { buildTaxInvoice } from "@/features/order/tax-invoice";
 import { queueAdminAlert } from "@/features/order/admin-alert";
 import { formatWon, queueHqBoardAlert } from "@/features/notifications/hq-board";
 import { queueOrderNotification } from "@/features/order/solapi";
@@ -22,6 +22,7 @@ import {
 } from "@/features/order/utils";
 import { savePaidOrder } from "@/features/payments/order-record";
 import { resolveTossKeys, shouldSuppressOperations } from "@/features/payments/keys";
+import { findStoreTaxProfile } from "@/features/stores/tax-profiles";
 import {
   paymentMethodKeyFromToss,
   paymentMethodLabel,
@@ -185,18 +186,14 @@ export async function POST(request: Request) {
 
   const recipient = resolved.recipient;
 
-  // 3-1) 세금계산서 발급 정보 — 결제 준비 때 서명한 값을 그대로 쓴다(브라우저 사본을 믿지 않는다).
-  const taxVerdict = validateTaxInvoice({
-    ...NO_TAX_INVOICE,
-    ...(claims.ti ?? {}),
+  // 3-1) 세금계산서 — 결제 준비 때 서명한 "요청 여부"만 믿고, 사업자 정보는 지점 코드로 서버가 다시 채운다.
+  //  (토큰에는 사업자 정보가 실리지 않는다. 브라우저 사본·토큰의 위조 여지도 없다.)
+  const tax = buildTaxInvoice({
+    profile: await findStoreTaxProfile(recipient.storeCode),
     requested: claims.ti?.requested === true,
   });
 
-  if (!taxVerdict.ok) {
-    console.warn(`[payments] 서명된 세금계산서 정보가 올바르지 않아 미신청으로 처리 order=${orderId}: ${taxVerdict.message}`);
-  }
-
-  const taxInvoice = taxVerdict.ok ? taxVerdict.value : NO_TAX_INVOICE;
+  const taxInvoice = tax.tax;
 
   // 4) 토스 승인
   let confirmed = await confirmTossPayment(
@@ -321,7 +318,7 @@ export async function POST(request: Request) {
       requesterName: recipient.name,
       storeName: recipient.storeName,
       taxInvoiceRequested: taxInvoice.requested,
-      taxInvoiceText: orderSheet.tax_invoice_text,
+      taxInvoiceText: tax.text,
     });
 
     // 본사 실시간 알림 보드(Notion · 디스코드/슬랙 웹훅).
@@ -348,7 +345,13 @@ export async function POST(request: Request) {
         `주문번호 ${orderId}`,
         orderSheet.item_text,
         `결제 ${methodLabel}${keys.testMode ? " (테스트)" : ""}`,
-        taxInvoice.requested ? `세금계산서 발급 요청 — ${orderSheet.tax_invoice_text}` : "세금계산서 미신청",
+        taxInvoice.requested
+          ? tax.missingProfile
+            ? "세금계산서 발급 요청 — 지점 사업자 정보 미등록(본사 확인 필요)"
+            : tax.emailMissing
+              ? `세금계산서 발급 요청 — ${tax.text} (수취 이메일 미등록)`
+              : `세금계산서 발급 요청 — ${tax.text}`
+          : "세금계산서 미신청",
         depositNote,
       ]
         .filter(Boolean)
@@ -389,7 +392,7 @@ export async function POST(request: Request) {
     saved: saved.saved,
     status,
     storeName: recipient.storeName,
-    taxInvoice,
+    taxInvoiceRequested: taxInvoice.requested,
     testMode: keys.testMode,
     virtualAccount: payment.virtualAccount
       ? {

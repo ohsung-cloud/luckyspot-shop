@@ -8,11 +8,12 @@ import {
   generateOrderId,
 } from "@/features/order/utils";
 import { queueAdminAlert } from "@/features/order/admin-alert";
-import { readTaxInvoice } from "@/features/order/tax-invoice";
+import { buildTaxInvoice, readTaxInvoiceRequest } from "@/features/order/tax-invoice";
 import { formatWon, queueHqBoardAlert } from "@/features/notifications/hq-board";
 import { queueOrderNotification } from "@/features/order/solapi";
 import { saveShopOrder } from "@/features/order/supabase";
 import { resolveStoreByCode, resolveStoreByLabel } from "@/features/stores/directory";
+import { findStoreTaxProfile } from "@/features/stores/tax-profiles";
 import type { StoreRecord } from "@/features/stores/types";
 import { DIRECT_SHIPPING_LABEL, DIRECT_SHIPPING_VALUE } from "@/data/address";
 
@@ -233,12 +234,12 @@ export async function POST(request: Request) {
 
   const recipient = resolved.recipient;
 
-  // 세금계산서 발급 요청 — 요청했는데 사업자 정보가 비었으면 발급할 수 없으니 400으로 막는다.
-  const tax = readTaxInvoice(candidate);
-
-  if (!tax.ok) {
-    return createBadRequest(tax.message);
-  }
+  // 세금계산서 발급 요청 — 화면은 체크 여부만 보낸다. 사업자 정보는 지점 코드로 서버가 채운다.
+  //  (등록된 정보가 없어도 주문은 접수하고, 발주 알림에 "사업자 정보 미등록"으로 표시한다.)
+  const tax = buildTaxInvoice({
+    profile: await findStoreTaxProfile(recipient.storeCode),
+    requested: readTaxInvoiceRequest(candidate),
+  });
 
   // 금액은 클라이언트가 보낸 값이 아니라 서버 카탈로그 단가로 다시 계산한다.
   const orderLines = buildOrderLines(items);
@@ -260,7 +261,7 @@ export async function POST(request: Request) {
       name: recipient.name,
       phone: recipient.phone,
       shippingOption: recipient.shippingOption,
-      taxInvoice: tax.value,
+      taxInvoice: tax.tax,
     },
     { createdAt, orderId },
   );
@@ -313,7 +314,7 @@ export async function POST(request: Request) {
     shippingOption: recipient.shippingOption,
     storeCode: recipient.storeCode,
     storeName: recipient.storeName,
-    taxInvoice: tax.value,
+    taxInvoice: tax.tax,
     totalAmount: payload.total_price,
   });
 
@@ -329,8 +330,8 @@ export async function POST(request: Request) {
     orderNumber: payload.order_id,
     requesterName: payload.name,
     storeName: recipient.storeName,
-    taxInvoiceRequested: tax.value.requested,
-    taxInvoiceText: payload.tax_invoice_text,
+    taxInvoiceRequested: tax.tax.requested,
+    taxInvoiceText: tax.text,
   });
 
   // 본사 실시간 알림 보드(Notion · 디스코드/슬랙 웹훅)에도 같은 접수를 남긴다.
@@ -341,7 +342,13 @@ export async function POST(request: Request) {
     detail: [
       `주문번호 ${payload.order_id}`,
       payload.item_text,
-      tax.value.requested ? `세금계산서 발급 요청 — ${payload.tax_invoice_text}` : "세금계산서 미신청",
+      tax.tax.requested
+        ? tax.missingProfile
+          ? "세금계산서 발급 요청 — 지점 사업자 정보 미등록(본사 확인 필요)"
+          : tax.emailMissing
+            ? `세금계산서 발급 요청 — ${tax.text} (수취 이메일 미등록)`
+            : `세금계산서 발급 요청 — ${tax.text}`
+        : "세금계산서 미신청",
       "계좌 입금으로 접수(토스 결제 아님)",
     ]
       .filter(Boolean)
@@ -368,7 +375,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     createdAt: payload.created_at,
     orderId: payload.order_id,
-    taxInvoiceRequested: tax.value.requested,
+    taxInvoiceRequested: tax.tax.requested,
     totalPrice: payload.total_price,
   });
 }

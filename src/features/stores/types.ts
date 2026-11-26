@@ -12,16 +12,7 @@ export type StoreRecord = StoreOption & {
   phone: string | null;
 };
 
-/**
- * 지점에 등록된 세금계산서 기본 사업자 정보 (선택).
- * Supabase `stores` 의 business_* · tax_email 컬럼에서 읽으며,
- * 마이그레이션 전에는 비어 있다(점주가 주문서에서 직접 입력).
+/*
+ * 지점별 세금계산서 사업자 정보 타입은 `tax-profiles.ts`(서버 전용)에만 있다.
+ * 예전에는 이 파일에 두어 주문서로 내려보냈지만, 이제 브라우저에는 아무 값도 보내지 않는다.
  */
-export type StoreTaxProfile = {
-  businessNo: string;
-  businessName: string;
-  ceoName: string;
-  email: string;
-  businessType: string;
-  businessItem: string;
-};

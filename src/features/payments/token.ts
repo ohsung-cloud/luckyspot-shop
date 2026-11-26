@@ -1,7 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import { TOSS_TEST_SECRET_KEY } from "@/features/payments/keys";
-import { isTaxInvoiceRequest, type TaxInvoiceRequest } from "@/features/tax-invoice";
 
 /**
  * 결제 의도(intent) 서명 — 결제창을 띄우기 전에 서버가 확정한 "무엇을 얼마에" 를
@@ -13,10 +12,10 @@ import { isTaxInvoiceRequest, type TaxInvoiceRequest } from "@/features/tax-invo
  *   (2) 서버가 처음 확정한 금액과 모두 같을 때만 승인 API 를 호출한다.
  *
  * 무엇을 서명하나
- *   { oid 주문번호, amt 금액, ih 품목(id·수량) 해시, ti 세금계산서 발급 정보, exp 만료시각 }
+ *   { oid 주문번호, amt 금액, ih 품목(id·수량) 해시, ti 세금계산서 발급 요청 여부, exp 만료시각 }
  *   → 개인정보(이름·연락처·주소)는 토큰에 넣지 않는다. 주소창에도 싣지 않는다.
- *     ti 에는 발급에 필요한 사업자 정보(상호·사업자번호·대표자·이메일)만 담는다 —
- *     결제창을 다녀온 뒤에도 같은 발급 정보로 기록하기 위한 서명된 사본이다.
+ *     ti 에는 "발급 요청함(true)" 하나만 담는다. 사업자등록번호·상호·대표자·이메일은
+ *     2026-11-26부터 지점 코드로 서버(DB)가 채우므로 토큰에 실리지 않는다.
  */
 
 const TTL_MS = 30 * 60 * 1000;
@@ -28,8 +27,8 @@ export type PaymentIntentClaims = {
   amt: number;
   /** 품목(id·수량) 해시 */
   ih: string;
-  /** 세금계산서 발급 정보(요청한 경우에만) */
-  ti?: TaxInvoiceRequest;
+  /** 세금계산서 발급 요청 여부(요청한 경우에만). 사업자 정보는 여기에 넣지 않는다. */
+  ti?: { requested: true };
   /** 만료 시각(ms) */
   exp: number;
 };
@@ -79,7 +78,8 @@ export function createIntentToken(input: {
   orderId: string;
   amount: number;
   items: { id: string; quantity: number }[];
-  taxInvoice?: TaxInvoiceRequest;
+  /** 발급을 요청했는가 — 사업자 정보 자체는 받지 않는다(서버가 지점 코드로 채운다). */
+  taxInvoiceRequested?: boolean;
   now?: number;
 }): string {
   const claims: PaymentIntentClaims = {
@@ -87,19 +87,7 @@ export function createIntentToken(input: {
     exp: (input.now ?? Date.now()) + TTL_MS,
     ih: hashItems(input.items),
     oid: input.orderId,
-    ...(input.taxInvoice?.requested
-      ? {
-          ti: {
-            businessItem: input.taxInvoice.businessItem,
-            businessName: input.taxInvoice.businessName,
-            businessNo: input.taxInvoice.businessNo,
-            businessType: input.taxInvoice.businessType,
-            ceoName: input.taxInvoice.ceoName,
-            email: input.taxInvoice.email,
-            requested: true,
-          },
-        }
-      : {}),
+    ...(input.taxInvoiceRequested ? { ti: { requested: true } } : {}),
   };
 
   const payload = Buffer.from(JSON.stringify(claims), "utf8").toString("base64url");
@@ -138,7 +126,9 @@ export function verifyIntentToken(token: unknown, now = Date.now()): PaymentInte
   if (typeof claims.exp !== "number" || claims.exp < now) return null;
 
   // 서명은 맞지만 모양이 깨진 발급 정보는 조용히 버린다(발급 신청 안 함으로 처리).
-  if (claims.ti !== undefined && !isTaxInvoiceRequest(claims.ti)) {
+  if (claims.ti !== undefined && claims.ti !== null && typeof claims.ti === "object") {
+    if ((claims.ti as { requested?: unknown }).requested !== true) claims.ti = undefined;
+  } else {
     claims.ti = undefined;
   }
 

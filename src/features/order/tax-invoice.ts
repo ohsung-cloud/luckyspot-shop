@@ -1,80 +1,83 @@
-import {
-  NO_TAX_INVOICE,
-  TAX_INVOICE_FIELD_LIMITS,
-  normalizeBusinessNo,
-  validateTaxInvoice,
-  type TaxInvoiceRequest,
-} from "@/features/tax-invoice";
+import { NO_TAX_INVOICE, formatBusinessNo, type TaxInvoiceRequest } from "@/features/tax-invoice";
+import { isIssuableProfile, type StoreTaxProfile } from "@/features/stores/tax-profiles";
 
 /**
- * API 본문에서 세금계산서 발급 요청을 읽는다 (서버 전용).
+ * 주문서의 세금계산서 "발급 요청" 하나만 읽고, 지점에 등록된 사업자 정보를 붙인다 (서버 전용).
  *
- * 받는 모양 (둘 다 허용 — 예전 화면·다른 앱이 평평한 키로 보내도 주문이 막히지 않게)
- *   { taxInvoice: { requested, businessNo, businessName, ceoName, email, businessType, businessItem } }
- *   { taxInvoiceRequested, taxBusinessNo, taxBusinessName, taxCeoName, taxEmail, ... }
- *
- * 원칙
- *  · 값이 없으면 "발급 신청 안 함"으로 본다(기존 클라이언트의 주문을 막지 않는다).
- *  · requested: true 인데 필수 값이 틀리면 400으로 막는다(발급 정보가 빈 채로 접수되면
- *    본사가 세금계산서를 보낼 수 없기 때문).
- *  · 저장·전송에는 항상 숫자만 남긴 사업자번호를 쓴다.
+ * 바뀐 점(2026-11-26)
+ *  - 화면은 체크박스만 보낸다. 사업자등록번호·상호·대표자·이메일은 브라우저에서 오지 않는다.
+ *  - 받는 모양(셋 다 허용 — 예전 화면·다른 앱의 주문을 막지 않는다)
+ *      { taxInvoiceRequested: true }
+ *      { taxInvoice: { requested: true } }
+ *      { taxInvoice: true }
+ *  - 발급 여부(requested)만 서버가 그대로 받아들이고, 나머지 값은 지점 코드로 서버가 채운다.
+ *    값을 클라이언트가 보내와도 쓰지 않는다(위조된 사업자 정보로 계산서가 나가지 않게).
  */
 
-export type TaxInvoiceParseResult =
-  | { ok: true; value: TaxInvoiceRequest; taxText: string }
-  | { ok: false; message: string };
+export function readTaxInvoiceRequest(candidate: Record<string, unknown>): boolean {
+  const raw = candidate.taxInvoice;
 
-function text(value: unknown, max: number) {
-  if (typeof value !== "string") return "";
+  if (raw === true) return true;
 
-  const trimmed = value.trim();
-
-  if (trimmed.length > max) return trimmed.slice(0, max);
-
-  return trimmed;
-}
-
-function readRawObject(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-
-  return value as Record<string, unknown>;
-}
-
-export function readTaxInvoice(candidate: Record<string, unknown>): TaxInvoiceParseResult {
-  const raw = readRawObject(candidate.taxInvoice);
-
-  const requested =
-    raw?.requested === true ||
-    candidate.taxInvoiceRequested === true ||
-    (raw === null && candidate.taxInvoice === true);
-
-  if (!requested) {
-    return { ok: true, value: { ...NO_TAX_INVOICE }, taxText: "" };
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    if ((raw as Record<string, unknown>).requested === true) return true;
   }
 
-  const source: Record<string, unknown> = raw ?? candidate;
+  return candidate.taxInvoiceRequested === true;
+}
 
-  const pick = (rawKey: string, flatKey: string) =>
-    source[rawKey] !== undefined ? source[rawKey] : candidate[flatKey];
+export type BuiltTaxInvoice = {
+  /** 주문·알림·시트에 쓰는 값. 요청이 없으면 전부 빈 값 */
+  tax: TaxInvoiceRequest;
+  /** 요청은 했는데 지점 사업자 정보가 없거나 부족한가(본사 확인 필요) */
+  missingProfile: boolean;
+  /** 수취 이메일이 비어 있는가(발급은 되지만 보낼 곳이 없다) */
+  emailMissing: boolean;
+  /** 알림·화면에 쓰는 한 줄 */
+  text: string;
+};
 
-  const input: TaxInvoiceRequest = {
-    businessItem: text(pick("businessItem", "taxBusinessItem"), TAX_INVOICE_FIELD_LIMITS.businessItem),
-    businessName: text(pick("businessName", "taxBusinessName"), TAX_INVOICE_FIELD_LIMITS.businessName),
-    businessNo: normalizeBusinessNo(text(pick("businessNo", "taxBusinessNo"), 20)),
-    businessType: text(pick("businessType", "taxBusinessType"), TAX_INVOICE_FIELD_LIMITS.businessType),
-    ceoName: text(pick("ceoName", "taxCeoName"), TAX_INVOICE_FIELD_LIMITS.ceoName),
-    email: text(pick("email", "taxEmail"), TAX_INVOICE_FIELD_LIMITS.email),
+/**
+ * 요청 여부 + 지점 사업자 정보 → 주문에 남길 발급 정보.
+ *
+ * 요청을 껐으면 빈 값(NO_TAX_INVOICE)을 돌려준다.
+ * 요청했는데 지점 정보가 없으면 requested=true 인 채로 두고 missingProfile=true 로 알린다
+ * (주문 자체는 막지 않는다 — 사업자 정보는 본사가 채워 발급한다).
+ */
+export function buildTaxInvoice(input: {
+  requested: boolean;
+  profile: StoreTaxProfile | null | undefined;
+}): BuiltTaxInvoice {
+  if (!input.requested) {
+    return { emailMissing: false, missingProfile: false, tax: { ...NO_TAX_INVOICE }, text: "" };
+  }
+
+  const profile = input.profile ?? null;
+  const issuable = isIssuableProfile(profile);
+
+  const tax: TaxInvoiceRequest = {
+    businessItem: profile?.businessItem.trim() ?? "",
+    businessName: profile?.businessName.trim() ?? "",
+    businessNo: profile?.businessNo.trim() ?? "",
+    businessType: profile?.businessType.trim() ?? "",
+    ceoName: profile?.ceoName.trim() ?? "",
+    email: profile?.email.trim() ?? "",
     requested: true,
   };
 
-  const verdict = validateTaxInvoice(input);
-
-  if (!verdict.ok) return { ok: false, message: verdict.message };
-
-  const value = verdict.value;
-  const taxText = [value.businessName, value.businessNo, value.ceoName, value.email]
+  const text = [
+    tax.businessName,
+    formatBusinessNo(tax.businessNo),
+    tax.ceoName,
+    tax.email,
+  ]
     .filter(Boolean)
     .join(" · ");
 
-  return { ok: true, value, taxText };
+  return {
+    emailMissing: tax.email.length === 0,
+    missingProfile: !issuable,
+    tax,
+    text,
+  };
 }

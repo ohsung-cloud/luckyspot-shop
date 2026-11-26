@@ -20,37 +20,12 @@ import {
   writeLastOrder,
   writeRecentStore,
 } from "@/features/shop/preferences";
-import {
-  readRecentTaxProfile,
-  readStoredTaxProfile,
-  saveTaxProfile,
-  saveTaxReceipt,
-} from "@/features/shop/tax-profile";
-import {
-  EMPTY_TAX_INVOICE,
-  isValidBusinessNo,
-  isValidTaxEmail,
-  type TaxInvoiceRequest,
-} from "@/features/tax-invoice";
+import { saveTaxReceipt } from "@/features/shop/tax-receipt";
 import { ORDER_SUPPORT_PHONE } from "@/features/order/utils";
 import type { StoreOption } from "@/features/stores/types";
 import { Card, CardBody, CardHead, Chip } from "@/components/internal/card-ui";
 import { useCartStore } from "@/stores/cartStore";
-import TaxInvoiceFields from "./TaxInvoiceFields";
-
-function mergeTax(base: TaxInvoiceRequest, fill: Partial<TaxInvoiceRequest>): TaxInvoiceRequest {
-  const pick = (current: string, next: string | undefined) => current.trim() || next?.trim() || "";
-
-  return {
-    businessItem: pick(base.businessItem, fill.businessItem),
-    businessName: pick(base.businessName, fill.businessName),
-    businessNo: pick(base.businessNo, fill.businessNo),
-    businessType: pick(base.businessType, fill.businessType),
-    ceoName: pick(base.ceoName, fill.ceoName),
-    email: pick(base.email, fill.email),
-    requested: base.requested,
-  };
-}
+import TaxInvoiceToggle from "./TaxInvoiceToggle";
 
 /**
  * 원두 간편 발주 — 한 화면에서 세 번 누르면 끝난다.
@@ -85,9 +60,8 @@ export default function QuickBeanOrder({
   const [phone, setPhone] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [boxes, setBoxes] = useState(1);
-  const [tax, setTax] = useState<TaxInvoiceRequest>({ ...EMPTY_TAX_INVOICE });
-  const [taxHint, setTaxHint] = useState<string | null>(null);
-  const [taxOpen, setTaxOpen] = useState(false);
+  // 세금계산서는 "발급 요청 여부"만 고른다. 사업자 정보는 서버가 지점 코드로 채운다.
+  const [taxRequested, setTaxRequested] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [storeError, setStoreError] = useState<string | null>(null);
@@ -104,22 +78,10 @@ export default function QuickBeanOrder({
     customerName.trim().length > 0 && /^01\d{8,9}$/.test(phone) && deliveryAddress.trim().length > 0;
   const storeComplete = isDirect ? directComplete : Boolean(selectedStore);
 
-  const taxComplete =
-    !tax.requested ||
-    (isValidBusinessNo(tax.businessNo) &&
-      tax.businessName.trim().length > 0 &&
-      tax.ceoName.trim().length > 0 &&
-      isValidTaxEmail(tax.email));
-
   useEffect(() => {
     const recent = readRecentStore();
 
     if (recent) setStoreCode(recent.code);
-
-    // 세금계산서 정보가 이미 있으면 접어 두고, 없으면 펼쳐서 바로 입력하게 한다.
-    const lastTax = readRecentTaxProfile();
-
-    if (lastTax) setTax((current) => mergeTax(current, lastTax));
   }, []);
 
   useEffect(() => {
@@ -144,36 +106,6 @@ export default function QuickBeanOrder({
     };
   }, []);
 
-  // 지점을 고르면 그 지점에 저장된 발급 정보 → 서버에 등록된 정보 순으로 채운다.
-  useEffect(() => {
-    if (!storeCode) return;
-
-    const key = storeCode === DIRECT_SHIPPING_VALUE ? null : storeCode;
-    const stored = readStoredTaxProfile(key);
-
-    setTaxHint(null);
-
-    if (stored) setTax((current) => mergeTax(current, stored));
-
-    if (!key) return;
-
-    let cancelled = false;
-
-    fetch(`/api/stores/tax-profile?code=${encodeURIComponent(key)}`, { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: { profile?: Partial<TaxInvoiceRequest> | null } | null) => {
-        if (cancelled || !data?.profile) return;
-
-        setTax((current) => mergeTax(current, data.profile ?? {}));
-        setTaxHint("지점에 등록된 사업자 정보를 채웠어요.");
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [storeCode]);
-
   const handleSubmit = async () => {
     if (submitting) return;
 
@@ -187,14 +119,6 @@ export default function QuickBeanOrder({
     }
 
     setStoreError(null);
-
-    if (!taxComplete) {
-      setTaxOpen(true);
-      setErrorMessage(null);
-      document.getElementById("quick-tax")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-
     setSubmitting(true);
     setErrorMessage(null);
 
@@ -202,7 +126,7 @@ export default function QuickBeanOrder({
       const response = await fetch("/api/orders", {
         body: JSON.stringify({
           items: [{ id: BEAN_BOX_PRODUCT_ID, quantity: boxes }],
-          taxInvoice: tax,
+          taxInvoiceRequested: taxRequested,
           // 지점 주문은 코드만 보낸다 — 이름·연락처·주소는 서버가 지점 정보로 채운다.
           ...(isDirect
             ? {
@@ -244,8 +168,7 @@ export default function QuickBeanOrder({
         totalAmount: totalPrice,
       });
 
-      saveTaxProfile(isDirect ? null : selectedStore?.code ?? null, tax);
-      saveTaxReceipt(orderId, tax);
+      saveTaxReceipt(orderId, taxRequested);
 
       router.push(
         `/order-complete?orderId=${encodeURIComponent(orderId)}&totalPrice=${encodeURIComponent(
@@ -283,7 +206,6 @@ export default function QuickBeanOrder({
             className="ls-focus h-14 w-full appearance-none rounded-[14px] bg-[#F7F8F9] px-4 pr-11 text-[17px] font-semibold text-[#0F1412] outline-none ring-0 transition-shadow focus:ring-2 focus:ring-[#0F1412]"
             onChange={(event) => {
               setStoreCode(event.target.value);
-              setTaxHint(null);
               setStoreError(null);
             }}
             value={storeCode}
@@ -442,52 +364,14 @@ export default function QuickBeanOrder({
           로 전화 주세요.
         </p>
 
-        {/* 세금계산서 — 평소에는 접힌 한 줄, 필요할 때만 연다 */}
-        <div className="mt-4 rounded-[16px] bg-[#F7F8F9]" id="quick-tax">
-          <button
-            aria-expanded={taxOpen}
-            className="ls-focus flex min-h-[56px] w-full items-center justify-between gap-2 rounded-[16px] px-4 text-left"
-            onClick={() => setTaxOpen((open) => !open)}
-            type="button"
-          >
-            <span className="text-[15px] font-bold text-[#0F1412]">세금계산서</span>
-            <span className="flex items-center gap-1.5">
-              <span
-                className={`text-[12.5px] font-bold ${
-                  tax.requested && !taxComplete ? "text-[#8A5A00]" : tax.requested ? "text-[#0B5C2A]" : "text-[#8B948D]"
-                }`}
-              >
-                {tax.requested ? (taxComplete ? "발급 신청함" : "정보 입력 필요") : "발급 안 해요"}
-              </span>
-              <svg
-                aria-hidden
-                className={`text-[#8B948D] transition-transform ${taxOpen ? "rotate-180" : ""}`}
-                height="14"
-                viewBox="0 0 14 14"
-                width="14"
-              >
-                <path
-                  d="M3 5.5L7 9.5l4-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.8"
-                />
-              </svg>
-            </span>
-          </button>
-
-          {taxOpen ? (
-            <div className="px-3 pb-3">
-              {!taxComplete ? (
-                <p className="mb-2 rounded-[12px] bg-[#FFF6E0] px-3 py-2 text-[12.5px] font-semibold leading-[1.5] text-[#8A5A00]">
-                  사업자 정보를 채워 주세요. 발급이 필요 없으면 위 체크를 풀어 주세요.
-                </p>
-              ) : null}
-              <TaxInvoiceFields hint={taxHint} idPrefix="quick" onChange={setTax} value={tax} />
-            </div>
-          ) : null}
+        {/* 세금계산서 — 체크 하나. 사업자 정보는 서버가 지점 코드로 채운다 */}
+        <div className="mt-4" id="quick-tax">
+          <TaxInvoiceToggle
+            idPrefix="quick"
+            onChange={setTaxRequested}
+            personal={isDirect}
+            requested={taxRequested}
+          />
         </div>
 
         {/* ③ 낼 금액과 발주 */}
